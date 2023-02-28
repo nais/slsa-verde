@@ -38,7 +38,7 @@ func (c *Config) OnAdd(obj any) {
 }
 
 func (c *Config) ensureAttested(ctx context.Context, p *podInfo) error {
-	att, err := attestation.Verify(ctx, p.containers)
+	att, err := attestation.Verify(ctx, p.containers, "")
 	if err != nil {
 		return fmt.Errorf("failed to verify attestation: %v", err)
 	}

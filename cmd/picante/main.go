@@ -19,6 +19,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"picante/internal/attestation"
 	"picante/internal/config"
 	"picante/internal/picante"
 )
@@ -32,6 +33,15 @@ func init() {
 }
 
 func main() {
+
+	verify, err := attestation.Verify(context.Background(), []string{"ttl.sh/picante:1h"}, "/Users/tommytroen/ws/nav/picante/internal/attestation/testdata/cosign.pub")
+	if err != nil {
+		log.Fatalf("failed to verify image attestations: %v", err)
+	}
+	fmt.Printf("verify: %v\n", verify)
+}
+
+func main2() {
 	flag.Parse()
 	setupLogger()
 

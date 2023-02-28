@@ -1,6 +1,6 @@
 module picante
 
-go 1.20
+go 1.19
 
 require (
 	github.com/google/go-containerregistry v0.13.1-0.20230203223142-b3c23b4c3f28

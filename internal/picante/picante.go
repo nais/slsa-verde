@@ -23,6 +23,7 @@ func (c *Config) OnDelete(obj any) {
 	log.Infof("pod deleted: %s, do nothing", obj)
 }
 
+// TODO: compare to check if image is updated
 func (c *Config) OnUpdate(obj any, obj2 any) {
 	p := pod(obj)
 	if err := c.ensureAttested(context.Background(), p); err != nil {

@@ -2,7 +2,10 @@ package attestation
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"github.com/in-toto/in-toto-golang/in_toto"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
@@ -26,7 +29,7 @@ func options(ctx context.Context, keyRef string) (*cosign.CheckOpts, error) {
 	return co, nil
 }
 
-func Verify(ctx context.Context, containers []string, keyRef string) (any, error) {
+func Verify(ctx context.Context, containers []string, keyRef string) ([]*in_toto.CycloneDXStatement, error) {
 	ref, err := name.ParseReference(containers[0])
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse reference: %v", err)
@@ -41,8 +44,42 @@ func Verify(ctx context.Context, containers []string, keyRef string) (any, error
 		return nil, fmt.Errorf("failed to verify image attestations: %v", err)
 	}
 	log.Infof("bundleVerified: %v", bVerified)
+
+	var attestations []*in_toto.CycloneDXStatement
 	for _, a := range att {
 		log.Infof("attestation: %s", a)
+		stat, err := a.Payload()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get payload: %v", err)
+		}
+		payload, err := parseEnvelope(stat)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse payload: %v", err)
+		}
+		attestations = append(attestations, payload)
 	}
-	return nil, nil
+	return attestations, nil
+}
+
+type Envelope struct {
+	Payload string `json:"payload"`
+}
+
+func parseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {
+	var env = Envelope{}
+	err := json.Unmarshal(dsseEnvelope, &env)
+	if err != nil {
+		return nil, err
+	}
+
+	decodedPayload, err := base64.StdEncoding.DecodeString(env.Payload)
+	if err != nil {
+		return nil, err
+	}
+	var stat = &in_toto.CycloneDXStatement{}
+	err = json.Unmarshal(decodedPayload, &stat)
+	if err != nil {
+		return nil, err
+	}
+	return stat, nil
 }

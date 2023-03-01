@@ -3,6 +3,7 @@ package picante
 import (
 	"context"
 	"fmt"
+	"github.com/in-toto/in-toto-golang/in_toto"
 
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -43,13 +44,14 @@ func (c *Config) ensureAttested(ctx context.Context, p *podInfo) error {
 	if err != nil {
 		return fmt.Errorf("failed to verify attestation: %v", err)
 	}
+
 	if err = c.persistSbom(att); err != nil {
 		return fmt.Errorf("failed to persist sbom: %v", err)
 	}
 	return nil
 }
 
-func (c *Config) persistSbom(att any) error {
+func (c *Config) persistSbom(statements []*in_toto.CycloneDXStatement) error {
 	return nil
 }
 

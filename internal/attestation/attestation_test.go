@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/in-toto/in-toto-golang/in_toto"
 	"os"
 	"testing"
+
+	"github.com/in-toto/in-toto-golang/in_toto"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +16,9 @@ func TestVerify(t *testing.T) {
 	verify, err := Verify(context.Background(), []string{"ttl.sh/picante:6h"}, "testdata/cosign.pub")
 	assert.NoError(t, err)
 	for _, v := range verify {
-		fmt.Printf("statement: %v\n", v)
+
+		fmt.Printf("statement: %v\n", v.Statement)
+		fmt.Printf("image: %s\n", v.Image)
 	}
 }
 

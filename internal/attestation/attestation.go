@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+
 	"github.com/in-toto/in-toto-golang/in_toto"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -13,6 +14,11 @@ import (
 	sigs "github.com/sigstore/cosign/v2/pkg/signature"
 	log "github.com/sirupsen/logrus"
 )
+
+type ImageMetadata struct {
+	Statement *in_toto.CycloneDXStatement `json:"statement"`
+	Image     string                      `json:"image"`
+}
 
 func options(ctx context.Context, keyRef string) (*cosign.CheckOpts, error) {
 	co := &cosign.CheckOpts{}
@@ -29,36 +35,42 @@ func options(ctx context.Context, keyRef string) (*cosign.CheckOpts, error) {
 	return co, nil
 }
 
-func Verify(ctx context.Context, containers []string, keyRef string) ([]*in_toto.CycloneDXStatement, error) {
-	ref, err := name.ParseReference(containers[0])
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse reference: %v", err)
-	}
-	opts, err := options(ctx, keyRef)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get options: %v", err)
-	}
+func Verify(ctx context.Context, containers []string, keyRef string) ([]*ImageMetadata, error) {
+	metadata := make([]*ImageMetadata, 0)
+	for _, c := range containers {
+		ref, err := name.ParseReference(c)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse reference: %v", err)
+		}
+		opts, err := options(ctx, keyRef)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get options: %v", err)
+		}
 
-	att, bVerified, err := cosign.VerifyImageAttestations(ctx, ref, opts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to verify image attestations: %v", err)
-	}
-	log.Infof("bundleVerified: %v", bVerified)
+		atts, bVerified, err := cosign.VerifyImageAttestations(ctx, ref, opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to verify image attestations: %v", err)
+		}
+		log.Infof("bundleVerified: %v", bVerified)
 
-	var attestations []*in_toto.CycloneDXStatement
-	for _, a := range att {
-		log.Infof("attestation: %s", a)
-		stat, err := a.Payload()
+		att := atts[len(atts)-1]
+
+		log.Infof("attestation: %s", att)
+		env, err := att.Payload()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get payload: %v", err)
 		}
-		payload, err := parseEnvelope(stat)
+		statement, err := parseEnvelope(env)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse payload: %v", err)
 		}
-		attestations = append(attestations, payload)
+
+		metadata = append(metadata, &ImageMetadata{
+			Statement: statement,
+			Image:     ref.String(),
+		})
 	}
-	return attestations, nil
+	return metadata, nil
 }
 
 type Envelope struct {

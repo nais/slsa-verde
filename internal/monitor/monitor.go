@@ -1,9 +1,11 @@
-package picante
+package monitor
 
 import (
 	"context"
 	"fmt"
-	"github.com/in-toto/in-toto-golang/in_toto"
+	"strings"
+
+	"picante/internal/storage"
 
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -11,13 +13,12 @@ import (
 )
 
 type Config struct {
-	SbomApi string
+	*storage.Client
+	keyRef string
 }
 
-func New(sbomApi string) *Config {
-	return &Config{
-		SbomApi: sbomApi,
-	}
+func New(client *storage.Client, keyRef string) *Config {
+	return &Config{client, keyRef}
 }
 
 func (c *Config) OnDelete(obj any) {
@@ -40,19 +41,33 @@ func (c *Config) OnAdd(obj any) {
 }
 
 func (c *Config) ensureAttested(ctx context.Context, p *podInfo) error {
-	att, err := attestation.Verify(ctx, p.containers, "")
+
+	if p.name != "picanteapp1" {
+		log.Infof("not ready to attest any other apps than picanteapp1")
+		return nil
+	}
+
+	metadata, err := attestation.Verify(ctx, p.containerImages, c.keyRef)
 	if err != nil {
 		return fmt.Errorf("failed to verify attestation: %v", err)
 	}
 
-	if err = c.persistSbom(att); err != nil {
-		return fmt.Errorf("failed to persist sbom: %v", err)
+	for _, m := range metadata {
+		project, version := projectAndVersion(p.name, m.Image)
+		if err := c.UploadSbom(project, version, m.Statement); err != nil {
+			return fmt.Errorf("failed to upload sbom: %v", err)
+		}
 	}
 	return nil
 }
 
-func (c *Config) persistSbom(statements []*in_toto.CycloneDXStatement) error {
-	return nil
+func projectAndVersion(name, image string) (project string, version string) {
+	//foobar:ghcr.io/securego/gosec:v2.9.1
+	image = name + ":" + image
+	i := strings.LastIndex(image, ":")
+	version = image[i+1 : len(image)]
+	project = image[0:i]
+	return
 }
 
 func pod(obj any) *podInfo {
@@ -64,12 +79,12 @@ func pod(obj any) *podInfo {
 		c = append(c, container.Image)
 	}
 	return &podInfo{
-		name:       name,
-		containers: c,
+		name:            name,
+		containerImages: c,
 	}
 }
 
 type podInfo struct {
-	name       string
-	containers []string
+	name            string
+	containerImages []string
 }

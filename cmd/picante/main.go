@@ -20,7 +20,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"picante/internal/config"
-	"picante/internal/picante"
+	"picante/internal/monitor"
+	"picante/internal/storage"
 )
 
 var cfg = config.DefaultConfig()
@@ -28,7 +29,8 @@ var cfg = config.DefaultConfig()
 func init() {
 	flag.StringVar(&cfg.MetricsBindAddress, "metrics-bind-address", ":8080", "Bind address")
 	flag.StringVar(&cfg.LogLevel, "log-level", "debug", "Which log level to output")
-	flag.StringVar(&cfg.SbomApi, "sbom-api", "", "SBOM API endpoint")
+	flag.StringVar(&cfg.SbomApi, "sbom-api", "http://localhost:8888/api/v1/bom", "SBOM API endpoint")
+	flag.StringVar(&cfg.SbomApiKey, "sbom-api-key", "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O", "SBOM API key")
 }
 
 func main() {
@@ -69,12 +71,13 @@ func main() {
 	}
 
 	defer runtime.HandleCrash()
-	p := picante.New(cfg.SbomApi)
+
+	m := monitor.New(storage.New(cfg.SbomApi, cfg.SbomApiKey), "hack/cosign.pub")
 
 	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    p.OnAdd,
-		UpdateFunc: p.OnUpdate,
-		DeleteFunc: p.OnDelete,
+		AddFunc:    m.OnAdd,
+		UpdateFunc: m.OnUpdate,
+		DeleteFunc: m.OnDelete,
 	})
 	if err != nil {
 		log.Errorf("error setting event handler: %v", err)

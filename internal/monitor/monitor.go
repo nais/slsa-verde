@@ -42,8 +42,8 @@ func (c *Config) OnAdd(obj any) {
 
 func (c *Config) ensureAttested(ctx context.Context, p *podInfo) error {
 
-	if p.name != "picanteapp1" {
-		log.Infof("not ready to attest any other apps than picanteapp1")
+	if !p.verify {
+		log.Debugf("ignoring pod without attest label: %s", p.name)
 		return nil
 	}
 
@@ -65,7 +65,7 @@ func projectAndVersion(name, image string) (project string, version string) {
 	//foobar:ghcr.io/securego/gosec:v2.9.1
 	image = name + ":" + image
 	i := strings.LastIndex(image, ":")
-	version = image[i+1 : len(image)]
+	version = image[i+1:]
 	project = image[0:i]
 	return
 }
@@ -78,6 +78,15 @@ func pod(obj any) *podInfo {
 		log.Debugf("pod %s", container.Image)
 		c = append(c, container.Image)
 	}
+
+	verify := pod.Labels["nais.io/attest"]
+	if verify == "true" {
+		return &podInfo{
+			name:            name,
+			verify:          true,
+			containerImages: c,
+		}
+	}
 	return &podInfo{
 		name:            name,
 		containerImages: c,
@@ -86,5 +95,6 @@ func pod(obj any) *podInfo {
 
 type podInfo struct {
 	name            string
+	verify          bool
 	containerImages []string
 }

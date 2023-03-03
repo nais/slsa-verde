@@ -40,22 +40,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 
-	var kubeConfig *rest.Config
-	var err error
-	if envConfig := os.Getenv("KUBECONFIG"); envConfig != "" {
-		kubeConfig, err = clientcmd.BuildConfigFromFlags("", envConfig)
-		if err != nil {
-			panic(err.Error())
-		}
-		log.Infof("starting with kubeconfig: %s", envConfig)
-	} else {
-		kubeConfig, err = rest.InClusterConfig()
-		if err != nil {
-			log.WithError(err).Fatal("failed to get kubeconfig")
-		}
-		log.Infof("starting with in-cluster config: %s", kubeConfig.Host)
-	}
-
+	var kubeConfig = setupKubeConfig()
 	k8sClient, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		log.WithError(err).Fatal("setting up k8s client")
@@ -89,6 +74,26 @@ func main() {
 
 	<-ctx.Done()
 	log.Info("shutting down")
+}
+
+func setupKubeConfig() *rest.Config {
+	var kubeConfig *rest.Config
+	var err error
+
+	if envConfig := os.Getenv("KUBECONFIG"); envConfig != "" {
+		kubeConfig, err = clientcmd.BuildConfigFromFlags("", envConfig)
+		if err != nil {
+			panic(err.Error())
+		}
+		log.Infof("starting with kubeconfig: %s", envConfig)
+	} else {
+		kubeConfig, err = rest.InClusterConfig()
+		if err != nil {
+			log.WithError(err).Fatal("failed to get kubeconfig")
+		}
+		log.Infof("starting with in-cluster config: %s", kubeConfig.Host)
+	}
+	return kubeConfig
 }
 
 func errorHandler(r *cache.Reflector, err error) {

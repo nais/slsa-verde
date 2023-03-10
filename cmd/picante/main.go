@@ -61,6 +61,10 @@ func main() {
 	s := storage.New(cfg.SbomApi, cfg.SbomApiKey)
 	consoleApi := console.NewConfig("apikey")
 	teams, err := consoleApi.GetTeams(ctx)
+	if err != nil {
+		log.WithError(err).Fatal("failed to get teams")
+	}
+
 	if err = s.SynchronizeTeamsAndUsers(teams); err != nil {
 		log.WithError(err).Fatal("failed to synchronize teams and users")
 	}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"picante/internal/console"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 )
@@ -70,4 +71,8 @@ func createPayload(projectName string, projectVersion string, statement *in_toto
 		Bom:            bom,
 	}
 	return json.Marshal(p)
+}
+
+func (c *Client) SynchronizeTeamsAndUsers(*console.Teams) error {
+	return nil
 }

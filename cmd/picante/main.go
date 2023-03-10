@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"picante/internal/console"
 	"syscall"
 	"time"
 
@@ -57,7 +58,14 @@ func main() {
 
 	defer runtime.HandleCrash()
 
-	m := monitor.New(storage.New(cfg.SbomApi, cfg.SbomApiKey), "hack/cosign.pub")
+	s := storage.New(cfg.SbomApi, cfg.SbomApiKey)
+	consoleApi := console.NewConfig("apikey")
+	teams, err := consoleApi.GetTeams(ctx)
+	if err = s.SynchronizeTeamsAndUsers(teams); err != nil {
+		log.WithError(err).Fatal("failed to synchronize teams and users")
+	}
+
+	m := monitor.New(s, "hack/cosign.pub")
 
 	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    m.OnAdd,

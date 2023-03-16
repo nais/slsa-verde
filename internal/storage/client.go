@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"picante/internal/console"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 )
@@ -24,7 +23,7 @@ type payload struct {
 	Bom            string `json:"bom"`
 }
 
-func New(url string, apiKey string) *Client {
+func NewClient(url string, apiKey string) *Client {
 	return &Client{
 		url:    url,
 		apiKey: apiKey,
@@ -71,8 +70,4 @@ func createPayload(projectName string, projectVersion string, statement *in_toto
 		Bom:            bom,
 	}
 	return json.Marshal(p)
-}
-
-func (c *Client) SynchronizeTeamsAndUsers(*console.Teams) error {
-	return nil
 }

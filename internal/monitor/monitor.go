@@ -3,6 +3,8 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"github.com/sigstore/cosign/v2/pkg/cosign"
+	"picante/internal/check"
 	"strings"
 
 	"picante/internal/storage"
@@ -14,11 +16,20 @@ import (
 
 type Config struct {
 	*storage.Client
-	keyRef string
+	cosOpts    *cosign.CheckOpts
+	keyRef     string
+	localImage bool
+	rekorUrl   string
 }
 
-func New(client *storage.Client, keyRef string) *Config {
-	return &Config{client, keyRef}
+func NewMonitor(client *storage.Client, opts *check.VerifyAttestationOpts) *Config {
+	return &Config{
+		Client:     client,
+		keyRef:     opts.KeyRef,
+		localImage: opts.LocalImage,
+		cosOpts:    opts.CosignCheckOpts,
+		rekorUrl:   opts.RekorURL,
+	}
 }
 
 func (c *Config) OnDelete(obj any) {
@@ -47,7 +58,7 @@ func (c *Config) ensureAttested(ctx context.Context, p *podInfo) error {
 		return nil
 	}
 
-	metadata, err := attestation.Verify(ctx, p.containerImages, c.keyRef)
+	metadata, err := attestation.Verify(ctx, p.containerImages, c.keyRef, c.localImage, c.rekorUrl, c.cosOpts)
 	if err != nil {
 		return fmt.Errorf("failed to verify attestation: %v", err)
 	}

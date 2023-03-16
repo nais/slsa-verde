@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"context"
+	"picante/internal/check"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,7 +10,13 @@ import (
 )
 
 func TestEnsureAttested(t *testing.T) {
-	cfg := New(storage.New("http://localhost:8888/api/v1/bom", "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O"), "testdata/cosign.pub")
+	sorageClient := storage.NewClient("http://localhost:8888/api/v1/bom", "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O")
+	opts := &check.VerifyAttestationOpts{
+		IgnoreTLog: false,
+		LocalImage: false,
+		KeyRef:     "testdata/cosign.pub",
+	}
+	cfg := NewMonitor(sorageClient, opts)
 	err := cfg.ensureAttested(context.Background(), &podInfo{
 		name:            "app2",
 		containerImages: []string{"ttl.sh/picante:6h"},

@@ -12,10 +12,6 @@ type Info struct {
 	Verify          bool
 }
 
-type Image struct {
-	Ref string
-}
-
 func GetInfo(obj any) *Info {
 	pod := obj.(*v1.Pod)
 	name := pod.Labels["app.kubernetes.io/name"]

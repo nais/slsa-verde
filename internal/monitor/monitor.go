@@ -3,7 +3,6 @@ package monitor
 import (
 	"context"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"picante/internal/pod"
 	"strings"
 
@@ -11,10 +10,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"picante/internal/attestation"
-)
-
-const (
-	GARRegistry = "europe-north1-docker.pkg.dev"
 )
 
 type Config struct {
@@ -48,7 +43,7 @@ func (c *Config) OnAdd(obj any) {
 		return
 	}
 
-	if !p.Verify || !slices.Contains(p.ContainerImages, GARRegistry) {
+	if !p.Verify {
 		log.Infof("ignoring pod %s", p.Name)
 		return
 	}

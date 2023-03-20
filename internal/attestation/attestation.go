@@ -5,13 +5,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/rekor"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	"github.com/sigstore/cosign/v2/pkg/oci"
+	"picante/internal/identity"
+	"picante/internal/pod"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sigstore/cosign/v2/pkg/cosign/pkcs11key"
@@ -24,7 +27,18 @@ type ImageMetadata struct {
 	Image     string                      `json:"image"`
 }
 
-func options(ctx context.Context, keyRef string, rekorUrl string, co *cosign.CheckOpts) (*cosign.CheckOpts, error) {
+type VerifyAttestationOpts struct {
+	Issuer    string
+	ProjectID string
+	VerifyCmd *verify.VerifyAttestationCommand
+}
+
+func (vao *VerifyAttestationOpts) options(ctx context.Context, team string) (*cosign.CheckOpts, error) {
+	co := &cosign.CheckOpts{
+		IgnoreTlog: vao.VerifyCmd.IgnoreTlog,
+		IgnoreSCT:  vao.VerifyCmd.IgnoreSCT,
+	}
+
 	var err error
 	if !co.IgnoreSCT {
 		co.CTLogPubKeys, err = cosign.GetCTLogPubs(ctx)
@@ -34,8 +48,8 @@ func options(ctx context.Context, keyRef string, rekorUrl string, co *cosign.Che
 	}
 
 	if !co.IgnoreTlog {
-		if rekorUrl != "" {
-			rekorClient, err := rekor.NewClient(rekorUrl)
+		if vao.VerifyCmd.RekorURL != "" {
+			rekorClient, err := rekor.NewClient(vao.VerifyCmd.RekorURL)
 			if err != nil {
 				return nil, fmt.Errorf("creating Rekor client: %w", err)
 			}
@@ -49,7 +63,7 @@ func options(ctx context.Context, keyRef string, rekorUrl string, co *cosign.Che
 		}
 	}
 
-	if keylessVerification(keyRef) {
+	if keylessVerification(vao.VerifyCmd.KeyRef) {
 		println("keyless verification")
 		// This performs an online fetch of the Fulcio roots. This is needed
 		// for verifying keyless certificates (both online and offline).
@@ -61,10 +75,12 @@ func options(ctx context.Context, keyRef string, rekorUrl string, co *cosign.Che
 		if err != nil {
 			return nil, fmt.Errorf("getting Fulcio intermediates: %w", err)
 		}
+
+		co.Identities = identity.GetIdentities(vao.ProjectID, vao.Issuer, team)
 	}
 
-	if keyRef != "" {
-		co.SigVerifier, err = sigs.PublicKeyFromKeyRef(ctx, keyRef)
+	if vao.VerifyCmd.KeyRef != "" {
+		co.SigVerifier, err = sigs.PublicKeyFromKeyRef(ctx, vao.VerifyCmd.KeyRef)
 		if err != nil {
 			return nil, fmt.Errorf("loading public key: %w", err)
 		}
@@ -72,7 +88,7 @@ func options(ctx context.Context, keyRef string, rekorUrl string, co *cosign.Che
 		if ok {
 			defer pkcs11Key.Close()
 		}
-		co.IgnoreTlog = true
+		co.IgnoreTlog = vao.VerifyCmd.IgnoreTlog
 	}
 
 	return co, nil
@@ -85,21 +101,15 @@ func keylessVerification(keyRef string) bool {
 	return true
 }
 
-func Verify(
-	ctx context.Context,
-	containers []string,
-	keyRef string,
-	localImage bool,
-	rekorUrl string,
-	cosOpts *cosign.CheckOpts,
-) ([]*ImageMetadata, error) {
+func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error) {
 	metadata := make([]*ImageMetadata, 0)
-	for _, imageRef := range containers {
-		ref, err := name.ParseReference(imageRef)
+	for _, image := range pod.ContainerImages {
+		ref, err := name.ParseReference(image)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse reference: %v", err)
 		}
-		opts, err := options(ctx, keyRef, rekorUrl, cosOpts)
+
+		opts, err := vao.options(ctx, pod.Team)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get options: %v", err)
 		}
@@ -108,30 +118,30 @@ func Verify(
 		var bVerified bool
 		var statement *in_toto.CycloneDXStatement
 
-		if localImage {
-			verified, bVerified, err = cosign.VerifyLocalImageAttestations(ctx, imageRef, opts)
+		if vao.VerifyCmd.LocalImage {
+			verified, bVerified, err = cosign.VerifyLocalImageAttestations(ctx, image, opts)
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			println("remote image verification")
 			verified, bVerified, err = cosign.VerifyImageAttestations(ctx, ref, opts)
 			if err != nil {
-				return nil, fmt.Errorf("failed to verify image attestations: %v", err)
+				return nil, err
 			}
-			log.Infof("bundleVerified: %v", bVerified)
+		}
 
-			att := verified[len(verified)-1]
+		log.Infof("bundleVerified: %v", bVerified)
 
-			log.Infof("attestation: %s", att)
-			env, err := att.Payload()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get payload: %v", err)
-			}
-			statement, err = parseEnvelope(env)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse payload: %v", err)
-			}
+		att := verified[len(verified)-1]
+
+		log.Infof("attestation: %s", att)
+		env, err := att.Payload()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get payload: %v", err)
+		}
+		statement, err = parseEnvelope(env)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse payload: %v", err)
 		}
 
 		metadata = append(metadata, &ImageMetadata{

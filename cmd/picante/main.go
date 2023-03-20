@@ -6,9 +6,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	"os"
 	"os/signal"
-	"picante/internal/check"
+	"picante/internal/attestation"
 	"picante/internal/config"
 	"syscall"
 	"time"
@@ -36,7 +37,7 @@ func init() {
 	flag.StringVar(&cfg.LogLevel, "log-level", "debug", "Which log level to output")
 	flag.StringVar(&cfg.Storage.SbomApi, "sbom-api", "http://localhost:8888/api/v1/bom", "SBOM API endpoint")
 	flag.StringVar(&cfg.Storage.SbomApiKey, "sbom-api-key", "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O", "SBOM API key")
-	flag.StringVar(&cfg.ProjectId, "project-id", "", "Project ID")
+	flag.StringVar(&cfg.ProjectID, "project-id", "", "Project ID")
 	flag.StringVar(&cfg.Issuer, "issuer", "https://picante.ttl.sh", "Issuer")
 	flag.StringVar(&cfg.KeyRef, "key-ref", "hack/cosign.pub", "Key reference")
 	flag.BoolVar(&cfg.LocalImage, "local-image", false, "Local image")
@@ -73,7 +74,20 @@ func main() {
 		log.WithError(err).Fatal("failed to get teams")
 	}
 
-	opts := check.AttestationOpts(cfg)
+	verifyCmd := &verify.VerifyAttestationCommand{
+		CheckClaims: false,
+		KeyRef:      cfg.KeyRef,
+		RekorURL:    cfg.RekorURL,
+		LocalImage:  cfg.LocalImage,
+		IgnoreTlog:  cfg.IgnoreTLog,
+	}
+
+	opts := &attestation.VerifyAttestationOpts{
+		VerifyCmd: verifyCmd,
+		ProjectID: cfg.ProjectID,
+		Issuer:    cfg.Issuer,
+	}
+
 	m := monitor.NewMonitor(s, opts)
 
 	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{

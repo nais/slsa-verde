@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/sigstore/cosign/v2/pkg/cosign"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	"os"
-	"picante/internal/identity"
+	"picante/internal/pod"
 	"testing"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
@@ -33,8 +33,13 @@ func TestOptions(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			co := &cosign.CheckOpts{}
-			result, err := options(context.Background(), tc.keyRef, "", co)
+			co := &VerifyAttestationOpts{
+				VerifyCmd: &verify.VerifyAttestationCommand{
+					KeyRef:     tc.keyRef,
+					IgnoreTlog: tc.tLog,
+				},
+			}
+			result, err := co.options(context.Background(), "")
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
 			assert.Equal(t, tc.tLog, result.IgnoreTlog)
@@ -46,14 +51,25 @@ func TestOptions(t *testing.T) {
 	}
 }
 
-func TestVerify(t *testing.T) {
+func TestVerifyKeyless(t *testing.T) {
 	image := "ttl.sh/salsa/gogoogletestapp:1h"
-
-	id := identity.NewClaim("plattformsikkerhet-dev-496e", "https://accounts.google.com")
-	co := &cosign.CheckOpts{
-		Identities: id,
+	p := &pod.Info{
+		ContainerImages: []string{image},
+		Verify:          false,
 	}
-	verify, err := Verify(context.Background(), []string{image}, "", false, "", co)
+
+	co := &VerifyAttestationOpts{
+		VerifyCmd: &verify.VerifyAttestationCommand{
+			IgnoreTlog: false,
+			KeyRef:     "",
+			LocalImage: false,
+			RekorURL:   "",
+		},
+		ProjectID: "plattformsikkerhet-dev-496e",
+		Issuer:    "https://accounts.google.com",
+	}
+
+	verify, err := co.Verify(context.Background(), p)
 	assert.NoError(t, err)
 	for _, v := range verify {
 		fmt.Printf("statement: %v\n", v.Statement)

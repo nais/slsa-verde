@@ -3,68 +3,69 @@ package monitor
 import (
 	"context"
 	"fmt"
-	"github.com/sigstore/cosign/v2/pkg/cosign"
-	"picante/internal/check"
+	"golang.org/x/exp/slices"
+	"picante/internal/pod"
 	"strings"
 
 	"picante/internal/storage"
 
 	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
 	"picante/internal/attestation"
+)
+
+const (
+	GARRegistry = "europe-north1-docker.pkg.dev"
 )
 
 type Config struct {
 	*storage.Client
-	cosOpts    *cosign.CheckOpts
-	keyRef     string
-	localImage bool
-	rekorUrl   string
+	verifyAttestOpts *attestation.VerifyAttestationOpts
 }
 
-func NewMonitor(client *storage.Client, opts *check.VerifyAttestationOpts) *Config {
+func NewMonitor(client *storage.Client, opts *attestation.VerifyAttestationOpts) *Config {
 	return &Config{
-		Client:     client,
-		keyRef:     opts.KeyRef,
-		localImage: opts.LocalImage,
-		cosOpts:    opts.CosignCheckOpts,
-		rekorUrl:   opts.RekorURL,
+		Client:           client,
+		verifyAttestOpts: opts,
 	}
 }
 
 func (c *Config) OnDelete(obj any) {
-	log.Infof("pod deleted: %s, do nothing", obj)
+	log.Infof("podd deleted: %s, do nothing", obj)
 }
 
 // TODO: compare to check if image is updated
 func (c *Config) OnUpdate(obj any, obj2 any) {
-	p := pod(obj)
+	p := pod.GetInfo(obj)
 	if err := c.ensureAttested(context.Background(), p); err != nil {
-		log.Errorf("failed to attest pod %s: %v", p.name, err)
+		log.Errorf("failed to attest pod %s: %v", p.Name, err)
 	}
 }
 
 func (c *Config) OnAdd(obj any) {
-	p := pod(obj)
+	p := pod.GetInfo(obj)
+	if p == nil {
+		log.Infof("ignoring pod %s", p.Name)
+		return
+	}
+
+	if !p.Verify || !slices.Contains(p.ContainerImages, GARRegistry) {
+		log.Infof("ignoring pod %s", p.Name)
+		return
+	}
+
 	if err := c.ensureAttested(context.Background(), p); err != nil {
-		log.Errorf("failed to attest pod %s: %v", p.name, err)
+		log.Errorf("failed to attest pod %s: %v", p.Name, err)
 	}
 }
 
-func (c *Config) ensureAttested(ctx context.Context, p *podInfo) error {
-
-	if !p.verify {
-		log.Debugf("ignoring pod without attest label: %s", p.name)
-		return nil
-	}
-
-	metadata, err := attestation.Verify(ctx, p.containerImages, c.keyRef, c.localImage, c.rekorUrl, c.cosOpts)
+func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
+	metadata, err := c.verifyAttestOpts.Verify(ctx, p)
 	if err != nil {
 		return fmt.Errorf("failed to verify attestation: %v", err)
 	}
 
 	for _, m := range metadata {
-		project, version := projectAndVersion(p.name, m.Image)
+		project, version := projectAndVersion(p.Team, p.Name, m.Image)
 		if err := c.UploadSbom(project, version, m.Statement); err != nil {
 			return fmt.Errorf("failed to upload sbom: %v", err)
 		}
@@ -72,40 +73,11 @@ func (c *Config) ensureAttested(ctx context.Context, p *podInfo) error {
 	return nil
 }
 
-func projectAndVersion(name, image string) (project string, version string) {
-	//foobar:ghcr.io/securego/gosec:v2.9.1
-	image = name + ":" + image
+func projectAndVersion(team, name, image string) (project string, version string) {
+	//team:foobar:ghcr.io/securego/gosec:v2.9.1
+	image = team + ":" + name + ":" + image
 	i := strings.LastIndex(image, ":")
 	version = image[i+1:]
 	project = image[0:i]
 	return
-}
-
-func pod(obj any) *podInfo {
-	pod := obj.(*v1.Pod)
-	name := pod.Labels["app.kubernetes.io/name"]
-	c := make([]string, 0)
-	for _, container := range pod.Spec.Containers {
-		log.Debugf("pod %s", container.Image)
-		c = append(c, container.Image)
-	}
-
-	verify := pod.Labels["nais.io/attest"]
-	if verify == "true" {
-		return &podInfo{
-			name:            name,
-			verify:          true,
-			containerImages: c,
-		}
-	}
-	return &podInfo{
-		name:            name,
-		containerImages: c,
-	}
-}
-
-type podInfo struct {
-	name            string
-	verify          bool
-	containerImages []string
 }

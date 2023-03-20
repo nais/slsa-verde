@@ -9,7 +9,7 @@ type Config struct {
 	KeyRef             string          `json:"key-ref"`
 	RekorURL           string          `json:"rekor-url"`
 	Storage            DependencyTrack `json:"storage"`
-	ProjectId          string          `json:"project-id"`
+	ProjectID          string          `json:"project-id"`
 }
 
 type DependencyTrack struct {

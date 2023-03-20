@@ -2,7 +2,14 @@ package monitor
 
 import (
 	"context"
-	"picante/internal/check"
+	"fmt"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/attest"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
+	"net/http"
+	"net/http/httptest"
+	"picante/internal/attestation"
+	"picante/internal/pod"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,21 +17,58 @@ import (
 )
 
 func TestEnsureAttested(t *testing.T) {
-	sorageClient := storage.NewClient("http://localhost:8888/api/v1/bom", "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O")
-	opts := &check.VerifyAttestationOpts{
-		IgnoreTLog: false,
-		LocalImage: false,
-		KeyRef:     "testdata/cosign.pub",
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, err := fmt.Fprintf(w, "{\"token\":\"token1\"}\n")
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	dockerRegistryUserID := "ttl.sh/nais/picante"
+	tagName := "1h"
+	tag := dockerRegistryUserID + ":" + tagName
+	dCli, err := DockerBuild(dockerRegistryUserID, "testdata", "Dockerfile", tagName)
+	assert.NoError(t, err)
+
+	err = DockerPush(dCli, dockerRegistryUserID, tagName)
+	assert.NoError(t, err)
+
+	attCommand := attest.AttestCommand{
+		KeyOpts: options.KeyOpts{
+			KeyRef: "testdata/cosign.key",
+		},
+		RegistryOptions: options.RegistryOptions{},
+		PredicatePath:   "testdata/sbom.json",
+		PredicateType:   "cyclonedx",
+		TlogUpload:      false,
+	}
+
+	err = attCommand.Exec(context.Background(), tag)
+	assert.NoError(t, err)
+
+	sorageClient := storage.NewClient(server.URL+"/api/v1/bom", "token1")
+	opts := &attestation.VerifyAttestationOpts{
+		VerifyCmd: &verify.VerifyAttestationCommand{
+			IgnoreTlog:    true,
+			KeyRef:        "testdata/cosign.pub",
+			PredicateType: "cyclonedx",
+		},
 	}
 	cfg := NewMonitor(sorageClient, opts)
-	err := cfg.ensureAttested(context.Background(), &podInfo{
-		name:            "app2",
-		containerImages: []string{"ttl.sh/picante:6h"},
+
+	err = cfg.ensureAttested(context.Background(), &pod.Info{
+		Verify:          true,
+		Name:            "app2",
+		ContainerImages: []string{tag},
 	})
 	assert.NoError(t, err)
 }
 
 func TestProjectAndVersion(t *testing.T) {
+	team := "bolo"
 	image := "ghcr.io/securego/gosec:v2.9.1"
-	println(projectAndVersion("foobar", image))
+	p, v := projectAndVersion(team, "yolo", image)
+	assert.Equal(t, "bolo:yolo:ghcr.io/securego/gosec", p)
+	assert.Equal(t, "v2.9.1", v)
 }

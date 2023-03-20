@@ -1,0 +1,79 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.4",
+  "serialNumber": "urn:uuid:a47eaf72-a780-4a5f-81c2-997b967ba25c",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2023-03-03T13:39:54+01:00",
+    "tools": [
+      {
+        "vendor": "CycloneDX",
+        "name": "cyclonedx-gomod",
+        "version": "v1.3.0",
+        "hashes": [
+          {
+            "alg": "MD5",
+            "content": "07f04e39dbd5b2753f71e8fba4374851"
+          },
+          {
+            "alg": "SHA-1",
+            "content": "a0edc6601ff0cfb337b5bff10f79619e7cd352e8"
+          },
+          {
+            "alg": "SHA-256",
+            "content": "7d7f4dd65d698df5967323cc192dba3c6d6277a697aa0c1cd0b85e6d5afb0b35"
+          },
+          {
+            "alg": "SHA-384",
+            "content": "51645c1eae0a58c655f360cb7316de50d0fb955158c1b3d7e5171e2ed5be3fcb68abfddbd411e1694f72838321028b6d"
+          },
+          {
+            "alg": "SHA-512",
+            "content": "d4232556a679ccb251315d51d630763ef65a026f563e002ee6d0d83dc618bf81a7dc31d1be999b3b4e80e5c68c2a50f4c3727cdaa1c69aa5f63c6fa2a6da71a4"
+          }
+        ],
+        "externalReferences": [
+          {
+            "url": "https://github.com/CycloneDX/cyclonedx-gomod",
+            "type": "vcs"
+          },
+          {
+            "url": "https://cyclonedx.org",
+            "type": "website"
+          }
+        ]
+      }
+    ],
+    "component": {
+      "bom-ref": "pkg:golang/picante@v0.0.0-20230302085945-dbdd7cb1e598?type=module",
+      "type": "application",
+      "name": "picante",
+      "version": "v0.0.0-20230302085945-dbdd7cb1e598",
+      "purl": "pkg:golang/picante@v0.0.0-20230302085945-dbdd7cb1e598?type=module",
+      "properties": [
+        {
+          "name": "cdx:gomod:build:env:CGO_ENABLED",
+          "value": "1"
+        },
+        {
+          "name": "cdx:gomod:build:env:GOARCH",
+          "value": "amd64"
+        },
+        {
+          "name": "cdx:gomod:build:env:GOOS",
+          "value": "darwin"
+        },
+        {
+          "name": "cdx:gomod:build:env:GOVERSION",
+          "value": "go1.18.1"
+        }
+      ]
+    }
+  },
+  "components": [],
+  "dependencies": [
+    {
+      "ref": "pkg:golang/picante@v0.0.0-20230302085945-dbdd7cb1e598?type=module"
+    }
+  ]
+}

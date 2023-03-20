@@ -9,20 +9,15 @@ const (
 	GoogleServiceAccountSuffix = ".iam.gserviceaccount.com"
 )
 
-type Claim struct {
-	Subject string `json:"sub"`
-	Issuer  string `json:"iss"`
-}
-
-func NewClaim(projectID, iss string) []cosign.Identity {
+func GetIdentities(projectID, issuer, team string) []cosign.Identity {
 	return []cosign.Identity{
 		{
-			Issuer:        iss,
-			SubjectRegExp: toSubjectRegexSuffix(projectID),
+			Issuer:        issuer,
+			SubjectRegExp: toSubject(projectID, team),
 		},
 	}
 }
 
-func toSubjectRegexSuffix(projectID string) string {
-	return fmt.Sprintf(".*@%s%s", projectID, GoogleServiceAccountSuffix)
+func toSubject(projectID string, team string) string {
+	return fmt.Sprintf("@%s%s", projectID, GoogleServiceAccountSuffix)
 }

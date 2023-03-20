@@ -33,7 +33,7 @@ func TestUploadSbom(t *testing.T) {
 	defer server.Close()
 
 	cfg := Client{
-		url:    server.URL + "/api/v1/bom", //"http://localhost:8888/api/v1/bom",
+		url:    server.URL + "/api/v1/bom",
 		apiKey: "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O",
 	}
 

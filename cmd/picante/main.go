@@ -1,12 +1,9 @@
 package main
 
 import (
-	// Load all client-go auth plugins
-
 	"context"
-	"flag"
-	"fmt"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"picante/internal/attestation"
@@ -14,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -26,42 +22,36 @@ import (
 	"picante/internal/storage"
 )
 
-var cfg = config.DefaultConfig()
-
 const (
 	KUBECONFIG = "KUBECONFIG"
 )
 
-func init() {
-	flag.StringVar(&cfg.MetricsBindAddress, "metrics-bind-address", ":8080", "Bind address")
-	flag.StringVar(&cfg.LogLevel, "log-level", "debug", "Which log level to output")
-	flag.StringVar(&cfg.Storage.SbomApi, "sbom-api", "http://localhost:8888/api/v1/bom", "SBOM API endpoint")
-	flag.StringVar(&cfg.Storage.SbomApiKey, "sbom-api-key", "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O", "SBOM API key")
-	flag.StringVar(&cfg.ProjectID, "project-id", "", "Project ID")
-	flag.StringVar(&cfg.Issuer, "issuer", "https://picante.ttl.sh", "Issuer")
-	flag.StringVar(&cfg.KeyRef, "key-ref", "hack/cosign.pub", "Key reference")
-	flag.BoolVar(&cfg.LocalImage, "local-image", false, "Local image")
-	flag.BoolVar(&cfg.IgnoreTLog, "ignore-tlog", false, "Ignore TLog")
-	flag.StringVar(&cfg.RekorURL, "rekor-url", "https://rekor.sigstore.dev", "Rekor URL")
-}
-
 func main() {
-	flag.Parse()
-	setupLogger()
+	cfg, err := setupConfig()
+	if err != nil {
+		log.WithError(err).Fatal("failed to setup config")
+	}
 
+	if err = setupLogger(cfg); err != nil {
+		log.WithError(err).Fatal("failed to setup logging")
+	}
+
+	log.Info("starting picante")
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 
+	log.Info("setting up k8s client")
 	var kubeConfig = setupKubeConfig()
 	k8sClient, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		log.WithError(err).Fatal("setting up k8s client")
 	}
 
+	log.Info("setting up informer")
 	factory := informers.NewSharedInformerFactory(k8sClient, 0)
 	podInformer := factory.Core().V1().Pods()
 	informer := podInformer.Informer()
-	err = informer.SetWatchErrorHandler(errorHandler)
+	err = informer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
 	if err != nil {
 		log.Errorf("error setting watch error handler: %v", err)
 		return
@@ -69,32 +59,35 @@ func main() {
 
 	defer runtime.HandleCrash()
 
-	s := storage.NewClient(cfg.Storage.SbomApi, cfg.Storage.SbomApiKey)
+	log.Info("setting up storage client")
+	s := storage.NewClient(cfg.Storage.Api, cfg.Storage.ApiKey)
 	if err != nil {
 		log.WithError(err).Fatal("failed to get teams")
 	}
 
 	verifyCmd := &verify.VerifyAttestationCommand{
-		CheckClaims: false,
-		KeyRef:      cfg.KeyRef,
-		RekorURL:    cfg.RekorURL,
-		LocalImage:  cfg.LocalImage,
-		IgnoreTlog:  cfg.IgnoreTLog,
+		KeyRef:     cfg.Cosign.KeyRef,
+		RekorURL:   cfg.Cosign.RekorURL,
+		LocalImage: cfg.Cosign.LocalImage,
+		IgnoreTlog: cfg.Cosign.IgnoreTLog,
 	}
 
 	opts := &attestation.VerifyAttestationOpts{
 		VerifyCmd: verifyCmd,
-		ProjectID: cfg.ProjectID,
-		Issuer:    cfg.Issuer,
+		ProjectID: cfg.Identity.ProjectID,
+		Issuer:    cfg.Identity.Issuer,
+		Logger:    log.WithFields(log.Fields{"component": "attestation"}),
 	}
 
-	m := monitor.NewMonitor(s, opts)
+	m := monitor.NewMonitor(ctx, s, opts)
 
+	log.Info("setting up event handler")
 	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    m.OnAdd,
 		UpdateFunc: m.OnUpdate,
 		DeleteFunc: m.OnDelete,
 	})
+
 	if err != nil {
 		log.Errorf("error setting event handler: %v", err)
 		return
@@ -127,17 +120,57 @@ func setupKubeConfig() *rest.Config {
 	return kubeConfig
 }
 
-func errorHandler(r *cache.Reflector, err error) {
-	fmt.Println("watch error ", err)
+func setupConfig() (*config.Config, error) {
+	log.Info("-------- setting up configuration ---------")
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := config.Validate([]string{
+		config.MetricsAddress,
+		config.LogLevel,
+		config.StorageApi,
+		config.StorageApiKey,
+		config.CosignLocalImage,
+		config.CosignIgnoreTLog,
+		config.IdentityProjectID,
+		config.IdentityIssuer,
+	}); err != nil {
+		return cfg, err
+	}
+
+	config.Print([]string{
+		config.StorageApiKey,
+	})
+
+	log.Info("-------- configuration loaded --------")
+	return cfg, nil
 }
 
-func setupLogger() {
-	log.SetFormatter(&log.JSONFormatter{})
-	l, err := log.ParseLevel(cfg.LogLevel)
+func setupLogger(config *config.Config) error {
+	if config.DevelopmentMode {
+		log.SetLevel(log.DebugLevel)
+		formatter := &log.TextFormatter{
+			TimestampFormat:        "02-01-2006 15:04:05",
+			FullTimestamp:          true,
+			DisableLevelTruncation: true,
+		}
+		log.SetFormatter(formatter)
+		return nil
+	}
+
+	formatter := log.JSONFormatter{
+		TimestampFormat: time.RFC3339,
+	}
+
+	log.SetFormatter(&formatter)
+	l, err := log.ParseLevel(config.LogLevel)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	log.SetLevel(l)
+	return nil
 }
 
 func waitForCacheSync(stop <-chan struct{}, cacheSyncs ...cache.InformerSynced) bool {

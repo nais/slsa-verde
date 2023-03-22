@@ -14,3 +14,9 @@ coverage.out:
 
 cover-html: coverage.out
 	go tool cover -html=$<
+
+dtrack:
+	docker compose -f docker-compse-dtrack.yaml up
+
+local:
+	go run cmd/picante/main.go

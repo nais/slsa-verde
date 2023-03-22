@@ -4,7 +4,7 @@ metadata:
   name: picanteapp1
   labels:
     app.kubernetes.io/name: picanteapp1
-    app.kubernetes.io/instance: picanteapp1
+    team: picante
 spec:
   replicas: 1
   selector:
@@ -16,10 +16,12 @@ spec:
       labels:
         app.kubernetes.io/name: picanteapp1
         app.kubernetes.io/instance: picanteapp1
+        team: picante
+        nais.io/attest: "true"
     spec:
       containers:
         - name: picanteapp1
-          image: "ttl.sh/picanteapp1:6h"
+          image: "ttl.sh/salsa/gogoogletestapp:1h"
           imagePullPolicy: "IfNotPresent"
           ports:
             - name: http

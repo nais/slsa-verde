@@ -13,18 +13,19 @@ type Info struct {
 }
 
 func GetInfo(obj any) *Info {
+	log.Debug("getting pod info")
 	pod := obj.(*v1.Pod)
 	name := pod.Labels["app.kubernetes.io/name"]
 	team := pod.Labels["team"]
-	if name == "" || team == "" {
-		log.Debugf("no app.kubernetes.io/name or team label: %s", pod.Name)
+	if team == "" {
+		log.Debugf("no team label found %s", name)
 		return nil
 	}
 
 	var c []string
 
 	for _, container := range pod.Spec.Containers {
-		log.Debugf("conainer image %s", container.Image)
+		log.Debugf("container image %s", container.Image)
 		c = append(c, container.Image)
 	}
 

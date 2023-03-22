@@ -17,6 +17,7 @@ import (
 )
 
 func TestEnsureAttested(t *testing.T) {
+	ctx := context.Background()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -44,7 +45,7 @@ func TestEnsureAttested(t *testing.T) {
 		TlogUpload:      false,
 	}
 
-	err = attCommand.Exec(context.Background(), tag)
+	err = attCommand.Exec(ctx, tag)
 	assert.NoError(t, err)
 
 	sorageClient := storage.NewClient(server.URL+"/api/v1/bom", "token1")
@@ -55,7 +56,7 @@ func TestEnsureAttested(t *testing.T) {
 			PredicateType: "cyclonedx",
 		},
 	}
-	cfg := NewMonitor(sorageClient, opts)
+	cfg := NewMonitor(ctx, sorageClient, opts)
 
 	err = cfg.ensureAttested(context.Background(), &pod.Info{
 		Verify:          true,

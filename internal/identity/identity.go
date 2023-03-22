@@ -13,11 +13,11 @@ func GetIdentities(projectID, issuer, team string) []cosign.Identity {
 	return []cosign.Identity{
 		{
 			Issuer:        issuer,
-			SubjectRegExp: toSubject(projectID, team),
+			SubjectRegExp: ToSubject(projectID, team),
 		},
 	}
 }
 
-func toSubject(projectID string, team string) string {
+func ToSubject(projectID string, team string) string {
 	return fmt.Sprintf("@%s%s", projectID, GoogleServiceAccountSuffix)
 }

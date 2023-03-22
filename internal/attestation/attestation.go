@@ -2,35 +2,38 @@ package attestation
 
 import (
 	"context"
+	"cuelang.org/go/pkg/strings"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/in-toto/in-toto-golang/in_toto"
+	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/rekor"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
-	"github.com/sigstore/cosign/v2/pkg/oci"
-	"picante/internal/identity"
-	"picante/internal/pod"
-
-	"github.com/in-toto/in-toto-golang/in_toto"
-
-	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sigstore/cosign/v2/pkg/cosign/pkcs11key"
+	"github.com/sigstore/cosign/v2/pkg/oci"
 	sigs "github.com/sigstore/cosign/v2/pkg/signature"
 	log "github.com/sirupsen/logrus"
+	"io/ioutil"
+	"os"
+	"picante/internal/identity"
+	"picante/internal/pod"
 )
 
 type ImageMetadata struct {
-	Statement *in_toto.CycloneDXStatement `json:"statement"`
-	Image     string                      `json:"image"`
+	BundleVerified bool                        `json:"bundleVerified"`
+	Image          string                      `json:"image"`
+	Statement      *in_toto.CycloneDXStatement `json:"statement"`
 }
 
 type VerifyAttestationOpts struct {
 	Issuer    string
 	ProjectID string
 	VerifyCmd *verify.VerifyAttestationCommand
+	Logger    *log.Entry
 }
 
 func (vao *VerifyAttestationOpts) options(ctx context.Context, team string) (*cosign.CheckOpts, error) {
@@ -64,7 +67,7 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, team string) (*co
 	}
 
 	if keylessVerification(vao.VerifyCmd.KeyRef) {
-		println("keyless verification")
+		log.Debugf("Using keyless verification")
 		// This performs an online fetch of the Fulcio roots. This is needed
 		// for verifying keyless certificates (both online and offline).
 		co.RootCerts, err = fulcio.GetRoots()
@@ -101,17 +104,66 @@ func keylessVerification(keyRef string) bool {
 	return true
 }
 
-func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error) {
+func (vao *VerifyAttestationOpts) Verify2(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error) {
+	vao.Logger.Infof("Verifying attestations pod %s", pod.Name)
+
 	metadata := make([]*ImageMetadata, 0)
+	for _, image := range pod.ContainerImages {
+		rescueStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		if keylessVerification(vao.VerifyCmd.KeyRef) {
+			vao.Logger.Infof("Using keyless verification %s", image)
+			vao.VerifyCmd.CertIdentityRegexp = identity.ToSubject(vao.ProjectID, "")
+			vao.VerifyCmd.CertOidcIssuer = vao.Issuer
+		}
+
+		vao.VerifyCmd.PredicateType = "cyclonedx"
+		err := vao.VerifyCmd.Exec(ctx, []string{image})
+		if err != nil {
+			fmt.Println("Error: ", err)
+		}
+
+		w.Close()
+		outData, _ := ioutil.ReadAll(r)
+		os.Stdout = rescueStdout
+		if !strings.HasPrefix(string(outData), "{") {
+			return nil, fmt.Errorf("parse cosign out data: %v", err)
+		}
+
+		vao.Logger.Infof("parsing Cosign output")
+		statement, err := parseEnvelope(outData)
+		if err != nil {
+			return nil, fmt.Errorf("parse envelope: %v", err)
+		}
+
+		vao.Logger.Infof("attestation verified and parsed statement %s ref %s", statement.PredicateType, image)
+
+		metadata = append(metadata, &ImageMetadata{
+			Statement:      statement,
+			Image:          image,
+			BundleVerified: true,
+		})
+	}
+	return metadata, nil
+}
+
+func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error) {
+
+	metadata := make([]*ImageMetadata, 0)
+
+	vao.Verify2(ctx, pod)
+
 	for _, image := range pod.ContainerImages {
 		ref, err := name.ParseReference(image)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse reference: %v", err)
+			return nil, fmt.Errorf("parse reference: %v", err)
 		}
 
 		opts, err := vao.options(ctx, pod.Team)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get options: %v", err)
+			return nil, fmt.Errorf("get options: %v", err)
 		}
 
 		var verified []oci.Signature
@@ -130,23 +182,23 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 			}
 		}
 
-		log.Infof("bundleVerified: %v", bVerified)
-
 		att := verified[len(verified)-1]
 
-		log.Infof("attestation: %s", att)
 		env, err := att.Payload()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get payload: %v", err)
+			return nil, fmt.Errorf("get payload: %v", err)
 		}
 		statement, err = parseEnvelope(env)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse payload: %v", err)
+			return nil, fmt.Errorf("parse payload: %v", err)
 		}
 
+		log.Infof("attestation statement verified and parsed: %v: ref %s", statement.PredicateType, ref)
+
 		metadata = append(metadata, &ImageMetadata{
-			Statement: statement,
-			Image:     ref.String(),
+			Statement:      statement,
+			Image:          ref.String(),
+			BundleVerified: bVerified,
 		})
 	}
 	return metadata, nil

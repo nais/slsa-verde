@@ -69,7 +69,7 @@ func TestVerifyKeyless(t *testing.T) {
 		Issuer:    "https://accounts.google.com",
 	}
 
-	verify, err := co.Verify(context.Background(), p)
+	verify, err := co.Verify2(context.Background(), p)
 	assert.NoError(t, err)
 	for _, v := range verify {
 		fmt.Printf("statement: %v\n", v.Statement)

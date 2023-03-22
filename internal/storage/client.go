@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 
@@ -14,6 +15,7 @@ import (
 type Client struct {
 	url    string
 	apiKey string
+	logger *zap.Logger
 }
 
 type payload struct {
@@ -31,6 +33,11 @@ func NewClient(url string, apiKey string) *Client {
 }
 
 func (c *Client) UploadSbom(projectName string, projectVersion string, statement *in_toto.CycloneDXStatement) error {
+	c.logger.With(
+		zap.String("projectName", projectName),
+		zap.String("projectVersion", projectVersion),
+	).Info("uploading sbom")
+
 	p, err := createPayload(projectName, projectVersion, statement)
 	if err != nil {
 		return fmt.Errorf("creating payload: %w", err)
@@ -47,6 +54,7 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, statement
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
+
 	if resp.StatusCode > 299 {
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -54,6 +62,7 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, statement
 		}
 		return fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
 	}
+	c.logger.Info("sbom uploaded")
 	return nil
 }
 

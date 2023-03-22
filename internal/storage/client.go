@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"go.uber.org/zap"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 
@@ -15,7 +15,7 @@ import (
 type Client struct {
 	url    string
 	apiKey string
-	logger *zap.Logger
+	logger *log.Entry
 }
 
 type payload struct {
@@ -29,14 +29,15 @@ func NewClient(url string, apiKey string) *Client {
 	return &Client{
 		url:    url,
 		apiKey: apiKey,
+		logger: log.WithFields(log.Fields{"component": "storage"}),
 	}
 }
 
 func (c *Client) UploadSbom(projectName string, projectVersion string, statement *in_toto.CycloneDXStatement) error {
-	c.logger.With(
-		zap.String("projectName", projectName),
-		zap.String("projectVersion", projectVersion),
-	).Info("uploading sbom")
+	c.logger.WithFields(log.Fields{
+		"projectName":    projectName,
+		"projectVersion": projectVersion,
+	}).Info("uploading sbom")
 
 	p, err := createPayload(projectName, projectVersion, statement)
 	if err != nil {

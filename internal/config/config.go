@@ -1,7 +1,7 @@
 package config
 
 import (
-	"errors"
+	"fmt"
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
@@ -119,9 +119,9 @@ func Print(redacted []string) {
 	keys.Sort()
 	for _, key := range keys {
 		if ok(key) {
-			log.Printf("%s: %s", key, viper.GetString(key))
+			log.Infof("%s: %s", key, viper.GetString(key))
 		} else {
-			log.Printf("%s: ***REDACTED***", key)
+			log.Infof("%s: ***REDACTED***", key)
 		}
 	}
 }
@@ -146,10 +146,10 @@ func Validate(required []string) error {
 	}
 
 	for _, key := range errs {
-		log.Printf("required key '%s' not configured", key)
+		log.Infof("required key '%s' not configured", key)
 	}
 	if len(errs) > 0 {
-		return errors.New("missing configuration values")
+		return fmt.Errorf("missing configuration values")
 	}
 	return nil
 }

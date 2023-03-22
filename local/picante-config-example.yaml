@@ -1,0 +1,13 @@
+metrics-address: ":8080"
+log-level: info
+development-mode: false
+cosign:
+  key-ref: ""
+  ignore-tlog: false
+  local-image: false
+storage:
+  api: http://localhost:9001/api/v1/bom
+  api-key: my-api-key
+identity:
+  issuer: my-issuer
+  project-id: my-project-id

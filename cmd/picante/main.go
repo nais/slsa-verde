@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"os"
 	"os/signal"
 	"picante/internal/attestation"
@@ -32,7 +33,7 @@ func main() {
 		log.WithError(err).Fatal("failed to setup config")
 	}
 
-	if err = setupLogger(cfg); err != nil {
+	if err := setupLogger(); err != nil {
 		log.WithError(err).Fatal("failed to setup logging")
 	}
 
@@ -148,8 +149,8 @@ func setupConfig() (*config.Config, error) {
 	return cfg, nil
 }
 
-func setupLogger(config *config.Config) error {
-	if config.DevelopmentMode {
+func setupLogger() error {
+	if viper.GetBool(config.DevelopmentMode) {
 		log.SetLevel(log.DebugLevel)
 		formatter := &log.TextFormatter{
 			TimestampFormat:        "02-01-2006 15:04:05",
@@ -165,7 +166,7 @@ func setupLogger(config *config.Config) error {
 	}
 
 	log.SetFormatter(&formatter)
-	l, err := log.ParseLevel(config.LogLevel)
+	l, err := log.ParseLevel(viper.GetString(config.LogLevel))
 	if err != nil {
 		return err
 	}

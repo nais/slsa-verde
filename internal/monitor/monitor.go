@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"go.uber.org/zap"
 	"picante/internal/pod"
 	"strings"
 
@@ -34,42 +33,44 @@ func (c *Config) OnDelete(obj any) {
 }
 
 // TODO: compare to check if image is updated
-func (c *Config) OnUpdate(obj any, obj2 any) {
+func (c *Config) OnUpdate(newObj any, oldObj any) {
 	c.logger.Debug("pod updated")
-	p := pod.GetInfo(obj)
-	p2 := pod.GetInfo(obj2)
+	p := pod.GetInfo(newObj)
 
 	if p == nil {
-		c.logger.Debug("ignoring pod")
-		return
+		c.logger.Debugf("ignore pod with no team label name")
+	}
+
+	p2 := pod.GetInfo(oldObj)
+	if p2 == nil {
+		c.logger.Debugf("ignore pod with no team label name")
 	}
 
 	if !p.Verify {
-		c.logger.Debug("ignoring pod with no verify label", zap.String("name", p.Name))
+		c.logger.Debugf("ignore pod with no verify label name %s", p.Name)
 		return
 	}
 
 	if equalSlice(p.ContainerImages, p2.ContainerImages) {
-		c.logger.Debug("same tag on image", zap.String("ignoring pod", p.Name))
+		c.logger.Debugf("same tag on image ignoring pod %s", p.Name)
 		return
 	}
 
 	if err := c.ensureAttested(c.ctx, p); err != nil {
-		c.logger.Error("attest pod", zap.Error(err))
+		c.logger.Errorf("attest pod %p", err)
 	}
 }
 
 func (c *Config) OnAdd(obj any) {
 	c.logger.Debug("pod added")
-
 	p := pod.GetInfo(obj)
 	if p == nil {
-		log.Info("ignoring pod")
+		log.Debugf("ignoring pod with no team label")
 		return
 	}
 
 	if !p.Verify {
-		log.Info("ignoring pod with no verify label" + p.Name)
+		log.Debugf("ignoring pod with no verify label %s", p.Name)
 		return
 	}
 

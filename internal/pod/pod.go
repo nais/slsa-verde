@@ -17,8 +17,8 @@ func GetInfo(obj any) *Info {
 	pod := obj.(*v1.Pod)
 	name := pod.Labels["app.kubernetes.io/name"]
 	team := pod.Labels["team"]
+
 	if team == "" {
-		log.Debugf("no team label found %s", name)
 		return nil
 	}
 

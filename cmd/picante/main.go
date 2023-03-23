@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"os/signal"
 	"picante/internal/attestation"
@@ -49,22 +51,22 @@ func main() {
 	}
 
 	log.Info("setting up informer")
-	factory := informers.NewSharedInformerFactory(k8sClient, 0)
-	podInformer := factory.Core().V1().Pods()
-	informer := podInformer.Informer()
-	err = informer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
+	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 10*time.Minute, informers.WithTweakListOptions(
+		func(options *v1.ListOptions) {
+			if cfg.Features.Enabled {
+				options.LabelSelector = cfg.GetLabelSelectors()
+			}
+			options.FieldSelector = "status.phase=Running"
+		}),
+	)
+	podInformer := factory.Core().V1().Pods().Informer()
+	err = podInformer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
 	if err != nil {
 		log.Errorf("error setting watch error handler: %v", err)
 		return
 	}
 
 	defer runtime.HandleCrash()
-
-	log.Info("setting up storage client")
-	s := storage.NewClient(cfg.Storage.Api, cfg.Storage.ApiKey)
-	if err != nil {
-		log.WithError(err).Fatal("failed to get teams")
-	}
 
 	verifyCmd := &verify.VerifyAttestationCommand{
 		KeyRef:     cfg.Cosign.KeyRef,
@@ -80,10 +82,16 @@ func main() {
 		Logger:    log.WithFields(log.Fields{"component": "attestation"}),
 	}
 
+	log.Info("setting up storage client")
+	s := storage.NewClient(cfg.Storage.Api, cfg.Storage.ApiKey)
+	if err != nil {
+		log.WithError(err).Fatal("failed to get teams")
+	}
+
 	m := monitor.NewMonitor(ctx, s, opts)
 
-	log.Info("setting up event handler")
-	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	log.Info("setting up informer event handler")
+	_, err = podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    m.OnAdd,
 		UpdateFunc: m.OnUpdate,
 		DeleteFunc: m.OnDelete,
@@ -94,8 +102,13 @@ func main() {
 		return
 	}
 
-	go informer.Run(ctx.Done())
-	waitForCacheSync(ctx.Done(), informer.HasSynced)
+	go podInformer.Run(ctx.Done())
+	if !cache.WaitForCacheSync(ctx.Done(), podInformer.HasSynced) {
+		runtime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
+		return
+	}
+
+	log.Infof("informer cache synced")
 
 	<-ctx.Done()
 	log.Info("shutting down")
@@ -143,6 +156,7 @@ func setupConfig() (*config.Config, error) {
 
 	config.Print([]string{
 		config.StorageApiKey,
+		config.CosignKeyRef,
 	})
 
 	log.Info("-------- configuration loaded --------")
@@ -153,6 +167,7 @@ func setupLogger() error {
 	if viper.GetBool(config.DevelopmentMode) {
 		log.SetLevel(log.DebugLevel)
 		formatter := &log.TextFormatter{
+			ForceColors:            true,
 			TimestampFormat:        "02-01-2006 15:04:05",
 			FullTimestamp:          true,
 			DisableLevelTruncation: true,
@@ -172,38 +187,4 @@ func setupLogger() error {
 	}
 	log.SetLevel(l)
 	return nil
-}
-
-func waitForCacheSync(stop <-chan struct{}, cacheSyncs ...cache.InformerSynced) bool {
-	max := time.Millisecond * 100
-	delay := time.Millisecond
-	f := func() bool {
-		for _, syncFunc := range cacheSyncs {
-			if !syncFunc() {
-				return false
-			}
-		}
-		return true
-	}
-	for {
-		select {
-		case <-stop:
-			return false
-		default:
-		}
-		res := f()
-		if res {
-			return true
-		}
-		delay *= 2
-		if delay > max {
-			delay = max
-		}
-
-		select {
-		case <-stop:
-			return false
-		case <-time.After(delay):
-		}
-	}
 }

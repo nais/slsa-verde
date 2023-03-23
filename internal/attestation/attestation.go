@@ -114,7 +114,9 @@ func (vao *VerifyAttestationOpts) Verify2(ctx context.Context, pod *pod.Info) ([
 		os.Stdout = w
 
 		if keylessVerification(vao.VerifyCmd.KeyRef) {
-			vao.Logger.Infof("Using keyless verification %s", image)
+			vao.Logger.WithFields(log.Fields{
+				"image": image,
+			}).Info("Using keyless verification")
 			vao.VerifyCmd.CertIdentityRegexp = identity.ToSubject(vao.ProjectID, "")
 			vao.VerifyCmd.CertOidcIssuer = vao.Issuer
 		}
@@ -132,13 +134,17 @@ func (vao *VerifyAttestationOpts) Verify2(ctx context.Context, pod *pod.Info) ([
 			return nil, fmt.Errorf("parse cosign out data: %v", err)
 		}
 
-		vao.Logger.Infof("parsing Cosign output")
+		vao.Logger.Debug("parsing Cosign output")
 		statement, err := parseEnvelope(outData)
 		if err != nil {
 			return nil, fmt.Errorf("parse envelope: %v", err)
 		}
 
-		vao.Logger.Infof("attestation verified and parsed statement %s ref %s", statement.PredicateType, image)
+		vao.Logger.WithFields(log.Fields{
+			"predicate-type": statement.PredicateType,
+			"statement-type": statement.Type,
+			"ref":            image,
+		}).Info("attestation verified and parsed statement")
 
 		metadata = append(metadata, &ImageMetadata{
 			Statement:      statement,

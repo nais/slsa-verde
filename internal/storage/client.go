@@ -63,7 +63,9 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, statement
 		}
 		return fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
 	}
-	c.logger.Info("sbom uploaded")
+	c.logger.WithFields(log.Fields{
+		"api-url": c.url,
+	}).Info("sbom uploaded")
 	return nil
 }
 

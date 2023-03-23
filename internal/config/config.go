@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Cosign             Cosign   `json:"cosign"`
 	DevelopmentMode    bool     `json:"development-mode"`
+	Features           Features `json:"features"`
 	Identity           Identity `json:"identity"`
 	LogLevel           string   `json:"log-level"`
 	MetricsBindAddress string   `json:"metrics-address"`
@@ -36,18 +37,30 @@ type Storage struct {
 	ApiKey string `json:"api-key"`
 }
 
+type Features struct {
+	Enabled        bool    `json:"enabled"`
+	LabelSelectors []Label `json:"label-selectors"`
+}
+
+type Label struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 const (
-	CosignIgnoreTLog  = "cosign.ignore-tlog"
-	CosignKeyRef      = "cosign.key-ref"
-	CosignLocalImage  = "cosign.local-image"
-	CosignRekorURL    = "cosign.rekor-url"
-	DevelopmentMode   = "development-mode"
-	IdentityIssuer    = "identity.issuer"
-	IdentityProjectID = "identity.project-id"
-	LogLevel          = "log-level"
-	MetricsAddress    = "metrics-address"
-	StorageApi        = "storage.api"
-	StorageApiKey     = "storage.api-key"
+	CosignIgnoreTLog       = "cosign.ignore-tlog"
+	CosignKeyRef           = "cosign.key-ref"
+	CosignLocalImage       = "cosign.local-image"
+	CosignRekorURL         = "cosign.rekor-url"
+	DevelopmentMode        = "development-mode"
+	IdentityIssuer         = "identity.issuer"
+	IdentityProjectID      = "identity.project-id"
+	LogLevel               = "log-level"
+	MetricsAddress         = "metrics-address"
+	StorageApi             = "storage.api"
+	StorageApiKey          = "storage.api-key"
+	FeaturesEnabled        = "features.enabled"
+	FeaturesLabelSelectors = "features.label-selectors"
 )
 
 func init() {
@@ -72,6 +85,9 @@ func init() {
 	flag.String(MetricsAddress, "", "Bind address")
 	flag.String(StorageApi, "", "Salsa storage API endpoint")
 	flag.String(StorageApiKey, "", "SBOM API key")
+	flag.Bool(FeaturesEnabled, false, "Enable feature flagging")
+	flag.String(FeaturesLabelSelectors, "", "List of labels to enable for informer")
+
 }
 
 func Load() (*Config, error) {
@@ -119,7 +135,13 @@ func Print(redacted []string) {
 	keys.Sort()
 	for _, key := range keys {
 		if ok(key) {
-			log.Infof("%s: %s", key, viper.GetString(key))
+			switch viper.Get(key).(type) {
+			case []interface{}:
+				log.Infof("%s: %s", key, viper.Get(key).([]interface{}))
+			default:
+				log.Infof("%s: %s", key, viper.GetString(key))
+			}
+
 		} else {
 			log.Infof("%s: ***REDACTED***", key)
 		}
@@ -152,4 +174,20 @@ func Validate(required []string) error {
 		return fmt.Errorf("missing configuration values")
 	}
 	return nil
+}
+
+func (c *Config) GetLabelSelectors() string {
+	var labelSelector string
+	if len(c.Features.LabelSelectors) == 0 {
+		return labelSelector
+	}
+
+	for _, label := range c.Features.LabelSelectors {
+		if len(labelSelector) == 0 {
+			labelSelector = fmt.Sprintf("%s=%s", label.Name, label.Value)
+			continue
+		}
+		labelSelector = fmt.Sprintf("%s,%s=%s", labelSelector, label.Name, label.Value)
+	}
+	return labelSelector
 }

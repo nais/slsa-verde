@@ -1,6 +1,11 @@
 metrics-address: ":8080"
 log-level: info
 development-mode: false
+features:
+  enabled: true
+  label-selectors:
+    - name: "nais.io/attest"
+      value: "true"
 cosign:
   key-ref: ""
   ignore-tlog: false

@@ -32,50 +32,41 @@ func (c *Config) OnDelete(obj any) {
 	c.logger.Info("pod deleted, do nothing")
 }
 
-// TODO: compare to check if image is updated
-func (c *Config) OnUpdate(newObj any, oldObj any) {
-	c.logger.Debug("pod updated")
-	p := pod.GetInfo(newObj)
+func (c *Config) OnUpdate(old any, new any) {
+	c.logger.Debug("pod updated event, check if image needs to be attested")
 
-	if p == nil {
-		c.logger.Debugf("ignore pod with no team label name")
+	p, err := pod.GetInfo(old)
+	if err != nil {
+		c.logger.Debugf("get pod info: %v", err)
+		return
 	}
 
-	p2 := pod.GetInfo(oldObj)
-	if p2 == nil {
-		c.logger.Debugf("ignore pod with no team label name")
-	}
-
-	if !p.Verify {
-		c.logger.Debugf("ignore pod with no verify label name %s", p.Name)
+	p2, err := pod.GetInfo(new)
+	if err != nil {
+		c.logger.Debugf("get pod info: %v", err)
 		return
 	}
 
 	if equalSlice(p.ContainerImages, p2.ContainerImages) {
-		c.logger.Debugf("same tag on image ignoring pod %s", p.Name)
+		c.logger.Debugf("same tag on image ignoring pod %s", p.PodName)
 		return
 	}
 
-	if err := c.ensureAttested(c.ctx, p); err != nil {
-		c.logger.Errorf("attest pod %p", err)
+	if err = c.ensureAttested(c.ctx, p); err != nil {
+		c.logger.Errorf("attest pod %v", err)
 	}
 }
 
 func (c *Config) OnAdd(obj any) {
-	c.logger.Debug("pod added")
-	p := pod.GetInfo(obj)
+	c.logger.Debug("new pod event, check if image needs to be attested")
+	p, _ := pod.GetInfo(obj)
 	if p == nil {
-		log.Debugf("ignoring pod with no team label")
-		return
-	}
-
-	if !p.Verify {
-		log.Debugf("ignoring pod with no verify label %s", p.Name)
+		c.logger.Debugf("ignoring pod with no team label")
 		return
 	}
 
 	if err := c.ensureAttested(c.ctx, p); err != nil {
-		log.Errorf("attest pod %v", err)
+		c.logger.Errorf("attest pod %v", err)
 	}
 }
 

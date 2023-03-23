@@ -39,14 +39,9 @@ func TestOptions(t *testing.T) {
 					IgnoreTlog: tc.tLog,
 				},
 			}
-			result, err := co.options(context.Background(), "")
-			assert.NoError(t, err)
-			assert.NotNil(t, result)
-			assert.Equal(t, tc.tLog, result.IgnoreTlog)
-			assert.Equal(t, tc.keyRef != "", result.SigVerifier != nil)
-			assert.Equal(t, tc.keyRef == "", result.RootCerts != nil)
-			assert.Equal(t, tc.keyRef == "", result.IntermediateCerts != nil)
-
+			podInfo := &pod.Info{}
+			co.WithOptions(podInfo)
+			assert.Equal(t, tc.tLog, co.VerifyCmd.IgnoreTlog)
 		})
 	}
 }
@@ -55,7 +50,6 @@ func TestVerifyKeyless(t *testing.T) {
 	image := "ttl.sh/salsa/gogoogletestapp:1h"
 	p := &pod.Info{
 		ContainerImages: []string{image},
-		Verify:          false,
 	}
 
 	co := &VerifyAttestationOpts{
@@ -69,7 +63,7 @@ func TestVerifyKeyless(t *testing.T) {
 		Issuer:    "https://accounts.google.com",
 	}
 
-	verify, err := co.Verify2(context.Background(), p)
+	verify, err := co.Verify(context.Background(), p)
 	assert.NoError(t, err)
 	for _, v := range verify {
 		fmt.Printf("statement: %v\n", v.Statement)

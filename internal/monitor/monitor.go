@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"context"
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"picante/internal/pod"
 	"strings"
@@ -53,7 +52,7 @@ func (c *Config) OnUpdate(old any, new any) {
 	}
 
 	if err = c.ensureAttested(c.ctx, p); err != nil {
-		c.logger.Errorf("attest pod %v", err)
+		c.logger.Errorf("verfy attesation pod %v", err)
 	}
 }
 
@@ -66,14 +65,14 @@ func (c *Config) OnAdd(obj any) {
 	}
 
 	if err := c.ensureAttested(c.ctx, p); err != nil {
-		c.logger.Errorf("attest pod %v", err)
+		c.logger.Errorf("verify attestation %v", err)
 	}
 }
 
 func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
-	metadata, err := c.verifyAttestOpts.Verify2(ctx, p)
+	metadata, err := c.verifyAttestOpts.Verify(ctx, p)
 	if err != nil {
-		return fmt.Errorf("verify attestation: %v", err)
+		return err
 	}
 
 	for _, m := range metadata {

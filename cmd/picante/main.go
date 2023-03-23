@@ -56,7 +56,7 @@ func main() {
 			if cfg.Features.Enabled {
 				options.LabelSelector = cfg.GetLabelSelectors()
 			}
-			options.FieldSelector = "status.phase=Running"
+			options.FieldSelector = "status.phase!=Failed"
 		}),
 	)
 	podInformer := factory.Core().V1().Pods().Informer()

@@ -15,7 +15,8 @@ spec:
       labels:
         app.kubernetes.io/name: picanteapp1
         team: picante
-        nais.io/attest: "true"
+        nais.io/verify-attestation: "true"
+        nais.io/predicate-type: "cyclonedx"
     spec:
       containers:
         - name: picanteapp1

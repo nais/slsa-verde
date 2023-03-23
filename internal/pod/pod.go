@@ -5,6 +5,7 @@ import (
 )
 
 type Info struct {
+	PredicateType   string
 	ContainerImages []string
 	Name            string
 	Namespace       string
@@ -17,6 +18,7 @@ func GetInfo(obj any) (*Info, error) {
 	labels := pod.GetLabels()
 	name := labels["app.kubernetes.io/name"]
 	team := labels["team"]
+	predicateType := labels["nais.io/predicate-type"]
 
 	var c []string
 	for _, container := range pod.Spec.Containers {
@@ -27,15 +29,12 @@ func GetInfo(obj any) (*Info, error) {
 		c = append(c, container.Image)
 	}
 
-	return podInfo(pod, name, team, c), nil
-}
-
-func podInfo(pod *v1.Pod, name, team string, c []string) *Info {
 	return &Info{
+		PredicateType:   predicateType,
 		ContainerImages: c,
 		Name:            name,
 		PodName:         pod.GetName(),
 		Namespace:       pod.GetNamespace(),
 		Team:            team,
-	}
+	}, nil
 }

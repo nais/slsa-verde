@@ -6,6 +6,8 @@ features:
   label-selectors:
     - name: "nais.io/attest"
       value: "true"
+    - name: "nais.io/attest-type"
+      value: "cyclonedx"
 cosign:
   key-ref: ""
   ignore-tlog: false

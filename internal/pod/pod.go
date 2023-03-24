@@ -4,21 +4,31 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+const (
+	DefaultAppK8sIoName   = "app.kubernetes.io/name"
+	DefaultKeyRefLabel    = "nais.io/salsa-key-ref"
+	DefaultPredicateLabel = "nais.io/salsa-predicate"
+	DefaultPredicateType  = "cyclonedx"
+	DefaultTeamLabel      = "team"
+)
+
 type Info struct {
-	PredicateType   string
 	ContainerImages []string
+	KeyRef          string
 	Name            string
 	Namespace       string
 	PodName         string
+	PredicateType   string
 	Team            string
 }
 
 func GetInfo(obj any) (*Info, error) {
 	pod := obj.(*v1.Pod)
 	labels := pod.GetLabels()
-	name := labels["app.kubernetes.io/name"]
-	team := labels["team"]
-	predicateType := labels["nais.io/predicate-type"]
+	name := labels[DefaultAppK8sIoName]
+	team := labels[DefaultTeamLabel]
+	predicateType := labels[DefaultPredicateLabel]
+	keyRef := labels[DefaultKeyRefLabel]
 
 	var c []string
 	for _, container := range pod.Spec.Containers {
@@ -30,11 +40,26 @@ func GetInfo(obj any) (*Info, error) {
 	}
 
 	return &Info{
-		PredicateType:   predicateType,
 		ContainerImages: c,
+		KeyRef:          keyRef,
 		Name:            name,
-		PodName:         pod.GetName(),
 		Namespace:       pod.GetNamespace(),
+		PodName:         pod.GetName(),
+		PredicateType:   predicateType,
 		Team:            team,
 	}, nil
+}
+
+func (pod *Info) GetPredicateType() string {
+	if pod.PredicateType == "" {
+		return DefaultPredicateType
+	}
+	return pod.PredicateType
+}
+
+func (pod *Info) KeylessVerification(keyRef string) bool {
+	if pod.KeyRef != "" || keyRef != "" {
+		return false
+	}
+	return true
 }

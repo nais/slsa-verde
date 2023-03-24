@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	log "github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 	"picante/internal/pod"
 	"strings"
 
@@ -28,7 +29,8 @@ func NewMonitor(ctx context.Context, client *storage.Client, opts *attestation.V
 }
 
 func (c *Config) OnDelete(obj any) {
-	c.logger.Info("pod deleted, do nothing")
+	p := obj.(*v1.Pod)
+	c.logger.Debugf("pod deleted, do nothing for pod %s", p.Name)
 }
 
 func (c *Config) OnUpdate(old any, new any) {
@@ -58,8 +60,9 @@ func (c *Config) OnUpdate(old any, new any) {
 
 func (c *Config) OnAdd(obj any) {
 	c.logger.Debug("new pod event, check if image needs to be attested")
-	p, _ := pod.GetInfo(obj)
-	if p == nil {
+
+	p, err := pod.GetInfo(obj)
+	if err != nil {
 		c.logger.Debugf("ignoring pod with no team label")
 		return
 	}

@@ -59,7 +59,6 @@ func TestEnsureAttested(t *testing.T) {
 	cfg := NewMonitor(ctx, sorageClient, opts)
 
 	err = cfg.ensureAttested(context.Background(), &pod.Info{
-		Verify:          true,
 		Name:            "app2",
 		ContainerImages: []string{tag},
 	})

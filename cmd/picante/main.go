@@ -51,9 +51,9 @@ func main() {
 	}
 
 	log.Info("setting up informer")
-	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 10*time.Minute, informers.WithTweakListOptions(
+	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 0, informers.WithTweakListOptions(
 		func(options *v1.ListOptions) {
-			if cfg.Features.Enabled {
+			if cfg.Features.Enabled && len(cfg.Features.LabelSelectors) > 0 {
 				options.LabelSelector = cfg.GetLabelSelectors()
 			}
 			options.FieldSelector = "status.phase!=Failed"
@@ -68,15 +68,13 @@ func main() {
 
 	defer runtime.HandleCrash()
 
-	verifyCmd := &verify.VerifyAttestationCommand{
-		KeyRef:     cfg.Cosign.KeyRef,
-		RekorURL:   cfg.Cosign.RekorURL,
-		LocalImage: cfg.Cosign.LocalImage,
-		IgnoreTlog: cfg.Cosign.IgnoreTLog,
-	}
-
 	opts := &attestation.VerifyAttestationOpts{
-		VerifyCmd: verifyCmd,
+		VerifyCmd: &verify.VerifyAttestationCommand{
+			RekorURL:   cfg.Cosign.RekorURL,
+			LocalImage: cfg.Cosign.LocalImage,
+			IgnoreTlog: cfg.Cosign.IgnoreTLog,
+			KeyRef:     cfg.Cosign.KeyRef,
+		},
 		ProjectID: cfg.Identity.ProjectID,
 		Issuer:    cfg.Identity.Issuer,
 		Logger:    log.WithFields(log.Fields{"component": "attestation"}),
@@ -143,7 +141,6 @@ func setupConfig() (*config.Config, error) {
 
 	if err := config.Validate([]string{
 		config.MetricsAddress,
-		config.LogLevel,
 		config.StorageApi,
 		config.StorageApiKey,
 		config.CosignLocalImage,
@@ -181,10 +178,14 @@ func setupLogger() error {
 	}
 
 	log.SetFormatter(&formatter)
+	log.SetLevel(logLevel())
+	return nil
+}
+
+func logLevel() log.Level {
 	l, err := log.ParseLevel(viper.GetString(config.LogLevel))
 	if err != nil {
-		return err
+		l = log.InfoLevel
 	}
-	log.SetLevel(l)
-	return nil
+	return l
 }

@@ -53,14 +53,14 @@ const (
 	CosignLocalImage       = "cosign.local-image"
 	CosignRekorURL         = "cosign.rekor-url"
 	DevelopmentMode        = "development-mode"
+	FeaturesEnabled        = "features.enabled"
+	FeaturesLabelSelectors = "features.label-selectors"
 	IdentityIssuer         = "identity.issuer"
 	IdentityProjectID      = "identity.project-id"
 	LogLevel               = "log-level"
 	MetricsAddress         = "metrics-address"
 	StorageApi             = "storage.api"
 	StorageApiKey          = "storage.api-key"
-	FeaturesEnabled        = "features.enabled"
-	FeaturesLabelSelectors = "features.label-selectors"
 )
 
 func init() {
@@ -77,16 +77,16 @@ func init() {
 	flag.Bool(CosignIgnoreTLog, false, "Ignore transparency log")
 	flag.Bool(CosignLocalImage, false, "Use local image")
 	flag.Bool(DevelopmentMode, false, "Toggle for development mode.")
+	flag.Bool(FeaturesEnabled, false, "Enable feature flagging")
 	flag.String(CosignKeyRef, "", "The key reference, empty for keyless attestation")
-	flag.String(CosignRekorURL, "", "Rekor URL")
+	flag.String(CosignRekorURL, "https://rekor.sigstore.dev", "Rekor URL")
+	flag.String(FeaturesLabelSelectors, "", "List of labels to filter on")
 	flag.String(IdentityIssuer, "", "The issuer for keyless attestation")
 	flag.String(IdentityProjectID, "", "The project ID for keyless attestation")
-	flag.String(LogLevel, "", "Which log level to output")
-	flag.String(MetricsAddress, "", "Bind address")
+	flag.String(LogLevel, "info", "Which log level to output")
+	flag.String(MetricsAddress, ":8080", "Bind address")
 	flag.String(StorageApi, "", "Salsa storage API endpoint")
 	flag.String(StorageApiKey, "", "SBOM API key")
-	flag.Bool(FeaturesEnabled, false, "Enable feature flagging")
-	flag.String(FeaturesLabelSelectors, "", "List of labels to enable for informer")
 
 }
 
@@ -140,6 +140,7 @@ func Print(redacted []string) {
 				log.Infof("%s: %s", key, viper.Get(key).([]interface{}))
 			default:
 				log.Infof("%s: %s", key, viper.GetString(key))
+
 			}
 
 		} else {

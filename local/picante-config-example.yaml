@@ -1,15 +1,12 @@
 metrics-address: ":8080"
 log-level: info
-development-mode: false
+development-mode: true
 features:
   enabled: true
   label-selectors:
-    - name: "nais.io/attest"
-      value: "true"
-    - name: "nais.io/attest-type"
+    - name: "nais.io/salsa-predicate-type"
       value: "cyclonedx"
 cosign:
-  key-ref: ""
   ignore-tlog: false
   local-image: false
 storage:

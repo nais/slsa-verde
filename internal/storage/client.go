@@ -33,7 +33,7 @@ func NewClient(url string, apiKey string) *Client {
 	}
 }
 
-func (c *Client) UploadSbom(projectName string, projectVersion string, statement *in_toto.CycloneDXStatement) error {
+func (c *Client) UploadSbom(projectName string, projectVersion string, team string, statement *in_toto.CycloneDXStatement) error {
 	c.logger.WithFields(log.Fields{
 		"projectName":    projectName,
 		"projectVersion": projectVersion,
@@ -44,7 +44,7 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, statement
 		return fmt.Errorf("creating payload: %w", err)
 	}
 
-	req, err := http.NewRequest("PUT", c.url, bytes.NewReader(p))
+	req, err := http.NewRequest("PUT", c.url+"bom", bytes.NewReader(p))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-API-Key", c.apiKey)
 	if err != nil {
@@ -64,8 +64,19 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, statement
 		return fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
 	}
 	c.logger.WithFields(log.Fields{
-		"api-url": c.url,
+		"api-url": c.url + "bom",
 	}).Info("sbom uploaded")
+
+	project, err := c.GetProject(projectName, projectVersion)
+	if err != nil {
+		return fmt.Errorf("getting project: %w", err)
+	}
+
+	err = c.UpdateProjectTags(project.Uuid, []string{team})
+	if err != nil {
+		return fmt.Errorf("updating project tags: %w", err)
+	}
+
 	return nil
 }
 
@@ -82,4 +93,79 @@ func createPayload(projectName string, projectVersion string, statement *in_toto
 		Bom:            bom,
 	}
 	return json.Marshal(p)
+}
+
+type Tag struct {
+	Name string `json:"name"`
+}
+
+type Tags struct {
+	Tags []Tag `json:"tags"`
+}
+
+func (c *Client) UpdateProjectTags(projectUuid string, tags []string) error {
+
+	tagArray := make([]Tag, 0)
+	for _, dtt := range tags {
+		t := Tag{Name: dtt}
+		tagArray = append(tagArray, t)
+	}
+
+	body, _ := json.Marshal(Tags{tagArray})
+
+	req, err := http.NewRequest("PATCH", c.url+"project/"+projectUuid, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", c.apiKey)
+	req.Header.Set("Accept", "application/json")
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("sending request: %w", err)
+	}
+	if resp.StatusCode > 299 {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("reading response body: %w", err)
+		}
+		return fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
+	}
+	return nil
+}
+
+type Project struct {
+	Name    string `json:"name"`
+	Uuid    string `json:"uuid"`
+	Version string `json:"version"`
+}
+
+func (c *Client) GetProject(name string, version string) (*Project, error) {
+
+	req, err := http.NewRequest("GET", c.url+"project/lookup?name="+name+"&version="+version, nil)
+	req.Header.Set("X-API-Key", c.apiKey)
+	req.Header.Set("Accept", "application/json")
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("sending request: %w", err)
+	}
+	if resp.StatusCode > 299 {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("reading response body: %w", err)
+		}
+		return nil, fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
+	}
+	resBody, err := io.ReadAll(resp.Body)
+
+	var dtrackProject Project
+	if err = json.Unmarshal(resBody, &dtrackProject); err != nil {
+		panic(err)
+	}
+	return &dtrackProject, nil
 }

@@ -3,13 +3,14 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/in-toto/in-toto-golang/in_toto"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,9 +36,10 @@ func TestUploadSbom(t *testing.T) {
 	cfg := Client{
 		url:    server.URL + "/api/v1/bom",
 		apiKey: "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O",
+		logger: log.WithFields(log.Fields{"component": "storage"}),
 	}
 
-	err = cfg.UploadSbom("test", "1.0.1", a)
+	err = cfg.UploadSbom("project1", "1.0.1", "team1", a)
 	assert.NoError(t, err)
 }
 
@@ -45,7 +47,7 @@ func requestIsValid(t *testing.T, r *http.Request) error {
 	assert.Equal(t, r.Header.Get("Content-Type"), "application/json")
 	assert.NotEmpty(t, r.Header.Get("X-API-Key"), "X-API-Key header is empty")
 	assert.Equal(t, r.Method, "PUT")
-	assert.Equal(t, r.URL.Path, "/api/v1/bom")
+	assert.Equal(t, r.URL.Path, "/api/v1/")
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return fmt.Errorf("reading request body: %w", err)

@@ -16,14 +16,16 @@ spec:
         app.kubernetes.io/name: picanteapp1
         team: picante
         nais.io/salsa-verify-attestation: "true"
+        #nais.io/salsa-key-ref: "true"
+        #nais.io/salsa-predicate: "cyclonedx"
     spec:
       containers:
         - name: picanteapp1
-          image: "ttl.sh/salsa/gogoogletestapp:1h"
+          image: "tl.sh/salsa/gogoogletestapp:1h"
           imagePullPolicy: "IfNotPresent"
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 8081
               protocol: TCP
             - name: metrics
               containerPort: 8081

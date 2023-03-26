@@ -2,3 +2,4 @@
 .*.env
 picante.*
 swagger.json
+secret.json

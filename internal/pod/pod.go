@@ -50,15 +50,15 @@ func GetInfo(obj any) (*Info, error) {
 	}, nil
 }
 
-func (pod *Info) GetPredicateType() string {
-	if pod.PredicateType == "" {
+func (p *Info) GetPredicateType() string {
+	if p.PredicateType == "" {
 		return DefaultPredicateType
 	}
-	return pod.PredicateType
+	return p.PredicateType
 }
 
-func (pod *Info) KeylessVerification(keyRef string) bool {
-	if pod.KeyRef != "" || keyRef != "" {
+func (p *Info) KeylessVerification() bool {
+	if p.KeyRef == "true" {
 		return false
 	}
 	return true

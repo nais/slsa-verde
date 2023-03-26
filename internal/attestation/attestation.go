@@ -92,13 +92,16 @@ type VerifyAttestationOpts struct {
 
 func (vao *VerifyAttestationOpts) WithOptions(pod *pod.Info) {
 	vao.VerifyCmd.PredicateType = pod.GetPredicateType()
-
-	if pod.KeylessVerification(vao.VerifyCmd.KeyRef) {
+	if pod.KeylessVerification() {
 		vao.Logger.Info("Using keyless verification setting up identity")
 		vao.VerifyCmd.CertIdentityRegexp = identity.ToSubject(vao.ProjectID, pod.Team)
 		vao.VerifyCmd.CertOidcIssuer = vao.Issuer
+		vao.VerifyCmd.IgnoreTlog = false
+		vao.VerifyCmd.KeyRef = ""
 		return
 	}
+	vao.Logger.Info("Using key verification")
+	vao.VerifyCmd.IgnoreTlog = true
 }
 
 func (vao *VerifyAttestationOpts) runCosign(ctx context.Context, image string) ([]byte, error) {

@@ -1,16 +1,14 @@
 metrics-address: ":8080"
-log-level: info
 development-mode: true
 features:
   enabled: true
   label-selectors:
-    - name: "nais.io/salsa-predicate-type"
-      value: "cyclonedx"
+    - name: "nais.io/salsa-verify-attestation"
+      value: "true"
 cosign:
-  ignore-tlog: false
-  local-image: false
+  key-ref: /picante/kms.pub
 storage:
-  api: http://localhost:9001/api/v1/bom
+  api: http://localhost:9001/api/v1
   api-key: my-api-key
 identity:
   issuer: my-issuer

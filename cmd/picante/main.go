@@ -72,7 +72,6 @@ func main() {
 		VerifyCmd: &verify.VerifyAttestationCommand{
 			RekorURL:   cfg.Cosign.RekorURL,
 			LocalImage: cfg.Cosign.LocalImage,
-			IgnoreTlog: cfg.Cosign.IgnoreTLog,
 			KeyRef:     cfg.Cosign.KeyRef,
 		},
 		ProjectID: cfg.Identity.ProjectID,
@@ -144,7 +143,6 @@ func setupConfig() (*config.Config, error) {
 		config.StorageApi,
 		config.StorageApiKey,
 		config.CosignLocalImage,
-		config.CosignIgnoreTLog,
 		config.IdentityProjectID,
 		config.IdentityIssuer,
 	}); err != nil {

@@ -6,8 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"io"
-	"net/http"
+	"picante/internal/request"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 )
@@ -44,25 +43,20 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, team stri
 		return fmt.Errorf("creating payload: %w", err)
 	}
 
-	req, err := http.NewRequest("PUT", c.url+"bom", bytes.NewReader(p))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-API-Key", c.apiKey)
+	req, err := request.New("PUT", c.url+"/bom", bytes.NewReader(p))
+	request.WithHeaders(req, map[string]string{
+		"X-Api-Key": c.apiKey,
+	})
+
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	_, err = request.Do(req)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
 
-	if resp.StatusCode > 299 {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("reading response body: %w", err)
-		}
-		return fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
-	}
 	c.logger.WithFields(log.Fields{
 		"api-url": c.url + "bom",
 	}).Info("sbom uploaded")
@@ -72,11 +66,14 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, team stri
 		return fmt.Errorf("getting project: %w", err)
 	}
 
-	err = c.UpdateProjectTags(project.Uuid, []string{team})
+	err = c.UpdateProjectTags(project.Uuid, []Tag{
+		{
+			Name: team,
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("updating project tags: %w", err)
 	}
-
 	return nil
 }
 
@@ -103,35 +100,35 @@ type Tags struct {
 	Tags []Tag `json:"tags"`
 }
 
-func (c *Client) UpdateProjectTags(projectUuid string, tags []string) error {
+func tagArray(tags []Tag) ([]byte, error) {
+	body, err := json.Marshal(Tags{tags})
+	if err != nil {
+		return nil, fmt.Errorf("marshalling tags: %w", err)
+	}
+	return body, nil
+}
 
-	tagArray := make([]Tag, 0)
-	for _, dtt := range tags {
-		t := Tag{Name: dtt}
-		tagArray = append(tagArray, t)
+func (c *Client) UpdateProjectTags(projectUuid string, tags []Tag) error {
+	body, err := tagArray(tags)
+	if err != nil {
+		return err
 	}
 
-	body, _ := json.Marshal(Tags{tagArray})
+	req, err := request.New("PATCH", c.url+"/project/"+projectUuid, bytes.NewBuffer(body))
+	request.WithHeaders(req, map[string]string{
+		"X-API-Key": c.apiKey,
+		"Accept":    "application/json",
+	})
 
-	req, err := http.NewRequest("PATCH", c.url+"project/"+projectUuid, bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-API-Key", c.apiKey)
-	req.Header.Set("Accept", "application/json")
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	_, err = request.Do(req)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
-	if resp.StatusCode > 299 {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("reading response body: %w", err)
-		}
-		return fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
-	}
+
 	return nil
 }
 
@@ -142,30 +139,24 @@ type Project struct {
 }
 
 func (c *Client) GetProject(name string, version string) (*Project, error) {
+	req, err := request.New("GET", c.url+"/project/lookup?name="+name+"&version="+version, nil)
+	request.WithHeaders(req, map[string]string{
+		"X-API-Key": c.apiKey,
+	})
 
-	req, err := http.NewRequest("GET", c.url+"project/lookup?name="+name+"&version="+version, nil)
-	req.Header.Set("X-API-Key", c.apiKey)
-	req.Header.Set("Accept", "application/json")
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resBody, err := request.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}
-	if resp.StatusCode > 299 {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("reading response body: %w", err)
-		}
-		return nil, fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
-	}
-	resBody, err := io.ReadAll(resp.Body)
 
 	var dtrackProject Project
 	if err = json.Unmarshal(resBody, &dtrackProject); err != nil {
-		panic(err)
+		return nil, fmt.Errorf("unmarshalling response body: %w", err)
 	}
+
 	return &dtrackProject, nil
 }

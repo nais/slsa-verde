@@ -79,7 +79,7 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 	}
 
 	for _, m := range metadata {
-		project, version := projectAndVersion(p.Team, p.Name, m.Image)
+		project, version := projectAndVersion(p.Name, m.Image)
 		if err = c.UploadSbom(project, version, p.Team, m.Statement); err != nil {
 			return err
 		}
@@ -99,9 +99,9 @@ func equalSlice(str1, str2 []string) bool {
 	return true
 }
 
-func projectAndVersion(team, name, image string) (project string, version string) {
-	//team:foobar:ghcr.io/securego/gosec:v2.9.1
-	image = team + ":" + name + ":" + image
+func projectAndVersion(name, image string) (project string, version string) {
+	//foobar:ghcr.io/securego/gosec:v2.9.1
+	image = name + ":" + image
 	i := strings.LastIndex(image, ":")
 	version = image[i+1:]
 	project = image[0:i]

@@ -21,7 +21,6 @@ type Config struct {
 }
 
 type Cosign struct {
-	IgnoreTLog bool   `json:"ignore-tlog"`
 	KeyRef     string `json:"key-ref"`
 	LocalImage bool   `json:"local-image"`
 	RekorURL   string `json:"rekor-url"`
@@ -48,7 +47,6 @@ type Label struct {
 }
 
 const (
-	CosignIgnoreTLog       = "cosign.ignore-tlog"
 	CosignKeyRef           = "cosign.key-ref"
 	CosignLocalImage       = "cosign.local-image"
 	CosignRekorURL         = "cosign.rekor-url"
@@ -74,7 +72,6 @@ func init() {
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("/etc")
 
-	flag.Bool(CosignIgnoreTLog, false, "Ignore transparency log")
 	flag.Bool(CosignLocalImage, false, "Use local image")
 	flag.Bool(DevelopmentMode, false, "Toggle for development mode.")
 	flag.Bool(FeaturesEnabled, false, "Enable feature flagging")

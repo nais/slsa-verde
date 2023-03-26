@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cosign-kms-pub
+  namespace: default
+data:
+  COSIGN_KEY: |
+    -----BEGIN PUBLIC KEY-----
+    MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxgOVWCBlCTpJcKKJxQTLBAkp5F9
+    /rKmU0cIhHkBJmbPLcDtmoDX0fX7d9OzpK7eLyBg+c/rRcQgGvZvBCLRKQ==
+    -----END PUBLIC KEY-----
+#---
+#apiVersion: v1
+#kind: Pod
+#metadata:
+#  name: picante
+#spec:
+#  containers:
+#    - name: picante
+#  volumeMounts:
+#    - name: cosign-volume
+#     mountPath: /etc/cosign
+#  volumes:
+#    - name: cosign-volume
+#      configMap:
+#        name: cosign-kms-pub
+#        items:
+#          - key: COSIGN_KEY
+#            path: kms-pub
+#---
+# Path: /etc/cosign/kms-pub

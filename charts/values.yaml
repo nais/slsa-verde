@@ -1,0 +1,27 @@
+apiserverIP: ""
+
+image:
+  repository: europe-north1-docker.pkg.dev/nais-io/nais/images
+  name: picante
+  tag: ""
+
+team: nais
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+config:
+  features:
+    enabled: true
+    labelSelectors:
+      "nais.io/salsa-verify-attestation": "true"
+  cosign:
+    keyRef: /etc/cosign/kms.pub
+  storage:
+    api: ""
+    apiKey: ""
+  identity:
+    issuer: https://accounts.google.com
+    projectId: ""

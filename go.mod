@@ -5,17 +5,17 @@ go 1.18
 require (
 	cuelang.org/go v0.4.3
 	github.com/docker/docker v23.0.1+incompatible
-	github.com/in-toto/in-toto-golang v0.6.0
+	github.com/in-toto/in-toto-golang v0.7.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/secure-systems-lab/go-securesystemslib v0.4.0
+	github.com/secure-systems-lab/go-securesystemslib v0.5.0
 	github.com/sigstore/cosign/v2 v2.0.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
-	k8s.io/api v0.26.2
-	k8s.io/apimachinery v0.26.2
-	k8s.io/client-go v0.26.2
+	k8s.io/api v0.26.3
+	k8s.io/apimachinery v0.26.3
+	k8s.io/client-go v0.26.3
 )
 
 require (

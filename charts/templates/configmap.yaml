@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "picante.fullname" . }}-kms
-  namespace: default
+  name: {{ include "picante.fullname" . }}
+  namespace: {{ .Release.Namespace }}
 data:
   kms.pub: |
     -----BEGIN PUBLIC KEY-----

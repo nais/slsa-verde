@@ -25,7 +25,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}"
           imagePullPolicy: Always
           securityContext:
             runAsNonRoot: true
@@ -50,21 +50,16 @@ spec:
               port: http
           volumeMounts:
             - mountPath: /etc/cosign
-              name: cosign-volume
-              readOnly: true
+              name: config-volume
             - name: picante-config
-              mountPath: "/picante.yaml"
-              readOnly: true
+              mountPath: "/etc/picante"
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
-        - name: cosign-volume
+        - name: config-volume
           configMap:
-            name: picante-kms
-            items:
-              - key: kms.pub
-                path: kms.pub
+            name: {{ include "picante.fullname" . }}
         - name: picante-config
           secret:
-            secretName: picante-config
+            secretName: {{ include "picante.fullname" . }}
             optional: true

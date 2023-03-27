@@ -70,7 +70,7 @@ func init() {
 	// File formats supported include JSON, TOML, YAML, HCL, envfile and Java properties config files
 	viper.SetConfigName("picante")
 	viper.AddConfigPath(".")
-	viper.AddConfigPath("/etc")
+	viper.AddConfigPath("/etc/picante")
 
 	flag.Bool(CosignLocalImage, false, "Use local image")
 	flag.Bool(DevelopmentMode, false, "Toggle for development mode.")

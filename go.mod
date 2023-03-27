@@ -7,7 +7,7 @@ require (
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/in-toto/in-toto-golang v0.6.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/secure-systems-lab/go-securesystemslib v0.4.0
+	github.com/secure-systems-lab/go-securesystemslib v0.5.0
 	github.com/sigstore/cosign/v2 v2.0.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/pflag v1.0.5

@@ -15,6 +15,10 @@ spec:
           podSelector:
             matchLabels:
               k8s-app: kube-dns
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "salsa-storage.selectorLabels" . | nindent 14 }}
   podSelector:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name }}
@@ -39,9 +43,10 @@ spec:
           protocol: TCP
       to:
         - fqdns:
-            - tt.sh
+            - ttl.sh
             - sigstore-tuf-root.storage.googleapis.com
             - europe-north1-docker.pkg.dev
+            - salsa-storage-backend.dev.dev-nais.cloud.nais.io
   podSelector:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name }}

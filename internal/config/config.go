@@ -74,10 +74,10 @@ func init() {
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("/etc/picante")
 
+	flag.Bool(CosignIgnoreTLog, false, "Ignore transparency log")
 	flag.Bool(CosignLocalImage, false, "Use local image")
 	flag.Bool(DevelopmentMode, false, "Toggle for development mode.")
 	flag.Bool(FeaturesEnabled, false, "Enable feature flagging")
-	flag.String(CosignIgnoreTLog, "false", "Ignore transparency log")
 	flag.String(CosignKeyRef, "", "The key reference, empty for keyless attestation")
 	flag.String(CosignRekorURL, "https://rekor.sigstore.dev", "Rekor URL")
 	flag.String(FeaturesLabelSelectors, "", "List of labels to filter on")

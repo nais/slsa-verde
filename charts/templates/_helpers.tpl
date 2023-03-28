@@ -5,6 +5,13 @@ Expand the name of the chart.
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{- define "salsa-storage.name" -}}
+{{- default "salsa-storage" }}
+{{- end }}
+
+{{/*
+{{- end }}
+
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
@@ -40,6 +47,10 @@ helm.sh/chart: {{ include "picante.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+{{- define "salsa-storage.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "salsa-storage.name" . }}
+app.kubernetes.io/instance: {{ include "salsa-storage.name" . }}-backend
 {{- end }}
 
 {{/*

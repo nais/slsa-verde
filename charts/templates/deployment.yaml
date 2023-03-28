@@ -38,24 +38,20 @@ spec:
                 - ALL
           ports:
             - name: http
-              containerPort: 3000
+              containerPort: 8080
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
           volumeMounts:
             - mountPath: /etc/cosign
               name: config-volume
             - name: picante-config
               mountPath: "/etc/picante"
+            - mountPath: /.sigstore
+              name: writable-tmp
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
+        - name: writable-tmp
+          emptyDir: {}
         - name: config-volume
           configMap:
             name: {{ include "picante.fullname" . }}

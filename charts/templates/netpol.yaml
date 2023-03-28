@@ -10,14 +10,42 @@ spec:
       to:
         - ipBlock:
             cidr: {{ .Values.apiserverIP }}/32
-  ingress:
-    - ports:
-        - port: 9443
-          protocol: TCP
-      from: [ ]
+    - to:
+        - namespaceSelector: { }
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
   podSelector:
     matchLabels:
-      app: {{ .Release.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   policyTypes:
     - Egress
-    - Ingress
+---
+{{- if .Capabilities.APIVersions.Has "networking.gke.io/v1" }}
+apiVersion: networking.gke.io/v1alpha3
+kind: FQDNNetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-fqdn
+spec:
+  egress:
+    #- ports:
+    #        - port: 80
+    #          protocol: TCP
+    #      to:
+    #        - fqdns:
+    #            - metadata.google.internal
+    - ports:
+        - port: 443
+          protocol: TCP
+      to:
+        - fqdns:
+            - tt.sh
+            - sigstore-tuf-root.storage.googleapis.com
+            - europe-north1-docker.pkg.dev
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/name: {{ .Release.Name }}
+  policyTypes:
+    - Egress
+{{- end }}

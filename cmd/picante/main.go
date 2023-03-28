@@ -151,7 +151,6 @@ func setupConfig() (*config.Config, error) {
 
 	config.Print([]string{
 		config.StorageApiKey,
-		config.CosignKeyRef,
 	})
 
 	log.Info("-------- configuration loaded --------")

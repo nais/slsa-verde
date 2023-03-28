@@ -4,7 +4,7 @@ metadata:
   name: picanteapp1
   labels:
     app.kubernetes.io/name: picanteapp1
-    team: picante
+    team: nais-system
 spec:
   replicas: 1
   selector:
@@ -14,18 +14,26 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: picanteapp1
-        team: picante
+        team: nais-system
         nais.io/salsa-verify-attestation: "true"
-        #nais.io/salsa-key-ref: "true"
-        #nais.io/salsa-predicate: "cyclonedx"
+        #nais.io/salsa-key-ref: "true" # default false (true|false)
+        #nais.io/salsa-predicate: "cyclonedx" # default cyclonedx (lsaprovenance|link|spdx|spdxjson|cyclonedx|vuln|custom)
+        #nais.io/salsa-keyless-provider: "google" # default google, (google|github)
+        #nais.io/salsa-
     spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: picanteapp1
-          image: "tl.sh/salsa/gogoogletestapp:1h"
+          image: "europe-north1-docker.pkg.dev/nais-io/nais/images/picante:sha-9260627"
           imagePullPolicy: "IfNotPresent"
           ports:
             - name: http
-              containerPort: 8081
+              containerPort: 8080
               protocol: TCP
             - name: metrics
               containerPort: 8081
@@ -37,4 +45,13 @@ spec:
             requests:
               cpu: 250m
               memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
 

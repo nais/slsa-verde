@@ -58,6 +58,6 @@ import (
 func TestProjectAndVersion(t *testing.T) {
 	image := "ghcr.io/securego/gosec:v2.9.1"
 	p, v := projectAndVersion("yolo", image)
-	assert.Equal(t, "bolo:yolo:ghcr.io/securego/gosec", p)
+	assert.Equal(t, "yolo:ghcr.io/securego/gosec", p)
 	assert.Equal(t, "v2.9.1", v)
 }

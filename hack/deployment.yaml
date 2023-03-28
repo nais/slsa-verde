@@ -19,7 +19,6 @@ spec:
         #nais.io/salsa-key-ref: "true" # default false (true|false)
         #nais.io/salsa-predicate: "cyclonedx" # default cyclonedx (lsaprovenance|link|spdx|spdxjson|cyclonedx|vuln|custom)
         #nais.io/salsa-keyless-provider: "google" # default google, (google|github)
-        #nais.io/salsa-
     spec:
       securityContext:
         seccompProfile:

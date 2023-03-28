@@ -1,10 +1,9 @@
 package attestation
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"picante/internal/pod"
 	"testing"
@@ -16,58 +15,49 @@ import (
 
 func TestOptions(t *testing.T) {
 	testCases := []struct {
-		desc   string
-		keyRef string
-		tLog   bool
+		desc    string
+		keyRef  string
+		tLog    bool
+		podInfo *pod.Info
 	}{
 		{
 			desc:   "key ref options should match",
 			keyRef: "testdata/cosign.pub",
 			tLog:   true,
+			podInfo: &pod.Info{
+				Verifier: &pod.Verifier{
+					KeyRef: "true",
+				},
+			},
 		},
 		{
 			desc:   "keyless options should match",
 			keyRef: "",
+			podInfo: &pod.Info{
+				Verifier: &pod.Verifier{
+					KeyRef: "",
+				},
+			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			co := &VerifyAttestationOpts{
-				VerifyCmd: &verify.VerifyAttestationCommand{
-					KeyRef:     tc.keyRef,
-					IgnoreTlog: tc.tLog,
-				},
+			v := &verify.VerifyAttestationCommand{
+				KeyRef:     tc.keyRef,
+				IgnoreTlog: tc.tLog,
 			}
-			podInfo := &pod.Info{}
-			co.WithOptions(podInfo)
+			co := &VerifyAttestationOpts{
+				Logger: log.WithFields(log.Fields{
+					"test-app": "picante",
+				}),
+				VerifyCmd: v,
+			}
+
+			co.WithOptions(tc.podInfo)
 			assert.Equal(t, tc.tLog, co.VerifyCmd.IgnoreTlog)
+			assert.Equal(t, tc.keyRef, co.VerifyCmd.KeyRef)
 		})
-	}
-}
-
-func TestVerifyKeyless(t *testing.T) {
-	image := "ttl.sh/salsa/gogoogletestapp:1h"
-	p := &pod.Info{
-		ContainerImages: []string{image},
-	}
-
-	co := &VerifyAttestationOpts{
-		VerifyCmd: &verify.VerifyAttestationCommand{
-			IgnoreTlog: false,
-			KeyRef:     "",
-			LocalImage: false,
-			RekorURL:   "",
-		},
-		ProjectID: "plattformsikkerhet-dev-496e",
-		Issuer:    "https://accounts.google.com",
-	}
-
-	verify, err := co.Verify(context.Background(), p)
-	assert.NoError(t, err)
-	for _, v := range verify {
-		fmt.Printf("statement: %v\n", v.Statement)
-		fmt.Printf("image: %s\n", v.Image)
 	}
 }
 

@@ -101,7 +101,6 @@ func (vao *VerifyAttestationOpts) WithOptions(pod *pod.Info) {
 		return
 	}
 	vao.Logger.Info("Using key verification")
-	vao.VerifyCmd.IgnoreTlog = true
 }
 
 func (vao *VerifyAttestationOpts) runCosign(ctx context.Context, image string) ([]byte, error) {
@@ -211,7 +210,7 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 //
 //		metadata = append(metadata, &ImageMetadata{
 //			Statement:      statement,
-//			Image:          ref.String(),
+//			Image:          ref.Get(),
 //			BundleVerified: bVerified,
 //		})
 //	}

@@ -21,6 +21,7 @@ type Config struct {
 }
 
 type Cosign struct {
+	IgnoreTLog bool   `json:"ignore-tlog"`
 	KeyRef     string `json:"key-ref"`
 	LocalImage bool   `json:"local-image"`
 	RekorURL   string `json:"rekor-url"`
@@ -47,6 +48,7 @@ type Label struct {
 }
 
 const (
+	CosignIgnoreTLog       = "cosign.ignore-tlog"
 	CosignKeyRef           = "cosign.key-ref"
 	CosignLocalImage       = "cosign.local-image"
 	CosignRekorURL         = "cosign.rekor-url"
@@ -75,6 +77,7 @@ func init() {
 	flag.Bool(CosignLocalImage, false, "Use local image")
 	flag.Bool(DevelopmentMode, false, "Toggle for development mode.")
 	flag.Bool(FeaturesEnabled, false, "Enable feature flagging")
+	flag.String(CosignIgnoreTLog, "false", "Ignore transparency log")
 	flag.String(CosignKeyRef, "", "The key reference, empty for keyless attestation")
 	flag.String(CosignRekorURL, "https://rekor.sigstore.dev", "Rekor URL")
 	flag.String(FeaturesLabelSelectors, "", "List of labels to filter on")
@@ -84,7 +87,6 @@ func init() {
 	flag.String(MetricsAddress, ":8080", "Bind address")
 	flag.String(StorageApi, "", "Salsa storage API endpoint")
 	flag.String(StorageApiKey, "", "SBOM API key")
-
 }
 
 func Load() (*Config, error) {

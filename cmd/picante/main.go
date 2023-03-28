@@ -73,6 +73,7 @@ func main() {
 			RekorURL:   cfg.Cosign.RekorURL,
 			LocalImage: cfg.Cosign.LocalImage,
 			KeyRef:     cfg.Cosign.KeyRef,
+			IgnoreTlog: cfg.Cosign.IgnoreTLog,
 		},
 		ProjectID: cfg.Identity.ProjectID,
 		Issuer:    cfg.Identity.Issuer,

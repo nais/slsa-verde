@@ -5,30 +5,32 @@ import (
 )
 
 const (
-	DefaultAppK8sIoName   = "app.kubernetes.io/name"
-	DefaultKeyRefLabel    = "nais.io/salsa-key-ref"
-	DefaultPredicateLabel = "nais.io/salsa-predicate"
-	DefaultPredicateType  = "cyclonedx"
-	DefaultTeamLabel      = "team"
+	DefaultPredicateType = "cyclonedx"
 )
 
 type Info struct {
 	ContainerImages []string
-	KeyRef          string
 	Name            string
 	Namespace       string
+	Verifier        *Verifier
 	PodName         string
-	PredicateType   string
 	Team            string
+}
+
+type Verifier struct {
+	KeyRef          string
+	KeylessProvider string
+	PredicateType   string
 }
 
 func GetInfo(obj any) (*Info, error) {
 	pod := obj.(*v1.Pod)
 	labels := pod.GetLabels()
-	name := labels[DefaultAppK8sIoName]
-	team := labels[DefaultTeamLabel]
-	predicateType := labels[DefaultPredicateLabel]
-	keyRef := labels[DefaultKeyRefLabel]
+	name := labels[LabelTypeAppK8sIoName.String()]
+	team := labels[LabelTypeTeamLabel.String()]
+	predicateType := labels[LabelTypeSalsaPredicateLabel.String()]
+	keyRef := labels[LabelTypeSalsaKeyRefLabel.String()]
+	KeylessProvider := labels[LabelTypeSalsaKeylessProvider.String()]
 
 	var c []string
 	for _, container := range pod.Spec.Containers {
@@ -41,24 +43,34 @@ func GetInfo(obj any) (*Info, error) {
 
 	return &Info{
 		ContainerImages: c,
-		KeyRef:          keyRef,
 		Name:            name,
 		Namespace:       pod.GetNamespace(),
 		PodName:         pod.GetName(),
-		PredicateType:   predicateType,
 		Team:            team,
+		Verifier: &Verifier{
+			PredicateType:   predicateType,
+			KeyRef:          keyRef,
+			KeylessProvider: KeylessProvider,
+		},
 	}, nil
 }
 
 func (p *Info) GetPredicateType() string {
-	if p.PredicateType == "" {
+	if p.Verifier == nil {
 		return DefaultPredicateType
 	}
-	return p.PredicateType
+	if p.Verifier.PredicateType == "" {
+		return DefaultPredicateType
+	}
+	return p.Verifier.PredicateType
 }
 
 func (p *Info) KeylessVerification() bool {
-	if p.KeyRef == "true" {
+	if p.Verifier == nil {
+		return false
+	}
+
+	if p.Verifier.KeyRef == "true" {
 		return false
 	}
 	return true

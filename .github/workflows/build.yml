@@ -2,8 +2,6 @@ name: Build and deploy picante
 
 on:
   push:
-    branches:
-      - main
     paths-ignore:
       - 'charts/**'
       - '.github/workflows/chart.yaml'

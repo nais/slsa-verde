@@ -28,7 +28,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: picanteapp1
-          image: "europe-north1-docker.pkg.dev/nais-io/nais/images/picante:sha-9260627"
+          image: "europe-north1-docker.pkg.dev/nais-io/nais/images/picante:20230329-125116-72478af"
           imagePullPolicy: "IfNotPresent"
           ports:
             - name: http

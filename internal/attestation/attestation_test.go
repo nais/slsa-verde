@@ -1,6 +1,7 @@
 package attestation
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	log "github.com/sirupsen/logrus"
@@ -54,7 +55,7 @@ func TestOptions(t *testing.T) {
 				VerifyCmd: v,
 			}
 
-			co.WithOptions(tc.podInfo)
+			co.options(context.Background(), tc.podInfo)
 			assert.Equal(t, tc.tLog, co.VerifyCmd.IgnoreTlog)
 			assert.Equal(t, tc.keyRef, co.VerifyCmd.KeyRef)
 		})

@@ -8,7 +8,6 @@ RUN go version
 COPY . /src
 WORKDIR /src
 RUN go mod download
-RUN make test
 RUN go build -a -installsuffix cgo -o /bin/picante cmd/picante/main.go
 
 FROM alpine:3

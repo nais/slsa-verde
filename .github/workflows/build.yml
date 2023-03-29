@@ -24,7 +24,7 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
   build_and_push_registry:
-    requires: [ "tests" ]
+    needs: [ "tests" ]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

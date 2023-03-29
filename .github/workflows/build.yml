@@ -21,7 +21,7 @@ jobs:
       digest: ${{ steps.build-push.outputs.digest }}
     steps:
       - uses: actions/checkout@v3
-      - uses: nais/platform-build-push-sign@main
+      - uses: nais/platform-build-push-sign@salsa
         id: build_push_sign
         with:
           name: picante

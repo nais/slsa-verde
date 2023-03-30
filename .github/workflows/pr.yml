@@ -12,6 +12,9 @@ env:
 
 jobs:
   test-dependabot:
+    permissions:
+      contents: read
+      pull-requests: write
     if: ${{ github.actor == 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:

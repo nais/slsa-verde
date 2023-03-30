@@ -1,7 +1,7 @@
 name: Dependabot Automerge
 on:
   workflow_run:
-    workflows: ["Dependabot PR Check"]
+    workflows: [ "Dependabot PR Check" ]
     types:
       - completed
 
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - uses: actions/checkout
+      - uses: actions/checkout@v3.3.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           github-token: ${{ secrets.GITHUB_TOKEN }}

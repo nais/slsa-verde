@@ -3,8 +3,8 @@ module picante
 go 1.20
 
 require (
-	cuelang.org/go v0.4.3
-	github.com/docker/docker v23.0.1+incompatible
+	github.com/docker/docker v23.0.2+incompatible
+	github.com/google/go-containerregistry v0.14.0
 	github.com/in-toto/in-toto-golang v0.6.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/secure-systems-lab/go-securesystemslib v0.4.0
@@ -21,6 +21,7 @@ require (
 require (
 	cloud.google.com/go/compute v1.19.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cuelang.org/go v0.4.3 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/AliyunContainerService/ack-ram-tool/pkg/credentials/alibabacloudsdkgo/helper v0.2.0 // indirect
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
@@ -115,7 +116,6 @@ require (
 	github.com/google/certificate-transparency-go v1.1.4 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
-	github.com/google/go-containerregistry v0.14.0 // indirect
 	github.com/google/go-github/v50 v50.2.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect

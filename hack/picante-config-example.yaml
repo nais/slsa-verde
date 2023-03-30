@@ -12,6 +12,6 @@ storage:
   api-key: my-api-key
 identities:
   - issuer: https://provider.com
-    subjectRegExp: ".*@som-subject.com"
+    subject-reg-exp: ".*@som-subject.com"
   - issuer: https://provider2.com
-    subjectRegExp: ".*@som-subject2.com"
+    subject-reg-exp: ".*@som-subject2.com"

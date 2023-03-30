@@ -49,6 +49,7 @@ func TestOptions(t *testing.T) {
 				IgnoreTlog: tc.tLog,
 			}
 			co := &VerifyAttestationOpts{
+				KeyRef: tc.keyRef,
 				Logger: log.WithFields(log.Fields{
 					"test-app": "picante",
 				}),

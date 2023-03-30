@@ -22,11 +22,19 @@ type Client struct {
 	logger  *log.Entry
 }
 
-type payload struct {
+type BomSubmitRequest struct {
 	ProjectName    string `json:"projectName"`
 	ProjectVersion string `json:"projectVersion"`
 	AutoCreate     bool   `json:"autoCreate"`
 	Bom            string `json:"bom"`
+}
+
+type Project struct {
+	Active  bool   `json:"active"`
+	Name    string `json:"name"`
+	Uuid    string `json:"uuid"`
+	Version string `json:"version"`
+	Tags    []Tag  `json:"tags"`
 }
 
 func NewClient(url string, apiKey string) *Client {
@@ -43,7 +51,7 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, team stri
 		"projectVersion": projectVersion,
 	}).Info("uploading sbom")
 
-	p, err := createPayload(projectName, projectVersion, statement)
+	p, err := createBomSubmitRequest(projectName, projectVersion, statement)
 	if err != nil {
 		return fmt.Errorf("creating payload: %w", err)
 	}
@@ -84,13 +92,13 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, team stri
 	return nil
 }
 
-func createPayload(projectName string, projectVersion string, statement *in_toto.CycloneDXStatement) ([]byte, error) {
+func createBomSubmitRequest(projectName string, projectVersion string, statement *in_toto.CycloneDXStatement) ([]byte, error) {
 	b, err := json.Marshal(statement.Predicate)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling statement.predicate: %w", err)
 	}
 	bom := base64.StdEncoding.EncodeToString(b)
-	p := &payload{
+	p := &BomSubmitRequest{
 		ProjectName:    projectName,
 		ProjectVersion: projectVersion,
 		AutoCreate:     true,
@@ -139,12 +147,6 @@ func (c *Client) UpdateProjectTags(projectUuid string, tags []Tag) error {
 	return nil
 }
 
-type Project struct {
-	Name    string `json:"name"`
-	Uuid    string `json:"uuid"`
-	Version string `json:"version"`
-}
-
 func (c *Client) GetProject(name string, version string) (*Project, error) {
 	req, err := request.New("GET", c.baseUrl+ProjectPath+"/lookup?name="+name+"&version="+version, nil)
 	request.WithHeaders(req, map[string]string{
@@ -167,3 +169,87 @@ func (c *Client) GetProject(name string, version string) (*Project, error) {
 
 	return &dtrackProject, nil
 }
+
+func (c *Client) GetProjects(name, version string) error {
+	req, err := request.New("GET", c.baseUrl+ProjectPath+"?name="+name+"&excludeInactive=false", nil)
+	request.WithHeaders(req, map[string]string{
+		"X-API-Key": c.apiKey,
+	})
+
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+
+	resBody, err := request.Do(req)
+	if err != nil {
+		return fmt.Errorf("sending request: %w", err)
+	}
+
+	var dtrackProjects []Project
+	if err = json.Unmarshal(resBody, &dtrackProjects); err != nil {
+		return fmt.Errorf("unmarshalling response body: %w", err)
+	}
+
+	for _, project := range dtrackProjects {
+		err = c.DeleteProject(project.Uuid)
+		// if project.Version == version {
+		// 	continue
+		// }
+		// err = c.PatchProject(project)
+		if err != nil {
+			return fmt.Errorf("patching project: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) DeleteProject(uuid string) error {
+	req, err := request.New("DELETE", c.baseUrl+ProjectPath+"/"+uuid, nil)
+	request.WithHeaders(req, map[string]string{
+		"X-API-Key": c.apiKey,
+	})
+
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+
+	_, err = request.Do(req)
+	if err != nil {
+		return fmt.Errorf("sending request: %w", err)
+	}
+	return nil
+}
+
+//func (c *Client) PatchProject(project Project) error {
+//	patchBody, err := CreatePatchBody()
+//	if err != nil {
+//		return fmt.Errorf("creating patch body: %w", err)
+//	}
+//
+//	req, err := request.New("PATCH", c.baseUrl+ProjectPath+"/"+project.Uuid, bytes.NewBuffer(patchBody))
+//	request.WithHeaders(req, map[string]string{
+//		"X-API-Key": c.apiKey,
+//	})
+//
+//	if err != nil {
+//		return fmt.Errorf("creating request: %w", err)
+//	}
+//
+//	_, err = request.Do(req)
+//	if err != nil {
+//		return fmt.Errorf("sending request: %w", err)
+//	}
+//
+//	return nil
+//}
+//
+//func CreatePatchBody() ([]byte, error) {
+//	body, err := json.Marshal(Project{
+//		Active: false,
+//	})
+//	if err != nil {
+//		return nil, fmt.Errorf("marshalling project: %w", err)
+//	}
+//	return body, nil
+//}

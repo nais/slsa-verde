@@ -27,6 +27,7 @@ type ImageMetadata struct {
 
 type VerifyAttestationOpts struct {
 	Identities []cosign.Identity
+	KeyRef     string
 	VerifyCmd  *verify.VerifyAttestationCommand
 	Logger     *log.Entry
 }
@@ -42,7 +43,7 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 		}
 	}
 
-	if !co.IgnoreTlog {
+	if !pod.IgnoreTLog() {
 		if vao.VerifyCmd.RekorURL != "" {
 			rekorClient, err := rekor.NewClient(vao.VerifyCmd.RekorURL)
 			if err != nil {
@@ -70,12 +71,15 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 		if err != nil {
 			return nil, fmt.Errorf("getting Fulcio intermediates: %w", err)
 		}
+		co.Identities = vao.Identities
 
 		// ensure that the public key is not used
 		vao.VerifyCmd.KeyRef = ""
 	}
 
-	if vao.VerifyCmd.KeyRef != "" {
+	if !pod.KeylessVerification() {
+		// ensure that the static public key is used
+		vao.VerifyCmd.KeyRef = vao.KeyRef
 		co.SigVerifier, err = signature.PublicKeyFromKeyRef(ctx, vao.VerifyCmd.KeyRef)
 		if err != nil {
 			return nil, fmt.Errorf("loading public key: %w", err)
@@ -84,83 +88,11 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 		if ok {
 			defer pkcs11Key.Close()
 		}
-		co.IgnoreTlog = vao.VerifyCmd.IgnoreTlog
+		co.IgnoreTlog = pod.IgnoreTLog()
 	}
 
 	return co, nil
 }
-
-//func (vao *VerifyAttestationOpts) WithOptions(pod *pod.Info) {
-//	vao.VerifyCmd.PredicateType = pod.GetPredicateType()
-//	if pod.KeylessVerification() {
-//		vao.Logger.Info("Using keyless verification setting up identity")
-//		vao.VerifyCmd.CertIdentityRegexp = identity.ToSubject(vao.ProjectID, pod.Team)
-//		vao.VerifyCmd.CertOidcIssuer = vao.Issuer
-//		vao.VerifyCmd.IgnoreTlog = false
-//		vao.VerifyCmd.KeyRef = ""
-//		return
-//	}
-//	vao.Logger.Info("Using key verification")
-//}
-
-//func (vao *VerifyAttestationOpts) runCosign(ctx context.Context, image string) ([]byte, error) {
-//	rescueStdout := os.Stdout
-//	r, w, _ := os.Pipe()
-//	os.Stdout = w
-//
-//	err := vao.VerifyCmd.Exec(ctx, []string{image})
-//	if err != nil {
-//		fmt.Println("Error: ", err)
-//	}
-//
-//	w.Close()
-//	outData, _ := ioutil.ReadAll(r)
-//	os.Stdout = rescueStdout
-//	if !strings.HasPrefix(string(outData), "{") {
-//		return nil, fmt.Errorf("parse cosign out data: %v", err)
-//	}
-//	return outData, nil
-//}
-
-//func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error) {
-//	metadata := make([]*ImageMetadata, 0)
-//	for _, image := range pod.ContainerImages {
-//		vao.Logger.WithFields(log.Fields{
-//			"image": image,
-//		})
-//
-//		vao.WithOptions(pod)
-//
-//		vao.Logger.WithFields(log.Fields{
-//			"pod":   pod.Name,
-//			"image": image,
-//		}).Infof("verifying image attestations")
-//
-//		outData, err := vao.runCosign(ctx, image)
-//		if err != nil {
-//			return nil, fmt.Errorf("run cosign: %v", err)
-//		}
-//
-//		vao.Logger.Debug("parsing Cosign output")
-//		statement, err := parseEnvelope(outData)
-//		if err != nil {
-//			return nil, fmt.Errorf("parse envelope: %v", err)
-//		}
-//
-//		vao.Logger.WithFields(log.Fields{
-//			"predicate-type": statement.PredicateType,
-//			"statement-type": statement.Type,
-//			"ref":            image,
-//		}).Info("attestation verified and parsed statement")
-//
-//		metadata = append(metadata, &ImageMetadata{
-//			Statement:      statement,
-//			Image:          image,
-//			BundleVerified: true,
-//		})
-//	}
-//	return metadata, nil
-//}
 
 func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error) {
 

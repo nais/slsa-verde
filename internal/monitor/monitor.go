@@ -80,6 +80,11 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 
 	for _, m := range metadata {
 		project, version := projectAndVersion(p.Name, m.Image)
+
+		if err = c.GetProjects(project, version); err != nil {
+			return err
+		}
+
 		if err = c.UploadSbom(project, version, p.Team, m.Statement); err != nil {
 			return err
 		}

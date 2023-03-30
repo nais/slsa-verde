@@ -21,6 +21,7 @@ type Verifier struct {
 	KeyRef          string
 	KeylessProvider string
 	PredicateType   string
+	IgnoreTLog      string
 }
 
 func GetInfo(obj any) (*Info, error) {
@@ -30,7 +31,8 @@ func GetInfo(obj any) (*Info, error) {
 	team := labels[LabelTypeTeamLabel.String()]
 	predicateType := labels[LabelTypeSalsaPredicateLabel.String()]
 	keyRef := labels[LabelTypeSalsaKeyRefLabel.String()]
-	KeylessProvider := labels[LabelTypeSalsaKeylessProvider.String()]
+	keylessProvider := labels[LabelTypeSalsaKeylessProvider.String()]
+	ignoreTLog := labels[LabelTypeIgnoreTransparencyLog.String()]
 
 	var c []string
 	for _, container := range pod.Spec.Containers {
@@ -50,9 +52,20 @@ func GetInfo(obj any) (*Info, error) {
 		Verifier: &Verifier{
 			PredicateType:   predicateType,
 			KeyRef:          keyRef,
-			KeylessProvider: KeylessProvider,
+			KeylessProvider: keylessProvider,
+			IgnoreTLog:      ignoreTLog,
 		},
 	}, nil
+}
+func (p *Info) IgnoreTLog() bool {
+	if p.Verifier == nil {
+		return false
+	}
+
+	if p.Verifier.IgnoreTLog == "true" {
+		return true
+	}
+	return false
 }
 
 func (p *Info) GetPredicateType() string {

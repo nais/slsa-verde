@@ -64,7 +64,7 @@ func requestIsValid(t *testing.T, r *http.Request, expectedMethod, expectedURL s
 			return fmt.Errorf("reading request body: %w", err)
 		}
 		if expectedMethod == "PUT" {
-			var p payload
+			var p BomSubmitRequest
 			err = json.Unmarshal(b, &p)
 			if err != nil {
 				return fmt.Errorf("unmarshalling request body: %w", err)

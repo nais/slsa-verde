@@ -72,9 +72,9 @@ func main() {
 		VerifyCmd: &verify.VerifyAttestationCommand{
 			RekorURL:   cfg.Cosign.RekorURL,
 			LocalImage: cfg.Cosign.LocalImage,
-			KeyRef:     cfg.Cosign.KeyRef,
 			IgnoreTlog: cfg.Cosign.IgnoreTLog,
 		},
+		KeyRef:     cfg.Cosign.KeyRef,
 		Identities: cfg.GetIdentities(),
 		Logger:     log.WithFields(log.Fields{"component": "attestation"}),
 	}

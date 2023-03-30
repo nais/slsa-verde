@@ -11,10 +11,15 @@ import (
 	"github.com/in-toto/in-toto-golang/in_toto"
 )
 
+const (
+	ProjectPath = "/project"
+	BomPath     = "/bom"
+)
+
 type Client struct {
-	url    string
-	apiKey string
-	logger *log.Entry
+	baseUrl string
+	apiKey  string
+	logger  *log.Entry
 }
 
 type payload struct {
@@ -26,9 +31,9 @@ type payload struct {
 
 func NewClient(url string, apiKey string) *Client {
 	return &Client{
-		url:    url,
-		apiKey: apiKey,
-		logger: log.WithFields(log.Fields{"component": "storage"}),
+		baseUrl: url,
+		apiKey:  apiKey,
+		logger:  log.WithFields(log.Fields{"component": "storage"}),
 	}
 }
 
@@ -43,7 +48,9 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, team stri
 		return fmt.Errorf("creating payload: %w", err)
 	}
 
-	req, err := request.New("PUT", c.url+"/bom", bytes.NewReader(p))
+	bomUrl := c.baseUrl + BomPath
+
+	req, err := request.New("PUT", bomUrl, bytes.NewReader(p))
 	request.WithHeaders(req, map[string]string{
 		"X-Api-Key": c.apiKey,
 	})
@@ -58,7 +65,7 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, team stri
 	}
 
 	c.logger.WithFields(log.Fields{
-		"api-url": c.url + "bom",
+		"api-url": bomUrl,
 	}).Info("sbom uploaded")
 
 	project, err := c.GetProject(projectName, projectVersion)
@@ -114,7 +121,7 @@ func (c *Client) UpdateProjectTags(projectUuid string, tags []Tag) error {
 		return err
 	}
 
-	req, err := request.New("PATCH", c.url+"/project/"+projectUuid, bytes.NewBuffer(body))
+	req, err := request.New("PATCH", c.baseUrl+ProjectPath+"/"+projectUuid, bytes.NewBuffer(body))
 	request.WithHeaders(req, map[string]string{
 		"X-API-Key": c.apiKey,
 		"Accept":    "application/json",
@@ -139,7 +146,7 @@ type Project struct {
 }
 
 func (c *Client) GetProject(name string, version string) (*Project, error) {
-	req, err := request.New("GET", c.url+"/project/lookup?name="+name+"&version="+version, nil)
+	req, err := request.New("GET", c.baseUrl+ProjectPath+"/lookup?name="+name+"&version="+version, nil)
 	request.WithHeaders(req, map[string]string{
 		"X-API-Key": c.apiKey,
 	})

@@ -16,7 +16,6 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/oci"
 	"github.com/sigstore/cosign/v2/pkg/signature"
 	log "github.com/sirupsen/logrus"
-	"picante/internal/identity"
 	"picante/internal/pod"
 )
 
@@ -27,10 +26,9 @@ type ImageMetadata struct {
 }
 
 type VerifyAttestationOpts struct {
-	Issuer    string
-	ProjectID string
-	VerifyCmd *verify.VerifyAttestationCommand
-	Logger    *log.Entry
+	Identities []cosign.Identity
+	VerifyCmd  *verify.VerifyAttestationCommand
+	Logger     *log.Entry
 }
 
 func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*cosign.CheckOpts, error) {
@@ -72,8 +70,6 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 		if err != nil {
 			return nil, fmt.Errorf("getting Fulcio intermediates: %w", err)
 		}
-
-		co.Identities = identity.Get(vao.Issuer, vao.ProjectID, pod.Team)
 
 		// ensure that the public key is not used
 		vao.VerifyCmd.KeyRef = ""

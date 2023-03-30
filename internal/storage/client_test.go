@@ -44,9 +44,9 @@ func TestUploadSbom(t *testing.T) {
 	defer server.Close()
 
 	cfg := Client{
-		url:    server.URL + "/api/v1",
-		apiKey: "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O",
-		logger: log.WithFields(log.Fields{"test-component": "storage"}),
+		baseUrl: server.URL + "/api/v1",
+		apiKey:  "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O",
+		logger:  log.WithFields(log.Fields{"test-component": "storage"}),
 	}
 
 	err = cfg.UploadSbom("project1", "1.0.1", "team1", a)

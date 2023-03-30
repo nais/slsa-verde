@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/mitchellh/mapstructure"
+	"github.com/sigstore/cosign/v2/pkg/cosign"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -11,13 +12,13 @@ import (
 )
 
 type Config struct {
-	Cosign             Cosign   `json:"cosign"`
-	DevelopmentMode    bool     `json:"development-mode"`
-	Features           Features `json:"features"`
-	Identity           Identity `json:"identity"`
-	LogLevel           string   `json:"log-level"`
-	MetricsBindAddress string   `json:"metrics-address"`
-	Storage            Storage  `json:"storage"`
+	Cosign             Cosign     `json:"cosign"`
+	DevelopmentMode    bool       `json:"development-mode"`
+	Features           Features   `json:"features"`
+	Identities         []Identity `json:"identities"`
+	LogLevel           string     `json:"log-level"`
+	MetricsBindAddress string     `json:"metrics-address"`
+	Storage            Storage    `json:"storage"`
 }
 
 type Cosign struct {
@@ -28,8 +29,8 @@ type Cosign struct {
 }
 
 type Identity struct {
-	Issuer    string `json:"issuer"`
-	ProjectID string `json:"project-id"`
+	Issuer        string `json:"issuer"`
+	SubjectRegExp string `json:"subject-reg-exp"`
 }
 
 type Storage struct {
@@ -55,8 +56,7 @@ const (
 	DevelopmentMode        = "development-mode"
 	FeaturesEnabled        = "features.enabled"
 	FeaturesLabelSelectors = "features.label-selectors"
-	IdentityIssuer         = "identity.issuer"
-	IdentityProjectID      = "identity.project-id"
+	Identities             = "identities"
 	LogLevel               = "log-level"
 	MetricsAddress         = "metrics-address"
 	StorageApi             = "storage.api"
@@ -80,9 +80,8 @@ func init() {
 	flag.Bool(FeaturesEnabled, false, "Enable feature flagging")
 	flag.String(CosignKeyRef, "", "The key reference, empty for keyless attestation")
 	flag.String(CosignRekorURL, "https://rekor.sigstore.dev", "Rekor URL")
-	flag.String(FeaturesLabelSelectors, "", "List of labels to filter on")
-	flag.String(IdentityIssuer, "", "The issuer for keyless attestation")
-	flag.String(IdentityProjectID, "", "The project ID for keyless attestation")
+	flag.StringSlice(FeaturesLabelSelectors, []string{}, "List of labels to filter on")
+	flag.StringSlice(Identities, []string{}, "List of identities to filter on")
 	flag.String(LogLevel, "info", "Which log level to output")
 	flag.String(MetricsAddress, ":8080", "Bind address")
 	flag.String(StorageApi, "", "Salsa storage API endpoint")
@@ -132,6 +131,7 @@ func Print(redacted []string) {
 
 	var keys sort.StringSlice = viper.AllKeys()
 	keys.Sort()
+	log.Infof("Configuration file in use: %s", viper.ConfigFileUsed())
 	for _, key := range keys {
 		if ok(key) {
 			switch viper.Get(key).(type) {
@@ -152,7 +152,7 @@ func Validate(required []string) error {
 	present := func(key string) bool {
 		for _, requiredKey := range required {
 			if requiredKey == key {
-				return len(viper.GetString(requiredKey)) > 0
+				return len(viper.GetString(requiredKey)) > 0 || len(viper.GetStringSlice(requiredKey)) > 0
 			}
 		}
 		return true
@@ -190,4 +190,19 @@ func (c *Config) GetLabelSelectors() string {
 		labelSelector = fmt.Sprintf("%s,%s=%s", labelSelector, label.Name, label.Value)
 	}
 	return labelSelector
+}
+
+func (c *Config) GetIdentities() []cosign.Identity {
+	if len(c.Identities) == 0 {
+		return []cosign.Identity{}
+	}
+
+	var identities []cosign.Identity
+	for _, identity := range c.Identities {
+		identities = append(identities, cosign.Identity{
+			Issuer:        identity.Issuer,
+			SubjectRegExp: identity.SubjectRegExp,
+		})
+	}
+	return identities
 }

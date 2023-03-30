@@ -75,9 +75,8 @@ func main() {
 			KeyRef:     cfg.Cosign.KeyRef,
 			IgnoreTlog: cfg.Cosign.IgnoreTLog,
 		},
-		ProjectID: cfg.Identity.ProjectID,
-		Issuer:    cfg.Identity.Issuer,
-		Logger:    log.WithFields(log.Fields{"component": "attestation"}),
+		Identities: cfg.GetIdentities(),
+		Logger:     log.WithFields(log.Fields{"component": "attestation"}),
 	}
 
 	log.Info("setting up storage client")
@@ -144,8 +143,7 @@ func setupConfig() (*config.Config, error) {
 		config.StorageApi,
 		config.StorageApiKey,
 		config.CosignLocalImage,
-		config.IdentityProjectID,
-		config.IdentityIssuer,
+		config.Identities,
 	}); err != nil {
 		return cfg, err
 	}

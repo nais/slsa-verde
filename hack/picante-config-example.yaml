@@ -10,6 +10,8 @@ cosign:
 storage:
   api: http://localhost:9001/api/v1
   api-key: my-api-key
-identity:
-  issuer: my-issuer
-  project-id: my-project-id
+identities:
+  - issuer: https://provider.com
+    subjectRegExp: ".*@som-subject.com"
+  - issuer: https://provider2.com
+    subjectRegExp: ".*@som-subject2.com"

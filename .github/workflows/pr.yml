@@ -1,4 +1,4 @@
-name: Test PR
+name: Dependabot PR Check
 
 on:
   pull_request:
@@ -11,7 +11,8 @@ env:
   REGISTRY: europe-north1-docker.pkg.dev/nais-io/nais/images
 
 jobs:
-  tests:
+  test-dependabot:
+    if: ${{ github.actor == 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3.3.0

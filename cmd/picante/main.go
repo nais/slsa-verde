@@ -39,6 +39,10 @@ func main() {
 		log.WithError(err).Fatal("failed to setup logging")
 	}
 
+	log.WithFields(log.Fields{
+		"component": "main",
+	})
+
 	log.Info("starting picante")
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
@@ -68,16 +72,13 @@ func main() {
 
 	defer runtime.HandleCrash()
 
-	opts := &attestation.VerifyAttestationOpts{
-		VerifyCmd: &verify.VerifyAttestationCommand{
-			RekorURL:   cfg.Cosign.RekorURL,
-			LocalImage: cfg.Cosign.LocalImage,
-			IgnoreTlog: cfg.Cosign.IgnoreTLog,
-		},
-		KeyRef:     cfg.Cosign.KeyRef,
-		Identities: cfg.GetIdentities(),
-		Logger:     log.WithFields(log.Fields{"component": "attestation"}),
+	verifyCmd := &verify.VerifyAttestationCommand{
+		RekorURL:   cfg.Cosign.RekorURL,
+		LocalImage: cfg.Cosign.LocalImage,
+		IgnoreTlog: cfg.Cosign.IgnoreTLog,
 	}
+
+	opts := attestation.NewVerifyAttestationOpts(verifyCmd, cfg.Cosign.KeyRef, cfg.GetIdentities())
 
 	log.Info("setting up storage client")
 	s := storage.NewClient(cfg.Storage.Api, cfg.Storage.ApiKey)
@@ -85,6 +86,7 @@ func main() {
 		log.WithError(err).Fatal("failed to get teams")
 	}
 
+	log.Info("setting up monitor")
 	m := monitor.NewMonitor(ctx, s, opts)
 
 	log.Info("setting up informer event handler")

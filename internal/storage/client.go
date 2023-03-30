@@ -41,7 +41,7 @@ func NewClient(url string, apiKey string) *Client {
 	return &Client{
 		baseUrl: url,
 		apiKey:  apiKey,
-		logger:  log.WithFields(log.Fields{"component": "storage"}),
+		logger:  log.WithFields(log.Fields{"component": "storage", "url": url}),
 	}
 }
 
@@ -56,9 +56,7 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, team stri
 		return fmt.Errorf("creating payload: %w", err)
 	}
 
-	bomUrl := c.baseUrl + BomPath
-
-	req, err := request.New("PUT", bomUrl, bytes.NewReader(p))
+	req, err := request.New("PUT", c.baseUrl+BomPath, bytes.NewReader(p))
 	request.WithHeaders(req, map[string]string{
 		"X-Api-Key": c.apiKey,
 	})
@@ -72,9 +70,7 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, team stri
 		return fmt.Errorf("sending request: %w", err)
 	}
 
-	c.logger.WithFields(log.Fields{
-		"api-url": bomUrl,
-	}).Info("sbom uploaded")
+	c.logger.Info("sbom uploaded")
 
 	project, err := c.GetProject(projectName, projectVersion)
 	if err != nil {
@@ -170,7 +166,7 @@ func (c *Client) GetProject(name string, version string) (*Project, error) {
 	return &dtrackProject, nil
 }
 
-func (c *Client) GetProjects(name, version string) error {
+func (c *Client) GetProjects(name string) error {
 	req, err := request.New("GET", c.baseUrl+ProjectPath+"?name="+name+"&excludeInactive=false", nil)
 	request.WithHeaders(req, map[string]string{
 		"X-API-Key": c.apiKey,

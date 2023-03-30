@@ -18,6 +18,7 @@ func WithHeaders(req *http.Request, headers map[string]string) {
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 }
 

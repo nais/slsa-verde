@@ -32,6 +32,15 @@ type VerifyAttestationOpts struct {
 	Logger     *log.Entry
 }
 
+func NewVerifyAttestationOpts(verifyCmd *verify.VerifyAttestationCommand, keyRef string, identities []cosign.Identity) *VerifyAttestationOpts {
+	return &VerifyAttestationOpts{
+		VerifyCmd:  verifyCmd,
+		Identities: identities,
+		KeyRef:     keyRef,
+		Logger:     log.WithFields(log.Fields{"component": "attestation"}),
+	}
+}
+
 func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*cosign.CheckOpts, error) {
 	co := &cosign.CheckOpts{}
 
@@ -60,7 +69,7 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 	}
 
 	if pod.KeylessVerification() {
-		log.Debugf("Using keyless verification")
+		vao.Logger.Debugf("Using keyless verification")
 		// This performs an online fetch of the Fulcio roots. This is needed
 		// for verifying keyless certificates (both online and offline).
 		co.RootCerts, err = fulcio.GetRoots()
@@ -78,6 +87,7 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 	}
 
 	if !pod.KeylessVerification() {
+		vao.Logger.Debugf("Using static public key verification")
 		// ensure that the static public key is used
 		vao.VerifyCmd.KeyRef = vao.KeyRef
 		co.SigVerifier, err = signature.PublicKeyFromKeyRef(ctx, vao.VerifyCmd.KeyRef)
@@ -95,9 +105,7 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 }
 
 func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error) {
-
 	metadata := make([]*ImageMetadata, 0)
-
 	for _, image := range pod.ContainerImages {
 		ref, err := name.ParseReference(image)
 		if err != nil {

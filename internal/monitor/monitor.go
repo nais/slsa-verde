@@ -49,7 +49,7 @@ func (c *Config) OnUpdate(old any, new any) {
 	}
 
 	if equalSlice(p.ContainerImages, p2.ContainerImages) {
-		c.logger.Debugf("same tag on image ignoring pod %s", p.PodName)
+		c.logger.Debugf("image has not changed, ignoring pod %s", p.PodName)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 	for _, m := range metadata {
 		project, version := projectAndVersion(p.Name, m.Image)
 
-		if err = c.GetProjects(project, version); err != nil {
+		if err = c.GetProjects(project); err != nil {
 			return err
 		}
 

@@ -7,9 +7,6 @@ on:
       - '.github/workflows/chart.yaml'
       - '*.md'
 
-env:
-  REGISTRY: europe-north1-docker.pkg.dev/nais-io/nais/images
-
 jobs:
   test-dependabot:
     permissions:

@@ -39,22 +39,22 @@ func main() {
 		log.WithError(err).Fatal("failed to setup logging")
 	}
 
-	log.WithFields(log.Fields{
+	mainLogger := log.WithFields(log.Fields{
 		"component": "main",
 	})
 
-	log.Info("starting picante")
+	mainLogger.Info("starting picante")
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 
-	log.Info("setting up k8s client")
+	mainLogger.Info("setting up k8s client")
 	var kubeConfig = setupKubeConfig()
 	k8sClient, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
-		log.WithError(err).Fatal("setting up k8s client")
+		mainLogger.WithError(err).Fatal("setting up k8s client")
 	}
 
-	log.Info("setting up informer")
+	mainLogger.Info("setting up informer")
 	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 0, informers.WithTweakListOptions(
 		func(options *v1.ListOptions) {
 			if cfg.Features.Enabled && len(cfg.Features.LabelSelectors) > 0 {
@@ -66,7 +66,7 @@ func main() {
 	podInformer := factory.Core().V1().Pods().Informer()
 	err = podInformer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
 	if err != nil {
-		log.Errorf("error setting watch error handler: %v", err)
+		mainLogger.Errorf("error setting watch error handler: %v", err)
 		return
 	}
 
@@ -80,16 +80,16 @@ func main() {
 
 	opts := attestation.NewVerifyAttestationOpts(verifyCmd, cfg.Cosign.KeyRef, cfg.GetIdentities())
 
-	log.Info("setting up storage client")
+	mainLogger.Info("setting up storage client")
 	s := storage.NewClient(cfg.Storage.Api, cfg.Storage.ApiKey)
 	if err != nil {
-		log.WithError(err).Fatal("failed to get teams")
+		mainLogger.WithError(err).Fatal("failed to get teams")
 	}
 
-	log.Info("setting up monitor")
+	mainLogger.Info("setting up monitor")
 	m := monitor.NewMonitor(ctx, s, opts)
 
-	log.Info("setting up informer event handler")
+	mainLogger.Info("setting up informer event handler")
 	_, err = podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    m.OnAdd,
 		UpdateFunc: m.OnUpdate,
@@ -97,7 +97,7 @@ func main() {
 	})
 
 	if err != nil {
-		log.Errorf("error setting event handler: %v", err)
+		mainLogger.Errorf("error setting event handler: %v", err)
 		return
 	}
 
@@ -107,10 +107,10 @@ func main() {
 		return
 	}
 
-	log.Infof("informer cache synced")
+	mainLogger.Infof("informer cache synced")
 
 	<-ctx.Done()
-	log.Info("shutting down")
+	mainLogger.Info("shutting down")
 }
 
 func setupKubeConfig() *rest.Config {

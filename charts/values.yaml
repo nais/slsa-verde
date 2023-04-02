@@ -1,9 +1,9 @@
-apiserverIP: ""
+apiserverIP:
 
 image:
   repository: europe-north1-docker.pkg.dev/nais-io/nais/images
   name: picante
-  tag: ""
+  tag:
 
 team: nais
 
@@ -20,8 +20,10 @@ config:
   cosign:
     keyRef: /etc/cosign/kms.pub
   storage:
-    api: ""
-    apiKey: ""
-  identity:
-    issuer: https://accounts.google.com
-    projectId: ""
+    api:
+    apiKey:
+  identities:
+    - issuer:
+      subjectRegExp:
+    - issuer:
+      subjectRegExp:

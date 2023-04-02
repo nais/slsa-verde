@@ -134,7 +134,7 @@ func setupKubeConfig() *rest.Config {
 }
 
 func setupConfig() (*config.Config, error) {
-	log.Info("-------- setting up configuration ---------")
+	log.Info("-------- setting up configuration ----------")
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, err
@@ -154,7 +154,7 @@ func setupConfig() (*config.Config, error) {
 		config.StorageApiKey,
 	})
 
-	log.Info("-------- configuration loaded --------")
+	log.Info("-------- configuration loaded ---------")
 	return cfg, nil
 }
 

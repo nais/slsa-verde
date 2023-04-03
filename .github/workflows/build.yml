@@ -54,4 +54,3 @@ jobs:
   #       with:
   #         json: '{"image": {"tag": "${{ needs.build_and_push_registry.outputs.version }}"}}'
   #         feature_name: picante
-#

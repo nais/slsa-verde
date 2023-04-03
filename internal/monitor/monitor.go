@@ -3,7 +3,6 @@ package monitor
 import (
 	"context"
 	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
 	"picante/internal/pod"
 	"strings"
 
@@ -29,8 +28,24 @@ func NewMonitor(ctx context.Context, client *storage.Client, opts *attestation.V
 }
 
 func (c *Config) OnDelete(obj any) {
-	p := obj.(*v1.Pod)
-	c.logger.Debugf("pod deleted, do nothing for pod %s", p.Name)
+	p, err := pod.GetInfo(obj)
+	if err != nil {
+		c.logger.Debugf("get pod info: %v", err)
+		return
+	}
+
+	for _, m := range p.ContainerImages {
+		project, _ := projectAndVersion(p.Name, m)
+		if err = c.CleanUpProjects(project); err != nil {
+			c.logger.Errorf("clean up projects: %v", err)
+			return
+		}
+		c.logger.WithFields(log.Fields{
+			"project": project,
+			"team":    p.Team,
+			"pod":     p.PodName,
+		}).Infof("cleaned up project")
+	}
 }
 
 func (c *Config) OnUpdate(old any, new any) {
@@ -80,11 +95,6 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 
 	for _, m := range metadata {
 		project, version := projectAndVersion(p.Name, m.Image)
-
-		if err = c.GetProjects(project); err != nil {
-			return err
-		}
-
 		if err = c.UploadSbom(project, version, p.Team, m.Statement); err != nil {
 			return err
 		}

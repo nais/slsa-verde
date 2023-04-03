@@ -166,7 +166,7 @@ func (c *Client) GetProject(name string, version string) (*Project, error) {
 	return &dtrackProject, nil
 }
 
-func (c *Client) GetProjects(name string) error {
+func (c *Client) CleanUpProjects(name string) error {
 	req, err := request.New("GET", c.baseUrl+ProjectPath+"?name="+name+"&excludeInactive=false", nil)
 	request.WithHeaders(req, map[string]string{
 		"X-API-Key": c.apiKey,
@@ -188,12 +188,8 @@ func (c *Client) GetProjects(name string) error {
 
 	for _, project := range dtrackProjects {
 		err = c.DeleteProject(project.Uuid)
-		// if project.Version == version {
-		// 	continue
-		// }
-		// err = c.PatchProject(project)
 		if err != nil {
-			return fmt.Errorf("patching project: %w", err)
+			return fmt.Errorf("deleting project: %w", err)
 		}
 	}
 

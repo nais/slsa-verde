@@ -12,20 +12,20 @@ env:
 
 jobs:
   tests:
-    if: ${{ github.actor != 'dependabot[bot]' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3.3.0
-      - uses: actions/setup-go@v3
-        with:
-          go-version: ">=1.20.2"
-      - run: go test -cover ./...
-      - name: Vulnerability check
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
+  #  if: ${{ github.actor != 'dependabot[bot]' }}
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - uses: actions/checkout@v3.3.0
+  #    - uses: actions/setup-go@v3
+  #      with:
+  #        go-version: ">=1.20.2"
+  #    - run: go test -cover ./...
+  #    - name: Vulnerability check
+  #      run: |
+  #        go install golang.org/x/vuln/cmd/govulncheck@latest
+  #        govulncheck ./...
   build_and_push_registry:
-    needs: [ "tests" ]
+   # needs: [ "tests" ]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

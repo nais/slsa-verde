@@ -27,12 +27,6 @@ type Verifier struct {
 func GetInfo(obj any) (*Info, error) {
 	pod := obj.(*v1.Pod)
 	labels := pod.GetLabels()
-	name := labels[LabelTypeAppK8sIoName.String()]
-	team := labels[LabelTypeTeamLabel.String()]
-	predicateType := labels[LabelTypeSalsaPredicateLabel.String()]
-	keyRef := labels[LabelTypeSalsaKeyRefLabel.String()]
-	keylessProvider := labels[LabelTypeSalsaKeylessProvider.String()]
-	ignoreTLog := labels[LabelTypeIgnoreTransparencyLog.String()]
 
 	var c []string
 	for _, container := range pod.Spec.Containers {
@@ -45,15 +39,15 @@ func GetInfo(obj any) (*Info, error) {
 
 	return &Info{
 		ContainerImages: c,
-		Name:            name,
+		Name:            labels[LabelTypeAppK8sIoName.String()],
 		Namespace:       pod.GetNamespace(),
 		PodName:         pod.GetName(),
-		Team:            team,
+		Team:            labels[LabelTypeTeamLabel.String()],
 		Verifier: &Verifier{
-			PredicateType:   predicateType,
-			KeyRef:          keyRef,
-			KeylessProvider: keylessProvider,
-			IgnoreTLog:      ignoreTLog,
+			PredicateType:   labels[LabelTypeSalsaPredicateLabel.String()],
+			KeyRef:          labels[LabelTypeSalsaKeyRefLabel.String()],
+			KeylessProvider: labels[LabelTypeSalsaKeylessProvider.String()],
+			IgnoreTLog:      labels[LabelTypeIgnoreTransparencyLog.String()],
 		},
 	}, nil
 }

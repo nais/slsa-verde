@@ -25,7 +25,7 @@ jobs:
   #        go install golang.org/x/vuln/cmd/govulncheck@latest
   #        govulncheck ./...
   build_and_push_registry:
-   # needs: [ "tests" ]
+    # needs: [ "tests" ]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -44,6 +44,7 @@ jobs:
           google_service_account: gh-picante
           push: ${{ github.actor != 'dependabot[bot]' }}
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
+          salsa_context: ./cmd/picante
   # rollout:
   #   permissions:
   #     id-token: write

@@ -27,3 +27,4 @@ config:
       subjectRegExp:
     - issuer:
       subjectRegExp:
+  kmsPubKey:

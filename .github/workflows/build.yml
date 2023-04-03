@@ -11,7 +11,7 @@ env:
   REGISTRY: europe-north1-docker.pkg.dev/nais-io/nais/images
 
 jobs:
-  tests:
+  # tests:
   #  if: ${{ github.actor != 'dependabot[bot]' }}
   #  runs-on: ubuntu-latest
   #  steps:

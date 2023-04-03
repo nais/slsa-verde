@@ -44,7 +44,6 @@ jobs:
           google_service_account: gh-picante
           push: ${{ github.actor != 'dependabot[bot]' }}
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
-
   # rollout:
   #   permissions:
   #     id-token: write

@@ -5,7 +5,4 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   kms.pub: |
-    -----BEGIN PUBLIC KEY-----
-    MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxgOVWCBlCTpJcKKJxQTLBAkp5F9
-    /rKmU0cIhHkBJmbPLcDtmoDX0fX7d9OzpK7eLyBg+c/rRcQgGvZvBCLRKQ==
-    -----END PUBLIC KEY-----
+    {{- .Values.config.kmsPubKey | nindent 4 }}

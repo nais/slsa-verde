@@ -6,7 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"picante/internal/request"
+	"io"
+	"net/http"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 )
@@ -56,16 +57,14 @@ func (c *Client) UploadSbom(projectName string, projectVersion string, team stri
 		return fmt.Errorf("creating payload: %w", err)
 	}
 
-	req, err := request.New("PUT", c.baseUrl+BomPath, bytes.NewReader(p))
-	request.WithHeaders(req, map[string]string{
-		"X-Api-Key": c.apiKey,
-	})
+	req, err := c.createRequest("PUT", BomPath, bytes.NewReader(p))
+	c.withHeaders(req, nil)
 
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	_, err = request.Do(req)
+	_, err = do(req)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -125,17 +124,14 @@ func (c *Client) UpdateProjectTags(projectUuid string, tags []Tag) error {
 		return err
 	}
 
-	req, err := request.New("PATCH", c.baseUrl+ProjectPath+"/"+projectUuid, bytes.NewBuffer(body))
-	request.WithHeaders(req, map[string]string{
-		"X-API-Key": c.apiKey,
-		"Accept":    "application/json",
-	})
+	req, err := c.createRequest("PATCH", ProjectPath+"/"+projectUuid, bytes.NewBuffer(body))
+	c.withHeaders(req, map[string]string{"Accept": "application/json"})
 
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	_, err = request.Do(req)
+	_, err = do(req)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -144,16 +140,14 @@ func (c *Client) UpdateProjectTags(projectUuid string, tags []Tag) error {
 }
 
 func (c *Client) GetProject(name string, version string) (*Project, error) {
-	req, err := request.New("GET", c.baseUrl+ProjectPath+"/lookup?name="+name+"&version="+version, nil)
-	request.WithHeaders(req, map[string]string{
-		"X-API-Key": c.apiKey,
-	})
+	req, err := c.createRequest("GET", ProjectPath+"/lookup?name="+name+"&version="+version, nil)
+	c.withHeaders(req, nil)
 
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
-	resBody, err := request.Do(req)
+	resBody, err := do(req)
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}
@@ -167,16 +161,14 @@ func (c *Client) GetProject(name string, version string) (*Project, error) {
 }
 
 func (c *Client) CleanUpProjects(name string) error {
-	req, err := request.New("GET", c.baseUrl+ProjectPath+"?name="+name+"&excludeInactive=false", nil)
-	request.WithHeaders(req, map[string]string{
-		"X-API-Key": c.apiKey,
-	})
+	req, err := c.createRequest("GET", ProjectPath+"?name="+name+"&excludeInactive=false", nil)
+	c.withHeaders(req, nil)
 
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	resBody, err := request.Do(req)
+	resBody, err := do(req)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -197,20 +189,59 @@ func (c *Client) CleanUpProjects(name string) error {
 }
 
 func (c *Client) DeleteProject(uuid string) error {
-	req, err := request.New("DELETE", c.baseUrl+ProjectPath+"/"+uuid, nil)
-	request.WithHeaders(req, map[string]string{
-		"X-API-Key": c.apiKey,
-	})
+	req, err := c.createRequest("DELETE", ProjectPath+"/"+uuid, nil)
+	c.withHeaders(req, nil)
 
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	_, err = request.Do(req)
+	_, err = do(req)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
 	return nil
+}
+
+func (c *Client) createRequest(method string, path string, body io.Reader) (*http.Request, error) {
+	c.logger.WithFields(log.Fields{
+		"method": method,
+		"url":    path,
+	}).Info("creating request")
+	req, err := http.NewRequest(method, c.baseUrl+path, body)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+	return req, nil
+}
+
+func (c *Client) withHeaders(req *http.Request, headers map[string]string) {
+	if headers != nil {
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", c.apiKey)
+}
+
+func do(req *http.Request) ([]byte, error) {
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("sending request: %w", err)
+	}
+	if resp.StatusCode > 299 {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("reading response body: %w", err)
+		}
+		return nil, fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
+	}
+	resBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response body: %w", err)
+	}
+	return resBody, nil
 }
 
 //func (c *Client) PatchProject(project Project) error {
@@ -220,7 +251,7 @@ func (c *Client) DeleteProject(uuid string) error {
 //	}
 //
 //	req, err := request.New("PATCH", c.baseUrl+ProjectPath+"/"+project.Uuid, bytes.NewBuffer(patchBody))
-//	request.WithHeaders(req, map[string]string{
+//	request.withHeaders(req, map[string]string{
 //		"X-API-Key": c.apiKey,
 //	})
 //
@@ -228,7 +259,7 @@ func (c *Client) DeleteProject(uuid string) error {
 //		return fmt.Errorf("creating request: %w", err)
 //	}
 //
-//	_, err = request.Do(req)
+//	_, err = request.do(req)
 //	if err != nil {
 //		return fmt.Errorf("sending request: %w", err)
 //	}

@@ -136,7 +136,16 @@ func Print(redacted []string) {
 		if ok(key) {
 			switch viper.Get(key).(type) {
 			case []interface{}:
-				log.Infof("%s: %s", key, viper.Get(key).([]interface{}))
+				for _, value := range viper.Get(key).([]interface{}) {
+					switch value.(type) {
+					case map[string]interface{}:
+						for k, v := range value.(map[string]interface{}) {
+							log.Infof("%s.%s: %s", key, k, v)
+						}
+					default:
+						log.Infof("%s: %s", key, value)
+					}
+				}
 			default:
 				log.Infof("%s: %s", key, viper.GetString(key))
 

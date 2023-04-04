@@ -49,7 +49,7 @@ func TestUploadSbom(t *testing.T) {
 		logger:  log.WithFields(log.Fields{"test-component": "storage"}),
 	}
 
-	err = cfg.UploadSbom("project1", "1.0.1", "team1", a)
+	err = cfg.UploadSbom("project1", "1.0.1", "team1", "namespace", a)
 	assert.NoError(t, err)
 }
 

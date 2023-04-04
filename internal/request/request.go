@@ -2,11 +2,16 @@ package request
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 )
 
 func New(method string, url string, body io.Reader) (*http.Request, error) {
+	log.WithFields(log.Fields{
+		"method": method,
+		"url":    url,
+	}).Info("creating request")
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
@@ -23,6 +28,10 @@ func WithHeaders(req *http.Request, headers map[string]string) {
 }
 
 func Do(req *http.Request) ([]byte, error) {
+	log.WithFields(log.Fields{
+		"method": req.Method,
+		"url":    req.URL,
+	}).Info("sending request")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)

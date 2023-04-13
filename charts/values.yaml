@@ -25,8 +25,8 @@ config:
   identities:
     - issuer:
       subjectRegExp:
-    - issuer:
-      subjectRegExp:
+    - issuerRegExp:
+      subject:
   teamIdentity:
     prefix:
     issuer:

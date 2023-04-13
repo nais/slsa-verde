@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"picante/internal/attestation"
 	"picante/internal/config"
+	"picante/internal/team"
 	"syscall"
 	"time"
 
@@ -78,7 +79,14 @@ func main() {
 		IgnoreTlog: cfg.Cosign.IgnoreTLog,
 	}
 
-	opts := attestation.NewVerifyAttestationOpts(verifyCmd, cfg.Cosign.KeyRef, cfg.GetIdentities())
+	teamIdentityConfig := team.NewIdentityConfiguration(cfg.TeamIdentity.Prefix, cfg.TeamIdentity.Domain, cfg.TeamIdentity.Issuer)
+
+	opts := attestation.NewVerifyAttestationOpts(
+		verifyCmd,
+		cfg.GetPreConfiguredIdentities(),
+		teamIdentityConfig,
+		cfg.Cosign.KeyRef,
+	)
 
 	mainLogger.Info("setting up storage client")
 	s := storage.NewClient(cfg.Storage.Api, cfg.Storage.ApiKey)

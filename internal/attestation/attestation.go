@@ -17,6 +17,7 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/signature"
 	log "github.com/sirupsen/logrus"
 	"picante/internal/pod"
+	"picante/internal/team"
 )
 
 type ImageMetadata struct {
@@ -26,19 +27,36 @@ type ImageMetadata struct {
 }
 
 type VerifyAttestationOpts struct {
-	Identities []cosign.Identity
-	KeyRef     string
-	VerifyCmd  *verify.VerifyAttestationCommand
-	Logger     *log.Entry
+	Identities   []cosign.Identity
+	KeyRef       string
+	Logger       *log.Entry
+	TeamIdentity *team.IdentityConfiguration
+	VerifyCmd    *verify.VerifyAttestationCommand
 }
 
-func NewVerifyAttestationOpts(verifyCmd *verify.VerifyAttestationCommand, keyRef string, identities []cosign.Identity) *VerifyAttestationOpts {
+func NewVerifyAttestationOpts(verifyCmd *verify.VerifyAttestationCommand, identities []cosign.Identity, teamIdentity *team.IdentityConfiguration, keyRef string) *VerifyAttestationOpts {
 	return &VerifyAttestationOpts{
-		VerifyCmd:  verifyCmd,
-		Identities: identities,
-		KeyRef:     keyRef,
-		Logger:     log.WithFields(log.Fields{"component": "attestation"}),
+		Identities:   identities,
+		KeyRef:       keyRef,
+		Logger:       log.WithFields(log.Fields{"component": "attestation"}),
+		TeamIdentity: teamIdentity,
+		VerifyCmd:    verifyCmd,
 	}
+}
+
+func (vao *VerifyAttestationOpts) buildIdentities(team string) []cosign.Identity {
+	var result []cosign.Identity
+	if vao.Identities != nil && len(vao.Identities) > 0 {
+		result = append(result, vao.Identities...)
+	}
+
+	if vao.TeamIdentity != nil && team != "" {
+		result = append(result, vao.TeamIdentity.GetAccountIdEmailAddress(team))
+	}
+
+	vao.Logger.WithFields(log.Fields{"identities": result}).Debug("Identities")
+
+	return result
 }
 
 func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*cosign.CheckOpts, error) {
@@ -80,7 +98,7 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 		if err != nil {
 			return nil, fmt.Errorf("getting Fulcio intermediates: %w", err)
 		}
-		co.Identities = vao.Identities
+		co.Identities = vao.buildIdentities(pod.Team)
 
 		// ensure that the public key is not used
 		vao.VerifyCmd.KeyRef = ""

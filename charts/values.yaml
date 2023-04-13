@@ -27,6 +27,10 @@ config:
       subjectRegExp:
     - issuer:
       subjectRegExp:
+  teamIdentity:
+    prefix:
+    issuer:
+    domain:
   kmsPubKey: |
     -----BEGIN PUBLIC KEY-----
     MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxgOVWCBlCTpJcKKJxQTLBAkp5F9

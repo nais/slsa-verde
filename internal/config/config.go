@@ -12,13 +12,14 @@ import (
 )
 
 type Config struct {
-	Cosign             Cosign     `json:"cosign"`
-	DevelopmentMode    bool       `json:"development-mode"`
-	Features           Features   `json:"features"`
-	Identities         []Identity `json:"identities"`
-	LogLevel           string     `json:"log-level"`
-	MetricsBindAddress string     `json:"metrics-address"`
-	Storage            Storage    `json:"storage"`
+	Cosign                    Cosign       `json:"cosign"`
+	DevelopmentMode           bool         `json:"development-mode"`
+	Features                  Features     `json:"features"`
+	PreConfiguredSaIdentities []Identity   `json:"identities"`
+	TeamIdentity              TeamIdentity `json:"teamIdentity"`
+	LogLevel                  string       `json:"log-level"`
+	MetricsBindAddress        string       `json:"metrics-address"`
+	Storage                   Storage      `json:"storage"`
 }
 
 type Cosign struct {
@@ -26,16 +27,6 @@ type Cosign struct {
 	KeyRef     string `json:"key-ref"`
 	LocalImage bool   `json:"local-image"`
 	RekorURL   string `json:"rekor-url"`
-}
-
-type Identity struct {
-	Issuer        string `json:"issuer"`
-	SubjectRegExp string `json:"subject-reg-exp"`
-}
-
-type Storage struct {
-	Api    string `json:"api"`
-	ApiKey string `json:"api-key"`
 }
 
 type Features struct {
@@ -46,6 +37,24 @@ type Features struct {
 type Label struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+}
+
+type TeamIdentity struct {
+	Domain string `json:"domain"`
+	Issuer string `json:"issuer"`
+	Prefix string `json:"prefix"`
+}
+
+type Identity struct {
+	Issuer        string `json:"issuer"`
+	IssuerRegExp  string `json:"issuer-reg-exp"`
+	Subject       string `json:"subject"`
+	SubjectRegExp string `json:"subject-reg-exp"`
+}
+
+type Storage struct {
+	Api    string `json:"api"`
+	ApiKey string `json:"api-key"`
 }
 
 const (
@@ -61,6 +70,9 @@ const (
 	MetricsAddress         = "metrics-address"
 	StorageApi             = "storage.api"
 	StorageApiKey          = "storage.api-key"
+	TeamIdentityPrefix     = "teamIdentity.prefix"
+	TeamIdentityDomain     = "teamIdentity.domain"
+	TeamIdentityIssuer     = "teamIdentity.issuer"
 )
 
 func init() {
@@ -86,6 +98,9 @@ func init() {
 	flag.String(MetricsAddress, ":8080", "Bind address")
 	flag.String(StorageApi, "", "Salsa storage API endpoint")
 	flag.String(StorageApiKey, "", "SBOM API key")
+	flag.String(TeamIdentityPrefix, "", "Prefix for team identity")
+	flag.String(TeamIdentityDomain, "", "Domain for team identity")
+	flag.String(TeamIdentityIssuer, "", "Issuer for team identity")
 }
 
 func Load() (*Config, error) {
@@ -201,17 +216,27 @@ func (c *Config) GetLabelSelectors() string {
 	return labelSelector
 }
 
-func (c *Config) GetIdentities() []cosign.Identity {
-	if len(c.Identities) == 0 {
+func (c *Config) GetPreConfiguredIdentities() []cosign.Identity {
+	if len(c.PreConfiguredSaIdentities) == 0 {
 		return []cosign.Identity{}
 	}
 
 	var identities []cosign.Identity
-	for _, identity := range c.Identities {
-		identities = append(identities, cosign.Identity{
-			Issuer:        identity.Issuer,
-			SubjectRegExp: identity.SubjectRegExp,
-		})
+	for _, identity := range c.PreConfiguredSaIdentities {
+		var id = cosign.Identity{}
+		if len(identity.Issuer) == 0 {
+			id.IssuerRegExp = identity.IssuerRegExp
+		} else {
+			id.Issuer = identity.Issuer
+		}
+
+		if len(identity.Subject) == 0 {
+			id.SubjectRegExp = identity.SubjectRegExp
+		} else {
+			id.Subject = identity.Subject
+		}
+
+		identities = append(identities, id)
 	}
 	return identities
 }

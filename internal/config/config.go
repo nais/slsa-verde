@@ -15,11 +15,11 @@ type Config struct {
 	Cosign                    Cosign       `json:"cosign"`
 	DevelopmentMode           bool         `json:"development-mode"`
 	Features                  Features     `json:"features"`
-	PreConfiguredSaIdentities []Identity   `json:"identities"`
-	TeamIdentity              TeamIdentity `json:"teamIdentity"`
 	LogLevel                  string       `json:"log-level"`
 	MetricsBindAddress        string       `json:"metrics-address"`
+	PreConfiguredSaIdentities []Identity   `json:"identities"`
 	Storage                   Storage      `json:"storage"`
+	TeamIdentity              TeamIdentity `json:"teamIdentity"`
 }
 
 type Cosign struct {
@@ -70,9 +70,9 @@ const (
 	MetricsAddress         = "metrics-address"
 	StorageApi             = "storage.api"
 	StorageApiKey          = "storage.api-key"
-	TeamIdentityPrefix     = "teamIdentity.prefix"
 	TeamIdentityDomain     = "teamIdentity.domain"
 	TeamIdentityIssuer     = "teamIdentity.issuer"
+	TeamIdentityPrefix     = "teamIdentity.prefix"
 )
 
 func init() {

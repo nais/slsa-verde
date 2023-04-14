@@ -37,9 +37,9 @@ spec:
           protocol: TCP
       to:
         - fqdns:
-            - ttl.sh
-            - sigstore-tuf-root.storage.googleapis.com
-            - europe-north1-docker.pkg.dev
+          {{- range $key, $value := .Values.fqdns }}
+            - {{ $value }}
+          {{- end }}
             - {{ .Values.config.storage.api }}
   podSelector:
     matchLabels:

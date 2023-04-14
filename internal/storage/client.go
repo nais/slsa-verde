@@ -52,7 +52,7 @@ type Tags struct {
 
 func NewClient(baseUrl string, apiKey string) *Client {
 	return &Client{
-		baseUrl: "https://" + baseUrl + ApiVersion1,
+		baseUrl: baseUrl + ApiVersion1,
 		apiKey:  apiKey,
 		logger:  log.WithFields(log.Fields{"component": "storage", "baseUrl": baseUrl}),
 	}

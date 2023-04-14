@@ -12,6 +12,11 @@ resources:
     cpu: 100m
     memory: 256Mi
 
+fqdns:
+  - ttl.sh
+  - sigstore-tuf-root.storage.googleapis.com
+  - europe-north1-docker.pkg.dev
+
 config:
   features:
     enabled: true

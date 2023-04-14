@@ -32,12 +32,6 @@ metadata:
   name: {{ .Release.Name }}-fqdn
 spec:
   egress:
-    #- ports:
-    #        - port: 80
-    #          protocol: TCP
-    #      to:
-    #        - fqdns:
-    #            - metadata.google.internal
     - ports:
         - port: 443
           protocol: TCP
@@ -46,7 +40,7 @@ spec:
             - ttl.sh
             - sigstore-tuf-root.storage.googleapis.com
             - europe-north1-docker.pkg.dev
-            - salsa-storage-backend.dev.dev-nais.cloud.nais.io
+            - {{ .Values.config.storage.ingress }}}
   podSelector:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name }}

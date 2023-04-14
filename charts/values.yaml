@@ -20,7 +20,7 @@ config:
   cosign:
     keyRef: /etc/cosign/kms.pub
   storage:
-    api: http://dependencytrack-backend/api/v1
+    api: http://dependencytrack-backend
     apiKey:
   identities:
     - issuer:

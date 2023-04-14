@@ -15,6 +15,7 @@ import (
 const (
 	ProjectPath = "/project"
 	BomPath     = "/bom"
+	ApiVersion1 = "/api/v1"
 )
 
 type Client struct {
@@ -51,7 +52,7 @@ type Tags struct {
 
 func NewClient(url string, apiKey string) *Client {
 	return &Client{
-		baseUrl: url,
+		baseUrl: url + ApiVersion1,
 		apiKey:  apiKey,
 		logger:  log.WithFields(log.Fields{"component": "storage", "url": url}),
 	}

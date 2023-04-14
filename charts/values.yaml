@@ -3,7 +3,7 @@ apiserverIP:
 image:
   repository: europe-north1-docker.pkg.dev/nais-io/nais/images
   name: picante
-  tag:
+  tag: 20230414-090558-6aaa3f2
 
 team: nais
 
@@ -20,7 +20,7 @@ config:
   cosign:
     keyRef: /etc/cosign/kms.pub
   storage:
-    api:
+    api: http://dependencytrack-backend/api/v1
     apiKey:
   identities:
     - issuer:

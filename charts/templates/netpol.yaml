@@ -40,7 +40,7 @@ spec:
             - ttl.sh
             - sigstore-tuf-root.storage.googleapis.com
             - europe-north1-docker.pkg.dev
-            - {{ .Values.config.storage.ingress }}}
+            - {{ .Values.config.storage.ingress }}
   podSelector:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name }}

@@ -50,11 +50,11 @@ type Tags struct {
 	Tags []Tag `json:"tags"`
 }
 
-func NewClient(url string, apiKey string) *Client {
+func NewClient(baseUrl string, apiKey string) *Client {
 	return &Client{
-		baseUrl: url + ApiVersion1,
+		baseUrl: "https://" + baseUrl + ApiVersion1,
 		apiKey:  apiKey,
-		logger:  log.WithFields(log.Fields{"component": "storage", "url": url}),
+		logger:  log.WithFields(log.Fields{"component": "storage", "baseUrl": baseUrl}),
 	}
 }
 

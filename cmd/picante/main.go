@@ -80,7 +80,6 @@ func main() {
 	}
 
 	teamIdentityConfig := team.NewIdentityConfiguration(cfg.TeamIdentity.Prefix, cfg.TeamIdentity.Domain, cfg.TeamIdentity.Issuer)
-
 	opts := attestation.NewVerifyAttestationOpts(
 		verifyCmd,
 		cfg.GetPreConfiguredIdentities(),

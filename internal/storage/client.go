@@ -20,12 +20,10 @@ const (
 )
 
 type Client struct {
-	accessToken string
-	baseUrl     string
-	ctx         context.Context
-	logger      *log.Entry
-	password    string
-	username    string
+	Auth    *Auth
+	baseUrl string
+	ctx     context.Context
+	logger  *log.Entry
 }
 
 type BomSubmitRequest struct {
@@ -56,11 +54,13 @@ type Tags struct {
 
 func NewClient(baseUrl, username, password string) *Client {
 	return &Client{
-		baseUrl:  baseUrl + ApiVersion1,
-		ctx:      context.Background(),
-		logger:   log.WithFields(log.Fields{"component": "storage"}),
-		password: password,
-		username: username,
+		Auth: &Auth{
+			username: username,
+			password: password,
+		},
+		baseUrl: baseUrl + ApiVersion1,
+		ctx:     context.Background(),
+		logger:  log.WithFields(log.Fields{"component": "storage"}),
 	}
 }
 

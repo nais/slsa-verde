@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/in-toto/in-toto-golang/in_toto"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -24,16 +23,19 @@ func TestUploadSbom(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
-		case "GET":
-			err := requestIsValid(t, r, "GET", "/api/v1/project/lookup")
+		case http.MethodGet:
+			err := requestIsValid(t, r, http.MethodGet, "/api/v1/project/lookup")
 			_, err = fmt.Fprintf(w, "{\"name\":\"project1\", \"uuid\":\"1234\", \"version\":\"1.0.1\"}\n")
 			assert.NoError(t, err)
-		case "PUT":
-			err = requestIsValid(t, r, "PUT", "/api/v1/bom")
+		case http.MethodPut:
+			err = requestIsValid(t, r, http.MethodPut, "/api/v1/bom")
+			assert.NoError(t, err)
+		case http.MethodPost:
+			err = requestIsValid(t, r, http.MethodPost, "/api/v1/user/login")
+		case http.MethodPatch:
+			err = requestIsValid(t, r, http.MethodPatch, "/api/v1/project/1234")
 			assert.NoError(t, err)
 		default:
-			err = requestIsValid(t, r, "PATCH", "/api/v1/project/1234")
-			assert.NoError(t, err)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -43,46 +45,63 @@ func TestUploadSbom(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := Client{
-		baseUrl: server.URL + "/api/v1",
-		apiKey:  "BjaW3EoqJbKKGBzc1lcOkBijjsC5rL2O",
-		logger:  log.WithFields(log.Fields{"test-component": "storage"}),
-	}
-
-	err = cfg.UploadSbom("project1", "1.0.1", "team1", "namespace", a)
+	client := NewClient(server.URL, "admin", "admin")
+	err = client.UploadSbom("project1", "1.0.1", "team1", "namespace", a)
 	assert.NoError(t, err)
 }
 
 func requestIsValid(t *testing.T, r *http.Request, expectedMethod, expectedURL string) error {
-	assert.Equal(t, r.Header.Get("Content-Type"), "application/json")
-	assert.NotEmpty(t, r.Header.Get("X-API-Key"), "X-API-Key header is empty")
-	assert.Equal(t, expectedMethod, r.Method)
-	assert.Equal(t, expectedURL, r.URL.Path)
-	if expectedMethod != "GET" {
-		b, err := io.ReadAll(r.Body)
-		if err != nil {
-			return fmt.Errorf("reading request body: %w", err)
-		}
-		if expectedMethod == "PUT" {
-			var p BomSubmitRequest
-			err = json.Unmarshal(b, &p)
+	switch expectedMethod {
+	case http.MethodPost:
+		if expectedURL == "api/v1/user/login" {
+			b, err := io.ReadAll(r.Body)
+			var a Auth
+			err = json.Unmarshal(b, &a)
 			if err != nil {
-				return fmt.Errorf("unmarshalling request body: %w", err)
+				assert.Error(t, err)
 			}
 
-			assert.NotEmpty(t, p.ProjectName)
-			assert.NotEmpty(t, p.ProjectVersion)
-			assert.Equal(t, p.AutoCreate, true)
-			assert.NotEmpty(t, p.Bom)
+			fmt.Println(r.URL.Path)
+
+			assert.NotEmpty(t, a.username, "username is empty")
+			assert.NotEmpty(t, a.password, "password is empty")
+			assert.Equal(t, expectedMethod, r.Method, "request method is not POST")
+			assert.Equal(t, expectedURL, r.URL.Host, "request URL is not /api/v1/user/login")
+			assert.Equal(t, r.Header.Get("Content-Type"), "application/json")
 		}
-		if expectedMethod == "PATCH" {
-			var tag Tags
-			err = json.Unmarshal(b, &tag)
-			if err != nil {
-				return fmt.Errorf("unmarshalling request body: %w", err)
-			}
-			assert.NotEmpty(t, tag.Tags)
+
+	case http.MethodGet:
+		assert.Equal(t, expectedMethod, r.Method)
+		assert.Equal(t, expectedURL, r.URL.Path)
+		assert.Equal(t, r.Header.Get("Content-Type"), "application/json")
+		assert.NotEmpty(t, r.Header.Get("Authorization"), "Authorization header is empty")
+	case http.MethodPut:
+		b, err := io.ReadAll(r.Body)
+		var p BomSubmitRequest
+		err = json.Unmarshal(b, &p)
+		if err != nil {
+			assert.Error(t, err)
 		}
+		assert.Equal(t, expectedMethod, r.Method)
+		assert.Equal(t, expectedURL, r.URL.Path)
+		assert.Equal(t, r.Header.Get("Content-Type"), "application/json")
+		assert.NotEmpty(t, r.Header.Get("Authorization"), "Authorization header is empty")
+		assert.NotEmpty(t, p.ProjectName)
+		assert.NotEmpty(t, p.ProjectVersion)
+		assert.Equal(t, p.AutoCreate, true)
+		assert.NotEmpty(t, p.Bom)
+	case http.MethodPatch:
+		var tag Tags
+		b, err := io.ReadAll(r.Body)
+		err = json.Unmarshal(b, &tag)
+		if err != nil {
+			assert.Error(t, err, "unmarshalling request body")
+		}
+		assert.Equal(t, expectedMethod, r.Method)
+		assert.Equal(t, expectedURL, r.URL.Path)
+		assert.NotEmpty(t, tag.Tags)
+		assert.Equal(t, r.Header.Get("Content-Type"), "application/json")
+		assert.NotEmpty(t, r.Header.Get("Authorization"), "Authorization header is empty")
 	}
 	return nil
 }

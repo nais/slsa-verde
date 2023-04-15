@@ -12,20 +12,26 @@ const (
 	UserLoginPath = "/user/login"
 )
 
+type Auth struct {
+	accessToken string
+	username    string
+	password    string
+}
+
 func (c *Client) Token() (string, error) {
-	if c.accessToken == "" || c.isExpired() {
+	if c.Auth.accessToken == "" || c.isExpired() {
 		log.Debugf("accessToken expired, getting new one")
 		token, err := c.login()
 		if err != nil {
 			return "", err
 		}
-		c.accessToken = token
+		c.Auth.accessToken = token
 	}
-	return c.accessToken, nil
+	return c.Auth.accessToken, nil
 }
 
 func (c *Client) login() (string, error) {
-	request, err := c.createRequest(http.MethodPost, c.baseUrl+UserLoginPath, []byte("username="+c.username+"&password="+c.password))
+	request, err := c.createRequest(http.MethodPost, c.baseUrl+UserLoginPath, []byte("username="+c.Auth.username+"&password="+c.Auth.password))
 	c.withHeaders(request, map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
 		"Accept":       "text/plain",
@@ -44,13 +50,13 @@ func (c *Client) login() (string, error) {
 }
 
 func (c *Client) isExpired() bool {
-	if c.accessToken == "" {
+	if c.Auth.accessToken == "" {
 		return true
 	}
 	parseOpts := []jwt.ParseOption{
 		jwt.WithVerify(false),
 	}
-	token, err := jwt.ParseString(c.accessToken, parseOpts...)
+	token, err := jwt.ParseString(c.Auth.accessToken, parseOpts...)
 	if err != nil {
 		log.Errorf("error parsing accessToken: %v", err)
 		return true

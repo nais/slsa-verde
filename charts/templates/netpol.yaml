@@ -4,6 +4,9 @@ metadata:
   name: {{ include "picante.fullname" . }}-apiserver
 spec:
   egress:
+    - ports:
+        - port: 443
+          protocol: TCP
     - to:
         - ipBlock:
             cidr: {{ .Values.apiserverIP }}/32

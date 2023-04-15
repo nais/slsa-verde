@@ -26,7 +26,8 @@ config:
     keyRef: /etc/cosign/kms.pub
   storage:
     api:
-    apiKey:
+    username: picante
+    password:
   identities:
     - issuer:
       subjectRegExp:

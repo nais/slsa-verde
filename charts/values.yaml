@@ -17,6 +17,9 @@ fqdns:
   - sigstore-tuf-root.storage.googleapis.com
   - europe-north1-docker.pkg.dev
 
+backend:
+  ingress:
+
 config:
   features:
     enabled: true
@@ -25,7 +28,7 @@ config:
   cosign:
     keyRef: /etc/cosign/kms.pub
   storage:
-    api:
+    api: http://dependencytrack-backend
     username: picante
     password:
   identities:

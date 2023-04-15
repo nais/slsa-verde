@@ -40,7 +40,7 @@ spec:
           {{- range $key, $value := .Values.fqdns }}
             - {{ $value }}
           {{- end }}
-            - {{ .Values.config.storage.api }}
+            - {{ .Values.backend.ingress }}
   podSelector:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name }}

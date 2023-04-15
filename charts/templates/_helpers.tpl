@@ -5,8 +5,8 @@ Expand the name of the chart.
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{- define "salsa-storage.name" -}}
-{{- default "salsa-storage" }}
+{{- define "dependencytrack.name" -}}
+{{- default "dependencytrack-backend" }}
 {{- end }}
 
 {{/*
@@ -48,9 +48,9 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
-{{- define "salsa-storage.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "salsa-storage.name" . }}
-app.kubernetes.io/instance: {{ include "salsa-storage.name" . }}-backend
+{{- define "dependencytrack.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "dependencytrack.name" . }}
+app.kubernetes.io/instance: {{ include "dependencytrack.name" . }}-backend
 {{- end }}
 
 {{/*

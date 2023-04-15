@@ -6,7 +6,7 @@ Expand the name of the chart.
 {{- end }}
 
 {{- define "dependencytrack.name" -}}
-{{- default "dependencytrack-backend" }}
+{{- default "dependencytrack" }}
 {{- end }}
 
 {{/*

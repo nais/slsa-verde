@@ -88,7 +88,7 @@ func main() {
 	)
 
 	mainLogger.Info("setting up storage client")
-	s := storage.NewClient(cfg.Storage.Api, cfg.Storage.ApiKey)
+	s := storage.NewClient(cfg.Storage.Api, cfg.Storage.Username, cfg.Storage.Password)
 	if err != nil {
 		mainLogger.WithError(err).Fatal("failed to get teams")
 	}
@@ -150,7 +150,8 @@ func setupConfig() (*config.Config, error) {
 	if err := config.Validate([]string{
 		config.MetricsAddress,
 		config.StorageApi,
-		config.StorageApiKey,
+		config.StorageUsername,
+		config.StoragePassword,
 		config.CosignLocalImage,
 		config.Identities,
 	}); err != nil {
@@ -158,7 +159,8 @@ func setupConfig() (*config.Config, error) {
 	}
 
 	config.Print([]string{
-		config.StorageApiKey,
+		config.StoragePassword,
+		config.StorageUsername,
 	})
 
 	log.Info("-------- configuration loaded ----------")

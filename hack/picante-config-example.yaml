@@ -9,9 +9,14 @@ cosign:
   key-ref: /picante/kms.pub
 storage:
   api: http://localhost:9001/api/v1
-  api-key: my-api-key
+  username: admin
+  password: admin
 identities:
-  - issuer: https://provider.com
+  - issuer-reg-exp: .*provider.com
     subject-reg-exp: ".*@som-subject.com"
   - issuer: https://provider2.com
-    subject-reg-exp: ".*@som-subject2.com"
+    subject: "id@som-subject2.com"
+teamIdentity:
+  prefix: "gar"
+  issuer: https://provider.com
+  domain: "domain.com"

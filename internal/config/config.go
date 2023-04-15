@@ -53,8 +53,9 @@ type Identity struct {
 }
 
 type Storage struct {
-	Api    string `json:"api"`
-	ApiKey string `json:"api-key"`
+	Api      string `json:"api"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 const (
@@ -69,7 +70,8 @@ const (
 	LogLevel               = "log-level"
 	MetricsAddress         = "metrics-address"
 	StorageApi             = "storage.api"
-	StorageApiKey          = "storage.api-key"
+	StorageUsername        = "storage.username"
+	StoragePassword        = "storage.password"
 	TeamIdentityDomain     = "teamIdentity.domain"
 	TeamIdentityIssuer     = "teamIdentity.issuer"
 	TeamIdentityPrefix     = "teamIdentity.prefix"
@@ -97,7 +99,8 @@ func init() {
 	flag.String(LogLevel, "info", "Which log level to output")
 	flag.String(MetricsAddress, ":8080", "Bind address")
 	flag.String(StorageApi, "", "Salsa storage API endpoint")
-	flag.String(StorageApiKey, "", "SBOM API key")
+	flag.String(StorageUsername, "", "Salsa storage username")
+	flag.String(StoragePassword, "", "Salsa storage password")
 	flag.String(TeamIdentityPrefix, "", "Prefix for team identity")
 	flag.String(TeamIdentityDomain, "", "Domain for team identity")
 	flag.String(TeamIdentityIssuer, "", "Issuer for team identity")

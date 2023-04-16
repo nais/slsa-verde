@@ -2,6 +2,7 @@ package storage
 
 import (
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -31,7 +32,11 @@ func (c *Client) Token() (string, error) {
 }
 
 func (c *Client) login() (string, error) {
-	request, err := c.createRequest(http.MethodPost, c.baseUrl+UserLoginPath, []byte("username="+c.Auth.username+"&password="+c.Auth.password))
+	data := url.Values{
+		"username": {c.Auth.username},
+		"password": {c.Auth.password},
+	}
+	request, err := c.createRequest(http.MethodPost, UserLoginPath, []byte(data.Encode()))
 	c.withHeaders(request, map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
 		"Accept":       "text/plain",

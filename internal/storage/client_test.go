@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/in-toto/in-toto-golang/in_toto"
@@ -14,6 +15,7 @@ import (
 )
 
 func TestUploadSbom(t *testing.T) {
+	ctx := context.Background()
 	att, err := os.ReadFile("testdata/attestation.json")
 	assert.NoError(t, err)
 	var a *in_toto.CycloneDXStatement
@@ -45,7 +47,7 @@ func TestUploadSbom(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, "admin", "admin")
+	client := NewClient(ctx, server.URL, "admin", "admin")
 	err = client.UploadSbom("project1", "1.0.1", "team1", "namespace", a)
 	assert.NoError(t, err)
 }

@@ -87,7 +87,7 @@ func main() {
 	)
 
 	mainLogger.Info("setting up storage client")
-	s := storage.NewClient(cfg.Storage.Api, cfg.Storage.Username, cfg.Storage.Password)
+	s := storage.NewClient(ctx, cfg.Storage.Api, cfg.Storage.Username, cfg.Storage.Password)
 	if err != nil {
 		mainLogger.WithError(err).Fatal("failed to get teams")
 	}

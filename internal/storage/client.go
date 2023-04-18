@@ -17,7 +17,7 @@ const (
 	ProjectPath          = "/project"
 	BomPath              = "/bom"
 	ApiVersion1          = "/api/v1"
-	DefaultRetryAttempts = 3
+	DefaultRetryAttempts = 5
 )
 
 type Client struct {
@@ -54,17 +54,19 @@ type Tags struct {
 	Tags []Tag `json:"tags"`
 }
 
-func NewClient(baseUrl, username, password string) *Client {
+func NewClient(ctx context.Context, baseUrl, username, password string) *Client {
 	return &Client{
 		Auth: &Auth{
 			username: username,
 			password: password,
 		},
 		baseUrl: baseUrl + ApiVersion1,
-		ctx:     context.Background(),
+		ctx:     ctx,
 		logger:  log.WithFields(log.Fields{"component": "storage"}),
 		retryOpts: []retry.Option{
 			retry.Attempts(DefaultRetryAttempts),
+			retry.LastErrorOnly(true),
+			retry.Context(ctx),
 		},
 	}
 }

@@ -14,16 +14,18 @@ import (
 )
 
 const (
-	ProjectPath = "/project"
-	BomPath     = "/bom"
-	ApiVersion1 = "/api/v1"
+	ProjectPath          = "/project"
+	BomPath              = "/bom"
+	ApiVersion1          = "/api/v1"
+	DefaultRetryAttempts = 3
 )
 
 type Client struct {
-	Auth    *Auth
-	baseUrl string
-	ctx     context.Context
-	logger  *log.Entry
+	Auth      *Auth
+	baseUrl   string
+	ctx       context.Context
+	logger    *log.Entry
+	retryOpts []retry.Option
 }
 
 type BomSubmitRequest struct {
@@ -61,6 +63,9 @@ func NewClient(baseUrl, username, password string) *Client {
 		baseUrl: baseUrl + ApiVersion1,
 		ctx:     context.Background(),
 		logger:  log.WithFields(log.Fields{"component": "storage"}),
+		retryOpts: []retry.Option{
+			retry.Attempts(DefaultRetryAttempts),
+		},
 	}
 }
 
@@ -88,7 +93,7 @@ func (c *Client) UploadSbom(projectName, projectVersion, team, namespace string,
 	}
 
 	println(token)
-	_, err = do(req, retry.Attempts(2))
+	_, err = do(req, c.retryOpts)
 	if err != nil {
 		return err
 	}
@@ -130,7 +135,7 @@ func (c *Client) addAdditionalInfoToProject(projectUuid, projectVersion, team, n
 	}
 
 	c.withHeaders(req, map[string]string{"Accept": "application/json", "Authorization": "Bearer " + token, "Content-Type": "application/json"})
-	_, err = do(req, retry.Attempts(1))
+	_, err = do(req, c.retryOpts)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -186,7 +191,7 @@ func (c *Client) GetProject(name string, version string) (*Project, error) {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
-	resBody, err := do(req, retry.Attempts(1))
+	resBody, err := do(req, c.retryOpts)
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}
@@ -212,7 +217,7 @@ func (c *Client) CleanUpProjects(name string) error {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	resBody, err := do(req, retry.Attempts(1))
+	resBody, err := do(req, c.retryOpts)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -245,7 +250,7 @@ func (c *Client) DeleteProject(uuid string) error {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	_, err = do(req, retry.Attempts(1))
+	_, err = do(req, c.retryOpts)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -273,7 +278,7 @@ func (c *Client) withHeaders(req *http.Request, headers map[string]string) {
 	}
 }
 
-func do(req *http.Request, option retry.Option) ([]byte, error) {
+func do(req *http.Request, options []retry.Option) ([]byte, error) {
 	var resBody []byte
 	err := retry.Do(func() error {
 		resp, err := http.DefaultClient.Do(req)
@@ -292,8 +297,7 @@ func do(req *http.Request, option retry.Option) ([]byte, error) {
 			return fmt.Errorf("reading response body: %w", err)
 		}
 		return nil
-	}, option,
-	)
+	}, options...)
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}

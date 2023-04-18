@@ -47,7 +47,11 @@ func (c *Client) login() (string, error) {
 		return "", err
 	}
 
-	token, err := do(request, retry.Attempts(0))
+	authOpt := []retry.Option{
+		retry.Attempts(0),
+	}
+
+	token, err := do(request, authOpt)
 	if err != nil {
 		return "", err
 	}

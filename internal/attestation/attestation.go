@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
@@ -16,6 +18,7 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/oci"
 	"github.com/sigstore/cosign/v2/pkg/signature"
 	log "github.com/sirupsen/logrus"
+	"picante/internal/github"
 	"picante/internal/pod"
 	"picante/internal/team"
 )
@@ -30,11 +33,11 @@ type VerifyAttestationOpts struct {
 	Identities   []cosign.Identity
 	KeyRef       string
 	Logger       *log.Entry
-	TeamIdentity *team.IdentityConfiguration
+	TeamIdentity *team.CertificateIdentity
 	VerifyCmd    *verify.VerifyAttestationCommand
 }
 
-func NewVerifyAttestationOpts(verifyCmd *verify.VerifyAttestationCommand, identities []cosign.Identity, teamIdentity *team.IdentityConfiguration, keyRef string) *VerifyAttestationOpts {
+func NewVerifyAttestationOpts(verifyCmd *verify.VerifyAttestationCommand, identities []cosign.Identity, teamIdentity *team.CertificateIdentity, keyRef string) *VerifyAttestationOpts {
 	return &VerifyAttestationOpts{
 		Identities:   identities,
 		KeyRef:       keyRef,
@@ -44,14 +47,30 @@ func NewVerifyAttestationOpts(verifyCmd *verify.VerifyAttestationCommand, identi
 	}
 }
 
-func (vao *VerifyAttestationOpts) buildIdentities(team string) []cosign.Identity {
+func (vao *VerifyAttestationOpts) certificateIdentityPreConfiguredEnabled() bool {
+	return vao.Identities != nil && len(vao.Identities) > 0
+}
+
+func (vao *VerifyAttestationOpts) certificateIdentityTeamEnabled(team string) bool {
+	return vao.TeamIdentity != nil && team != ""
+}
+
+func certificateIdentityGithubEnabled(gCertId *github.CertificateIdentity) bool {
+	return gCertId != nil && gCertId.Enabled()
+}
+
+func (vao *VerifyAttestationOpts) BuildCertificateIdentities(team string, gCertId *github.CertificateIdentity) []cosign.Identity {
 	var result []cosign.Identity
-	if vao.Identities != nil && len(vao.Identities) > 0 {
+	if vao.certificateIdentityPreConfiguredEnabled() {
 		result = append(result, vao.Identities...)
 	}
 
-	if vao.TeamIdentity != nil && team != "" {
+	if vao.certificateIdentityTeamEnabled(team) {
 		result = append(result, vao.TeamIdentity.GetAccountIdEmailAddress(team))
+	}
+
+	if certificateIdentityGithubEnabled(gCertId) {
+		result = append(result, gCertId.GetIdentity())
 	}
 
 	vao.Logger.WithFields(log.Fields{"identities": result}).Debug("Identities")
@@ -59,7 +78,7 @@ func (vao *VerifyAttestationOpts) buildIdentities(team string) []cosign.Identity
 	return result
 }
 
-func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*cosign.CheckOpts, error) {
+func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info, gCertId *github.CertificateIdentity) (*cosign.CheckOpts, error) {
 	co := &cosign.CheckOpts{}
 
 	var err error
@@ -87,7 +106,6 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 	}
 
 	if pod.KeylessVerification() {
-		vao.Logger.Debugf("Using keyless verification")
 		// This performs an online fetch of the Fulcio roots. This is needed
 		// for verifying keyless certificates (both online and offline).
 		co.RootCerts, err = fulcio.GetRoots()
@@ -98,14 +116,14 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 		if err != nil {
 			return nil, fmt.Errorf("getting Fulcio intermediates: %w", err)
 		}
-		co.Identities = vao.buildIdentities(pod.Team)
+		co.Identities = vao.BuildCertificateIdentities(pod.Team, gCertId)
 
+		vao.Logger.Debugf("enabled keyless verification")
 		// ensure that the public key is not used
 		vao.VerifyCmd.KeyRef = ""
 	}
 
 	if !pod.KeylessVerification() {
-		vao.Logger.Debugf("Using static public key verification")
 		// ensure that the static public key is used
 		vao.VerifyCmd.KeyRef = vao.KeyRef
 		co.SigVerifier, err = signature.PublicKeyFromKeyRef(ctx, vao.VerifyCmd.KeyRef)
@@ -117,6 +135,7 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info) (*
 			defer pkcs11Key.Close()
 		}
 		co.IgnoreTlog = pod.IgnoreTLog()
+		vao.Logger.Debugf("enabled static public key verification")
 	}
 
 	return co, nil
@@ -126,11 +145,20 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 	metadata := make([]*ImageMetadata, 0)
 	for _, image := range pod.ContainerImages {
 		ref, err := name.ParseReference(image)
+
+		img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 		if err != nil {
-			return nil, fmt.Errorf("parse reference: %v", err)
+			return nil, fmt.Errorf("fetch image: %v", err)
 		}
 
-		opts, err := vao.options(ctx, pod)
+		m, err := img.ConfigFile()
+		if err != nil {
+			return nil, fmt.Errorf("fetch image config: %v", err)
+		}
+
+		gCertId := github.NewCertificateIdentity(m.Config.Labels)
+
+		opts, err := vao.options(ctx, pod, gCertId)
 		if err != nil {
 			return nil, fmt.Errorf("get options: %v", err)
 		}

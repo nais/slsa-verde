@@ -5,7 +5,13 @@ import (
 )
 
 const (
-	DefaultPredicateType = "cyclonedx"
+	DefaultPredicateType          = "cyclonedx"
+	AppK8sIoNameLabelKey          = "app.kubernetes.io/name"
+	SalsaKeyRefLabelKey           = "nais.io/salsa-key-ref"
+	SalsaKeylessProviderLabelKey  = "nais.io/salsa-keyRef-provider"
+	SalsaPredicateLabelKey        = "nais.io/salsa-predicateType"
+	TeamLabelKey                  = "team"
+	IgnoreTransparencyLogLabelKey = "nais.io/salsa-ignore-transparency-log"
 )
 
 type Info struct {
@@ -39,15 +45,15 @@ func GetInfo(obj any) (*Info, error) {
 
 	return &Info{
 		ContainerImages: c,
-		Name:            labels[LabelTypeAppK8sIoName.String()],
+		Name:            labels[AppK8sIoNameLabelKey],
 		Namespace:       pod.GetNamespace(),
 		PodName:         pod.GetName(),
-		Team:            labels[LabelTypeTeamLabel.String()],
+		Team:            labels[TeamLabelKey],
 		Verifier: &Verifier{
-			PredicateType:   labels[LabelTypeSalsaPredicateLabel.String()],
-			KeyRef:          labels[LabelTypeSalsaKeyRefLabel.String()],
-			KeylessProvider: labels[LabelTypeSalsaKeylessProvider.String()],
-			IgnoreTLog:      labels[LabelTypeIgnoreTransparencyLog.String()],
+			PredicateType:   labels[SalsaPredicateLabelKey],
+			KeyRef:          labels[SalsaKeyRefLabelKey],
+			KeylessProvider: labels[SalsaKeylessProviderLabelKey],
+			IgnoreTLog:      labels[IgnoreTransparencyLogLabelKey],
 		},
 	}, nil
 }

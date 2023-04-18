@@ -9,17 +9,17 @@ import (
 )
 
 const (
-	TeamIdentityMaxLength = 30
+	IdentityTeamMaxLength = 30
 )
 
-type IdentityConfiguration struct {
+type CertificateIdentity struct {
 	Prefix string
 	Domain string
 	Issuer string
 }
 
-func NewIdentityConfiguration(prefix, domain, issuer string) *IdentityConfiguration {
-	return &IdentityConfiguration{
+func NewCertificateIdentity(prefix, domain, issuer string) *CertificateIdentity {
+	return &CertificateIdentity{
 		Prefix: prefix,
 		Domain: domain,
 		Issuer: issuer,
@@ -33,7 +33,7 @@ func truncate(s string, length int) string {
 	return s[:length]
 }
 
-func (i *IdentityConfiguration) teamHashPrefixTruncate(team string, maxLength int) string {
+func (i *CertificateIdentity) teamHashPrefixTruncate(team string, maxLength int) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(i.Prefix))
 
@@ -50,8 +50,8 @@ func (i *IdentityConfiguration) teamHashPrefixTruncate(team string, maxLength in
 	return strings.Join(parts, "-")
 }
 
-func (i *IdentityConfiguration) GetAccountIdEmailAddress(team string) cosign.Identity {
-	emailAddress := fmt.Sprintf("%s@%s", i.teamHashPrefixTruncate(team, TeamIdentityMaxLength), i.Domain)
+func (i *CertificateIdentity) GetAccountIdEmailAddress(team string) cosign.Identity {
+	emailAddress := fmt.Sprintf("%s@%s", i.teamHashPrefixTruncate(team, IdentityTeamMaxLength), i.Domain)
 	return cosign.Identity{
 		Issuer:  i.Issuer,
 		Subject: emailAddress,

@@ -79,11 +79,10 @@ func main() {
 		IgnoreTlog: cfg.Cosign.IgnoreTLog,
 	}
 
-	teamIdentityConfig := team.NewIdentityConfiguration(cfg.TeamIdentity.Prefix, cfg.TeamIdentity.Domain, cfg.TeamIdentity.Issuer)
 	opts := attestation.NewVerifyAttestationOpts(
 		verifyCmd,
 		cfg.GetPreConfiguredIdentities(),
-		teamIdentityConfig,
+		team.NewCertificateIdentity(cfg.TeamIdentity.Prefix, cfg.TeamIdentity.Domain, cfg.TeamIdentity.Issuer),
 		cfg.Cosign.KeyRef,
 	)
 

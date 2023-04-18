@@ -92,7 +92,6 @@ func (c *Client) UploadSbom(projectName, projectVersion, team, namespace string,
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	println(token)
 	_, err = do(req, c.retryOpts)
 	if err != nil {
 		return err

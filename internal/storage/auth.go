@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"github.com/avast/retry-go/v4"
 	"net/http"
 	"net/url"
 	"time"
@@ -46,7 +47,7 @@ func (c *Client) login() (string, error) {
 		return "", err
 	}
 
-	token, err := do(request)
+	token, err := do(request, retry.Attempts(0))
 	if err != nil {
 		return "", err
 	}

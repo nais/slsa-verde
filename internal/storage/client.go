@@ -6,11 +6,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/avast/retry-go/v4"
+	"github.com/in-toto/in-toto-golang/in_toto"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
-
-	"github.com/in-toto/in-toto-golang/in_toto"
 )
 
 const (
@@ -87,9 +87,10 @@ func (c *Client) UploadSbom(projectName, projectVersion, team, namespace string,
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	_, err = do(req)
+	println(token)
+	_, err = do(req, retry.Attempts(2))
 	if err != nil {
-		return fmt.Errorf("sending request: %w", err)
+		return err
 	}
 
 	c.logger.Info("sbom uploaded")
@@ -129,7 +130,7 @@ func (c *Client) addAdditionalInfoToProject(projectUuid, projectVersion, team, n
 	}
 
 	c.withHeaders(req, map[string]string{"Accept": "application/json", "Authorization": "Bearer " + token, "Content-Type": "application/json"})
-	_, err = do(req)
+	_, err = do(req, retry.Attempts(1))
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -185,7 +186,7 @@ func (c *Client) GetProject(name string, version string) (*Project, error) {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
-	resBody, err := do(req)
+	resBody, err := do(req, retry.Attempts(1))
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}
@@ -211,7 +212,7 @@ func (c *Client) CleanUpProjects(name string) error {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	resBody, err := do(req)
+	resBody, err := do(req, retry.Attempts(1))
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -244,7 +245,7 @@ func (c *Client) DeleteProject(uuid string) error {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	_, err = do(req)
+	_, err = do(req, retry.Attempts(1))
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -272,21 +273,29 @@ func (c *Client) withHeaders(req *http.Request, headers map[string]string) {
 	}
 }
 
-func do(req *http.Request) ([]byte, error) {
-	resp, err := http.DefaultClient.Do(req)
+func do(req *http.Request, option retry.Option) ([]byte, error) {
+	var resBody []byte
+	err := retry.Do(func() error {
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("sending request: %w", err)
+		}
+		if resp.StatusCode > 299 {
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return fmt.Errorf("reading response body: %w", err)
+			}
+			return fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
+		}
+		resBody, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("reading response body: %w", err)
+		}
+		return nil
+	}, option,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
-	}
-	if resp.StatusCode > 299 {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("reading response body: %w", err)
-		}
-		return nil, fmt.Errorf("unexpected status code: %d, with body:\n%s\n", resp.StatusCode, string(b))
-	}
-	resBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading response body: %w", err)
 	}
 	return resBody, nil
 }

@@ -83,7 +83,7 @@ func (c *Config) OnAdd(obj any) {
 	}
 
 	if err := c.ensureAttested(c.ctx, p); err != nil {
-		c.logger.Errorf("verify attestation %v", err)
+		c.logger.Errorf("verify attestation: %v", err)
 	}
 }
 

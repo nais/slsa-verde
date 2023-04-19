@@ -12,7 +12,7 @@ import (
 )
 
 type Config struct {
-	*storage.Client
+	Client           *storage.Client
 	verifyAttestOpts *attestation.VerifyAttestationOpts
 	logger           *log.Entry
 	ctx              context.Context
@@ -36,7 +36,7 @@ func (c *Config) OnDelete(obj any) {
 
 	for _, m := range p.ContainerImages {
 		project, _ := projectAndVersion(p.Name, m)
-		if err = c.CleanUpProjects(project); err != nil {
+		if err = c.Client.CleanUpProjects(project); err != nil {
 			c.logger.Errorf("clean up projects: %v", err)
 			return
 		}
@@ -95,7 +95,18 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 
 	for _, m := range metadata {
 		project, version := projectAndVersion(p.Name, m.Image)
-		if err = c.UploadSbom(project, version, p.Team, p.Namespace, m.Statement); err != nil {
+
+		pp, err := c.Client.GetProject(project, version)
+		if err != nil {
+			return err
+		}
+
+		if pp != nil {
+			log.Infof("project %s with uuid %s already exists, ignoring", project, pp.Uuid)
+			continue
+		}
+
+		if err = c.Client.UploadProject(project, version, p.Team, p.Namespace, m.Statement); err != nil {
 			return err
 		}
 	}

@@ -56,6 +56,7 @@ type Storage struct {
 	Api      string `json:"api"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Team     string `json:"team"`
 }
 
 const (
@@ -72,6 +73,7 @@ const (
 	StorageApi             = "storage.api"
 	StorageUsername        = "storage.username"
 	StoragePassword        = "storage.password"
+	StorageTeam            = "storage.team"
 	TeamIdentityDomain     = "teamIdentity.domain"
 	TeamIdentityIssuer     = "teamIdentity.issuer"
 	TeamIdentityPrefix     = "teamIdentity.prefix"
@@ -101,6 +103,7 @@ func init() {
 	flag.String(StorageApi, "", "Salsa storage API endpoint")
 	flag.String(StorageUsername, "", "Salsa storage username")
 	flag.String(StoragePassword, "", "Salsa storage password")
+	flag.String(StorageTeam, "", "Salsa storage team")
 	flag.String(TeamIdentityPrefix, "", "Prefix for team identity")
 	flag.String(TeamIdentityDomain, "", "Domain for team identity")
 	flag.String(TeamIdentityIssuer, "", "Issuer for team identity")

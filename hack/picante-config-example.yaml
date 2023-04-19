@@ -11,6 +11,7 @@ storage:
   api: http://localhost:9001/api/v1
   username: admin
   password: admin
+  team: Administrators
 identities:
   - issuer-reg-exp: .*provider.com
     subject-reg-exp: ".*@som-subject.com"

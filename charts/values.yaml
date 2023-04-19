@@ -24,13 +24,15 @@ config:
   features:
     enabled: true
     labelSelectors:
-      "nais.io/salsa-verify-attestation": "true"
+      - name: "nais.io/salsa-verify-attestation"
+        value: "true"
   cosign:
     keyRef: /etc/cosign/kms.pub
   storage:
     api: http://dependencytrack-backend
     username: picante
     password:
+    team: Administrators
   identities:
     - issuer:
       subjectRegExp:
@@ -40,7 +42,9 @@ config:
     prefix:
     issuer:
     domain:
-  kmsPubKey: |
+
+kms:
+  pubKey: |
     -----BEGIN PUBLIC KEY-----
     MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxgOVWCBlCTpJcKKJxQTLBAkp5F9
     /rKmU0cIhHkBJmbPLcDtmoDX0fX7d9OzpK7eLyBg+c/rRcQgGvZvBCLRKQ==

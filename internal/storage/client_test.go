@@ -23,12 +23,34 @@ func TestUploadSbom(t *testing.T) {
 	assert.NoError(t, err)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		switch r.Method {
 		case http.MethodGet:
-			err := requestIsValid(t, r, http.MethodGet, "/api/v1/project/lookup")
-			_, err = fmt.Fprintf(w, "{\"name\":\"project1\", \"uuid\":\"1234\", \"version\":\"1.0.1\"}\n")
-			assert.NoError(t, err)
+			println(r.URL.Path)
+			switch r.URL.Path {
+			case "/api/v1/project/lookup":
+				p, err := json.Marshal(Project{
+					Name:    "project1",
+					Uuid:    "1234",
+					Version: "1.0.1",
+				})
+				_, err = fmt.Fprintf(w, string(p))
+				assert.NoError(t, err)
+			case "/api/v1/team":
+				tt, err := json.Marshal([]Team{
+					{
+						Name: "Administrators",
+						Uuid: "1234",
+						Apikeys: []ApiKey{
+							{
+								Key: "key",
+							},
+						},
+					},
+				})
+				assert.NoError(t, err)
+				_, err = fmt.Fprintf(w, string(tt))
+				assert.NoError(t, err)
+			}
 		case http.MethodPut:
 			err = requestIsValid(t, r, http.MethodPut, "/api/v1/bom")
 			assert.NoError(t, err)
@@ -42,13 +64,13 @@ func TestUploadSbom(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 
-		//_, err = fmt.Fprintf(w, "{\"token\":\"66c6c8f0-f826-40b9-acbf-ce99c0b8d2af\"}\n")
+		// _, err = fmt.Fprintf(w, "{\"token\":\"66c6c8f0-f826-40b9-acbf-ce99c0b8d2af\"}\n")
 		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
-	client := NewClient(ctx, server.URL, "admin", "admin")
-	err = client.UploadSbom("project1", "1.0.1", "team1", "namespace", a)
+	client := NewClient(ctx, server.URL, "admin", "admin", "Administrators")
+	err = client.UploadProject("project1", "1.0.1", "team1", "namespace", a)
 	assert.NoError(t, err)
 }
 
@@ -76,7 +98,11 @@ func requestIsValid(t *testing.T, r *http.Request, expectedMethod, expectedURL s
 		assert.Equal(t, expectedMethod, r.Method)
 		assert.Equal(t, expectedURL, r.URL.Path)
 		assert.Equal(t, r.Header.Get("Content-Type"), "application/json")
-		assert.NotEmpty(t, r.Header.Get("Authorization"), "Authorization header is empty")
+		if expectedURL == "api/v1/user/login" {
+			assert.NotEmpty(t, r.Header.Get("X-Api-Key"), "X-Api-Key header is empty")
+		} else {
+			assert.NotEmpty(t, r.Header.Get("Authorization"), "Authorization header is empty")
+		}
 	case http.MethodPut:
 		b, err := io.ReadAll(r.Body)
 		var p BomSubmitRequest
@@ -87,7 +113,6 @@ func requestIsValid(t *testing.T, r *http.Request, expectedMethod, expectedURL s
 		assert.Equal(t, expectedMethod, r.Method)
 		assert.Equal(t, expectedURL, r.URL.Path)
 		assert.Equal(t, r.Header.Get("Content-Type"), "application/json")
-		assert.NotEmpty(t, r.Header.Get("Authorization"), "Authorization header is empty")
 		assert.NotEmpty(t, p.ProjectName)
 		assert.NotEmpty(t, p.ProjectVersion)
 		assert.Equal(t, p.AutoCreate, true)
@@ -103,7 +128,7 @@ func requestIsValid(t *testing.T, r *http.Request, expectedMethod, expectedURL s
 		assert.Equal(t, expectedURL, r.URL.Path)
 		assert.NotEmpty(t, tag.Tags)
 		assert.Equal(t, r.Header.Get("Content-Type"), "application/json")
-		assert.NotEmpty(t, r.Header.Get("Authorization"), "Authorization header is empty")
+		assert.NotEmpty(t, r.Header.Get("X-Api-Key"), "Authorization header is empty")
 	}
 	return nil
 }

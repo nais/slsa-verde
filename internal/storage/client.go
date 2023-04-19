@@ -54,11 +54,12 @@ type Tags struct {
 	Tags []Tag `json:"tags"`
 }
 
-func NewClient(ctx context.Context, baseUrl, username, password string) *Client {
+func NewClient(ctx context.Context, baseUrl, username, password, team string) *Client {
 	return &Client{
 		Auth: &Auth{
 			username: username,
 			password: password,
+			team:     team,
 		},
 		baseUrl: baseUrl + ApiVersion1,
 		ctx:     ctx,
@@ -71,15 +72,30 @@ func NewClient(ctx context.Context, baseUrl, username, password string) *Client 
 	}
 }
 
-func (c *Client) UploadSbom(projectName, projectVersion, team, namespace string, statement *in_toto.CycloneDXStatement) error {
+func createBomSubmitRequest(projectName string, projectVersion string, statement *in_toto.CycloneDXStatement) ([]byte, error) {
+	b, err := json.Marshal(statement.Predicate)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling statement.predicate: %w", err)
+	}
+	bom := base64.StdEncoding.EncodeToString(b)
+	p := &BomSubmitRequest{
+		ProjectName:    projectName,
+		ProjectVersion: projectVersion,
+		AutoCreate:     true,
+		Bom:            bom,
+	}
+	return json.Marshal(p)
+}
+
+func (c *Client) UploadProject(projectName, projectVersion, team, namespace string, statement *in_toto.CycloneDXStatement) error {
 	c.logger.WithFields(log.Fields{
 		"projectName":    projectName,
 		"projectVersion": projectVersion,
 	}).Info("uploading sbom")
 
-	token, err := c.Token()
+	apiKey, err := c.ApiKey()
 	if err != nil {
-		return fmt.Errorf("getting token: %w", err)
+		return fmt.Errorf("getting apiKey: %w", err)
 	}
 
 	p, err := createBomSubmitRequest(projectName, projectVersion, statement)
@@ -88,7 +104,7 @@ func (c *Client) UploadSbom(projectName, projectVersion, team, namespace string,
 	}
 
 	req, err := c.createRequest(http.MethodPut, BomPath, p)
-	c.withHeaders(req, map[string]string{"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+	c.withHeaders(req, map[string]string{"X-Api-Key": apiKey, "Content-Type": "application/json"})
 
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
@@ -120,12 +136,12 @@ func (c *Client) addAdditionalInfoToProject(projectUuid, projectVersion, team, n
 		"namespace":   namespace,
 	}).Debug("adding additional info to project")
 
-	token, err := c.Token()
+	apiKey, err := c.ApiKey()
 	if err != nil {
-		return fmt.Errorf("getting token: %w", err)
+		return fmt.Errorf("getting apiKey: %w", err)
 	}
 
-	body, err := c.createProjectBody(projectVersion, team, namespace)
+	body, err := c.patchProjectBody(projectVersion, team, namespace)
 	if err != nil {
 		return fmt.Errorf("creating project body: %w", err)
 	}
@@ -135,7 +151,7 @@ func (c *Client) addAdditionalInfoToProject(projectUuid, projectVersion, team, n
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	c.withHeaders(req, map[string]string{"Accept": "application/json", "Authorization": "Bearer " + token, "Content-Type": "application/json"})
+	c.withHeaders(req, map[string]string{"Accept": "application/json", "X-Api-Key": apiKey, "Content-Type": "application/json"})
 	_, err = do(req, c.retryOpts)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
@@ -146,7 +162,7 @@ func (c *Client) addAdditionalInfoToProject(projectUuid, projectVersion, team, n
 	return nil
 }
 
-func (c *Client) createProjectBody(projectVersion, team, namespace string) ([]byte, error) {
+func (c *Client) patchProjectBody(projectVersion, team, namespace string) ([]byte, error) {
 	body, err := json.Marshal(Project{
 		Publisher: "picante",
 		Active:    true,
@@ -164,29 +180,14 @@ func (c *Client) createProjectBody(projectVersion, team, namespace string) ([]by
 	return body, nil
 }
 
-func createBomSubmitRequest(projectName string, projectVersion string, statement *in_toto.CycloneDXStatement) ([]byte, error) {
-	b, err := json.Marshal(statement.Predicate)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling statement.predicate: %w", err)
-	}
-	bom := base64.StdEncoding.EncodeToString(b)
-	p := &BomSubmitRequest{
-		ProjectName:    projectName,
-		ProjectVersion: projectVersion,
-		AutoCreate:     true,
-		Bom:            bom,
-	}
-	return json.Marshal(p)
-}
-
 func (c *Client) GetProject(name string, version string) (*Project, error) {
-	token, err := c.Token()
+	apiKey, err := c.ApiKey()
 	if err != nil {
-		return nil, fmt.Errorf("getting token: %w", err)
+		return nil, fmt.Errorf("getting apiKey: %w", err)
 	}
 
 	req, err := c.createRequest(http.MethodGet, ProjectPath+"/lookup?name="+name+"&version="+version, nil)
-	c.withHeaders(req, map[string]string{"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+	c.withHeaders(req, map[string]string{"X-Api-Key": apiKey, "Content-Type": "application/json"})
 
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
@@ -206,13 +207,13 @@ func (c *Client) GetProject(name string, version string) (*Project, error) {
 }
 
 func (c *Client) CleanUpProjects(name string) error {
-	token, err := c.Token()
+	apiKey, err := c.ApiKey()
 	if err != nil {
-		return fmt.Errorf("getting token: %w", err)
+		return fmt.Errorf("getting apiKey: %w", err)
 	}
 
 	req, err := c.createRequest(http.MethodGet, ProjectPath+"?name="+name+"&excludeInactive=false", nil)
-	c.withHeaders(req, map[string]string{"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+	c.withHeaders(req, map[string]string{"X-Api-Key": apiKey, "Content-Type": "application/json"})
 
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
@@ -239,13 +240,13 @@ func (c *Client) CleanUpProjects(name string) error {
 }
 
 func (c *Client) DeleteProject(uuid string) error {
-	token, err := c.Token()
+	apiKey, err := c.ApiKey()
 	if err != nil {
-		return fmt.Errorf("getting token: %w", err)
+		return fmt.Errorf("getting apiKey: %w", err)
 	}
 
 	req, err := c.createRequest(http.MethodDelete, ProjectPath+"/"+uuid, nil)
-	c.withHeaders(req, map[string]string{"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+	c.withHeaders(req, map[string]string{"X-Api-Key": apiKey, "Content-Type": "application/json"})
 
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)

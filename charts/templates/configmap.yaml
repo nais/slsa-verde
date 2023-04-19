@@ -5,4 +5,4 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   kms.pub: |
-    {{- .Values.config.kmsPubKey | nindent 4 }}
+    {{- .Values.kms.pubKey | nindent 4 }}

@@ -11,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -198,6 +199,10 @@ func (c *Client) GetProject(name string, version string) (*Project, error) {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}
 
+	if len(resBody) == 0 {
+		return nil, nil
+	}
+
 	var dtrackProject Project
 	if err = json.Unmarshal(resBody, &dtrackProject); err != nil {
 		return nil, fmt.Errorf("unmarshalling response body: %w", err)
@@ -287,6 +292,12 @@ func do(req *http.Request, options []retry.Option) ([]byte, error) {
 		if err != nil {
 			return fmt.Errorf("sending request: %w", err)
 		}
+
+		if resp.StatusCode == http.StatusNotFound && strings.Contains(req.URL.Path, "lookup") {
+			// TODO find a better way to handle this
+			return nil
+		}
+
 		if resp.StatusCode > 299 {
 			b, err := io.ReadAll(resp.Body)
 			if err != nil {

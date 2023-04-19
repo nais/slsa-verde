@@ -36,7 +36,7 @@ type ApiKey struct {
 }
 
 func (c *Client) getApiKey(uuid, token string) (string, error) {
-	request, err := c.createRequest(http.MethodPut, TeamPath+uuid+"/key", nil)
+	request, err := c.createRequest(http.MethodPut, TeamPath+"/"+uuid+"/key", nil)
 	c.withHeaders(request, map[string]string{
 		"Authorization": "Bearer " + token,
 		"Accept":        "application/json",

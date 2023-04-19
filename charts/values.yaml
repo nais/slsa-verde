@@ -24,8 +24,7 @@ config:
   features:
     enabled: true
     labelSelectors:
-      - name: "nais.io/salsa-verify-attestation"
-        value: "true"
+      "nais.io/salsa-verify-attestation": "true"
   cosign:
     keyRef: /etc/cosign/kms.pub
   storage:

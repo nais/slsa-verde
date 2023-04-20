@@ -21,6 +21,7 @@ import (
 	"picante/internal/github"
 	"picante/internal/pod"
 	"picante/internal/team"
+	"strings"
 )
 
 type ImageMetadata struct {
@@ -180,6 +181,13 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 		} else {
 			verified, bVerified, err = cosign.VerifyImageAttestations(ctx, ref, opts)
 			if err != nil {
+				if strings.Contains(err.Error(), "no matching attestations") {
+					vao.Logger.WithFields(log.Fields{
+						"image": image,
+						"msg":   err.Error(),
+					}).Warnf("no matching attestations found")
+					continue
+				}
 				return nil, err
 			}
 		}

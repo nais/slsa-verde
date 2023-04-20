@@ -58,7 +58,7 @@ func main() {
 	mainLogger.Info("setting up informer")
 	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 0, informers.WithTweakListOptions(
 		func(options *v1.ListOptions) {
-			if cfg.Features.Enabled && len(cfg.Features.LabelSelectors) > 0 {
+			if cfg.Features.LabelSelectors != nil && len(cfg.Features.LabelSelectors) > 0 {
 				options.LabelSelector = cfg.GetLabelSelectors()
 			}
 			options.FieldSelector = "status.phase=Running"

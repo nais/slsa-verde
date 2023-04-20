@@ -22,7 +22,7 @@ backend:
 
 config:
   features:
-    enabled: true
+    enabled: false
     labelSelectors:
       "nais.io/salsa-verify-attestation": "true"
   cosign:

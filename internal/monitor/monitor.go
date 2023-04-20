@@ -28,15 +28,15 @@ func NewMonitor(ctx context.Context, client *storage.Client, opts *attestation.V
 }
 
 func (c *Config) OnDelete(obj any) {
-	p, err := pod.GetInfo(obj)
-	if err != nil {
-		c.logger.Debugf("get pod info: %v", err)
+	p := pod.GetInfo(obj)
+	if !p.HasTeamLabel() {
+		c.logger.Debugf("ignoring pod with no team label")
 		return
 	}
 
 	for _, m := range p.ContainerImages {
 		project, _ := projectAndVersion(p.Name, m)
-		if err = c.Client.CleanUpProjects(project); err != nil {
+		if err := c.Client.CleanUpProjects(project); err != nil {
 			c.logger.Errorf("clean up projects: %v", err)
 			return
 		}
@@ -51,15 +51,11 @@ func (c *Config) OnDelete(obj any) {
 func (c *Config) OnUpdate(old any, new any) {
 	c.logger.Debug("pod updated event, check if image needs to be attested")
 
-	p, err := pod.GetInfo(old)
-	if err != nil {
-		c.logger.Debugf("get pod info: %v", err)
-		return
-	}
+	p := pod.GetInfo(old)
+	p2 := pod.GetInfo(new)
 
-	p2, err := pod.GetInfo(new)
-	if err != nil {
-		c.logger.Debugf("get pod info: %v", err)
+	if !p.HasTeamLabel() || !p2.HasTeamLabel() {
+		c.logger.Debugf("ignoring pod with no team label")
 		return
 	}
 
@@ -68,7 +64,7 @@ func (c *Config) OnUpdate(old any, new any) {
 		return
 	}
 
-	if err = c.ensureAttested(c.ctx, p); err != nil {
+	if err := c.ensureAttested(c.ctx, p); err != nil {
 		c.logger.Errorf("verfy attesation pod %v", err)
 	}
 }
@@ -76,8 +72,8 @@ func (c *Config) OnUpdate(old any, new any) {
 func (c *Config) OnAdd(obj any) {
 	c.logger.Debug("new pod event, check if image needs to be attested")
 
-	p, err := pod.GetInfo(obj)
-	if err != nil {
+	p := pod.GetInfo(obj)
+	if !p.HasTeamLabel() {
 		c.logger.Debugf("ignoring pod with no team label")
 		return
 	}

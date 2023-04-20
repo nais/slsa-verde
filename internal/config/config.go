@@ -30,7 +30,6 @@ type Cosign struct {
 }
 
 type Features struct {
-	Enabled        bool    `json:"enabled"`
 	LabelSelectors []Label `json:"label-selectors"`
 }
 
@@ -65,7 +64,6 @@ const (
 	CosignLocalImage       = "cosign.local-image"
 	CosignRekorURL         = "cosign.rekor-url"
 	DevelopmentMode        = "development-mode"
-	FeaturesEnabled        = "features.enabled"
 	FeaturesLabelSelectors = "features.label-selectors"
 	Identities             = "identities"
 	LogLevel               = "log-level"
@@ -93,7 +91,6 @@ func init() {
 	flag.Bool(CosignIgnoreTLog, false, "Ignore transparency log")
 	flag.Bool(CosignLocalImage, false, "Use local image")
 	flag.Bool(DevelopmentMode, false, "Toggle for development mode.")
-	flag.Bool(FeaturesEnabled, false, "Enable feature flagging")
 	flag.String(CosignKeyRef, "", "The key reference, empty for keyless attestation")
 	flag.String(CosignRekorURL, "https://rekor.sigstore.dev", "Rekor URL")
 	flag.StringSlice(FeaturesLabelSelectors, []string{}, "List of labels to filter on")

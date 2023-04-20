@@ -30,7 +30,7 @@ type Verifier struct {
 	IgnoreTLog      string
 }
 
-func GetInfo(obj any) (*Info, error) {
+func GetInfo(obj any) *Info {
 	pod := obj.(*v1.Pod)
 	labels := pod.GetLabels()
 
@@ -55,7 +55,7 @@ func GetInfo(obj any) (*Info, error) {
 			KeylessProvider: labels[SalsaKeylessProviderLabelKey],
 			IgnoreTLog:      labels[IgnoreTransparencyLogLabelKey],
 		},
-	}, nil
+	}
 }
 func (p *Info) IgnoreTLog() bool {
 	if p.Verifier == nil {
@@ -87,4 +87,8 @@ func (p *Info) KeylessVerification() bool {
 		return false
 	}
 	return true
+}
+
+func (p *Info) HasTeamLabel() bool {
+	return p.Team != ""
 }

@@ -304,6 +304,8 @@ func do(req *http.Request, options []retry.Option) ([]byte, error) {
 			return fmt.Errorf("sending request: %w", err)
 		}
 
+		defer resp.Body.Close()
+
 		if resp.StatusCode == http.StatusNotFound && strings.Contains(req.URL.Path, "lookup") {
 			// TODO find a better way to handle this
 			return nil

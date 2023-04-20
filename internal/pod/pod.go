@@ -18,9 +18,9 @@ type Info struct {
 	ContainerImages []string
 	Name            string
 	Namespace       string
-	Verifier        *Verifier
 	PodName         string
 	Team            string
+	Verifier        *Verifier
 }
 
 type Verifier struct {

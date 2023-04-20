@@ -36,15 +36,25 @@ type BomSubmitRequest struct {
 	Bom            string `json:"bom"`
 }
 
-type Project struct {
-	Active    bool   `json:"active"`
-	Author    string `json:"author"`
-	Group     string `json:"group"`
+type Purl struct {
+	Scheme    string `json:"scheme"`
+	Type      string `json:"type"`
+	Namespace string `json:"namespace"`
 	Name      string `json:"name"`
-	Publisher string `json:"publisher"`
-	Tags      []Tag  `json:"tags"`
-	Uuid      string `json:"uuid"`
 	Version   string `json:"version"`
+}
+
+type Project struct {
+	Active     bool   `json:"active"`
+	Author     string `json:"author"`
+	Classifier string `json:"classifier"`
+	Group      string `json:"group"`
+	Name       string `json:"name"`
+	Publisher  string `json:"publisher"`
+	Tags       []Tag  `json:"tags"`
+	Purl       Purl   `json:"purl"`
+	Uuid       string `json:"uuid"`
+	Version    string `json:"version"`
 }
 
 type Tag struct {
@@ -158,17 +168,18 @@ func (c *Client) addAdditionalInfoToProject(projectUuid, projectVersion, team, n
 		return fmt.Errorf("sending request: %w", err)
 	}
 
-	c.logger.Debug("additional info added to project")
+	c.logger.Info("additional info added to project")
 
 	return nil
 }
 
 func (c *Client) patchProjectBody(projectVersion, team, namespace string) ([]byte, error) {
 	body, err := json.Marshal(Project{
-		Publisher: "picante",
-		Active:    true,
-		Version:   projectVersion,
-		Group:     namespace,
+		Publisher:  "picante",
+		Active:     true,
+		Classifier: "APPLICATION",
+		Version:    projectVersion,
+		Group:      namespace,
 		Tags: []Tag{
 			{
 				Name: team,

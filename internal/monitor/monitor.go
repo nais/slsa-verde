@@ -40,11 +40,6 @@ func (c *Config) OnDelete(obj any) {
 			c.logger.Errorf("clean up projects: %v", err)
 			return
 		}
-		c.logger.WithFields(log.Fields{
-			"project": project,
-			"team":    p.Team,
-			"pod":     p.PodName,
-		}).Infof("cleaned up project")
 	}
 }
 
@@ -98,7 +93,11 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 		}
 
 		if pp != nil {
-			log.Infof("project %s with uuid %s already exists, ignoring", project, pp.Uuid)
+			c.logger.WithFields(log.Fields{
+				"project": project,
+				"version": version,
+				"uuid":    pp.Uuid,
+			}).Info("project already exists, skipping")
 			continue
 		}
 

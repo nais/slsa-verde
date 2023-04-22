@@ -56,10 +56,6 @@ func (vao *VerifyAttestationOpts) certificateIdentityTeamEnabled(team string) bo
 	return vao.TeamIdentity != nil && team != ""
 }
 
-func certificateIdentityGithubEnabled(gCertId *github.CertificateIdentity) bool {
-	return gCertId != nil && gCertId.Enabled()
-}
-
 func (vao *VerifyAttestationOpts) BuildCertificateIdentities(team string, gCertId *github.CertificateIdentity) []cosign.Identity {
 	var result []cosign.Identity
 	if vao.certificateIdentityPreConfiguredEnabled() {
@@ -70,8 +66,9 @@ func (vao *VerifyAttestationOpts) BuildCertificateIdentities(team string, gCertI
 		result = append(result, vao.TeamIdentity.GetAccountIdEmailAddress(team))
 	}
 
-	if certificateIdentityGithubEnabled(gCertId) {
-		result = append(result, gCertId.GetIdentity())
+	if gCertId != nil && gCertId.Enabled() && gCertId.IsValid() {
+		id := gCertId.GetIdentity()
+		result = append(result, id)
 	}
 
 	vao.Logger.WithFields(log.Fields{"identities": result}).Debug("Identities")

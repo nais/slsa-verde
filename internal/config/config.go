@@ -11,17 +11,6 @@ import (
 	"strings"
 )
 
-type Config struct {
-	Cosign                    Cosign       `json:"cosign"`
-	DevelopmentMode           bool         `json:"development-mode"`
-	Features                  Features     `json:"features"`
-	LogLevel                  string       `json:"log-level"`
-	MetricsBindAddress        string       `json:"metrics-address"`
-	PreConfiguredSaIdentities []Identity   `json:"identities"`
-	Storage                   Storage      `json:"storage"`
-	TeamIdentity              TeamIdentity `json:"teamIdentity"`
-}
-
 type Cosign struct {
 	IgnoreTLog bool   `json:"ignore-tlog"`
 	KeyRef     string `json:"key-ref"`
@@ -29,19 +18,13 @@ type Cosign struct {
 	RekorURL   string `json:"rekor-url"`
 }
 
-type Features struct {
-	LabelSelectors []Label `json:"label-selectors"`
-}
-
 type Label struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 
-type TeamIdentity struct {
-	Domain string `json:"domain"`
-	Issuer string `json:"issuer"`
-	Prefix string `json:"prefix"`
+type Features struct {
+	LabelSelectors []Label `json:"label-selectors"`
 }
 
 type Identity struct {
@@ -56,6 +39,23 @@ type Storage struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Team     string `json:"team"`
+}
+
+type TeamIdentity struct {
+	Domain string `json:"domain"`
+	Issuer string `json:"issuer"`
+	Prefix string `json:"prefix"`
+}
+
+type Config struct {
+	Cosign                    Cosign       `json:"cosign"`
+	DevelopmentMode           bool         `json:"development-mode"`
+	Features                  Features     `json:"features"`
+	LogLevel                  string       `json:"log-level"`
+	MetricsBindAddress        string       `json:"metrics-address"`
+	PreConfiguredSaIdentities []Identity   `json:"identities"`
+	Storage                   Storage      `json:"storage"`
+	TeamIdentity              TeamIdentity `json:"teamIdentity"`
 }
 
 const (

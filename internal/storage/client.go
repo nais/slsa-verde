@@ -245,11 +245,19 @@ func (c *Client) CleanUpProjects(name string) error {
 		return fmt.Errorf("unmarshalling response body: %w", err)
 	}
 
+	if len(dtrackProjects) == 0 {
+		return nil
+	}
+
 	for _, project := range dtrackProjects {
 		err = c.DeleteProject(project.Uuid)
 		if err != nil {
 			return fmt.Errorf("deleting project: %w", err)
 		}
+		log.Info(log.Fields{
+			"project": project.Name,
+			"version": project.Version,
+		}, "project deleted")
 	}
 
 	return nil

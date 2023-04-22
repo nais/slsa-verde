@@ -22,7 +22,7 @@ func NewMonitor(ctx context.Context, client *storage.Client, opts *attestation.V
 	return &Config{
 		Client:           client,
 		verifyAttestOpts: opts,
-		logger:           log.WithFields(log.Fields{"component": "monitor"}),
+		logger:           log.WithFields(log.Fields{"package": "monitor"}),
 		ctx:              ctx,
 	}
 }

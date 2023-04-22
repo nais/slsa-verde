@@ -28,7 +28,8 @@ type CertificateIdentity struct {
 
 func NewCertificateIdentity(labels map[string]string) *CertificateIdentity {
 	return &CertificateIdentity{
-		SubjectRegex: "^(?:nais|navikt)\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/[a-zA-Z0-9_.-]+?@refs\\/heads\\/[a-zA-Z0-9_.-]+?$",
+		// nais/yolo-bolo/.github/workflows/main.yml@refs/heads/master
+		SubjectRegex: "^(?:nais|navikt)\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/[a-zA-Z0-9_-]+?(?:.yaml|.yml)@refs\\/heads\\/[a-zA-Z0-9_-]+?$",
 		logger:       log.WithField("package", "github"),
 		Repository:   labels[ImageRepositoryLabelKey],
 		ServerUrl:    labels[ImageServerUrlLabelKey],
@@ -50,7 +51,6 @@ func (c *CertificateIdentity) IsValid() bool {
 		return false
 	}
 
-	// nais/yolo-bolo/.github/workflows/main.yml@refs/heads/master
 	re := regexp.MustCompile(c.SubjectRegex)
 	if re.MatchString(c.WorkFlowRef) {
 		return true

@@ -42,7 +42,7 @@ func NewVerifyAttestationOpts(verifyCmd *verify.VerifyAttestationCommand, identi
 	return &VerifyAttestationOpts{
 		Identities:   identities,
 		KeyRef:       keyRef,
-		Logger:       log.WithFields(log.Fields{"component": "attestation"}),
+		Logger:       log.WithFields(log.Fields{"package": "attestation"}),
 		TeamIdentity: teamIdentity,
 		VerifyCmd:    verifyCmd,
 	}

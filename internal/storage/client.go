@@ -74,7 +74,7 @@ func NewClient(ctx context.Context, baseUrl, username, password, team string) *C
 		},
 		baseUrl: baseUrl + ApiVersion1,
 		ctx:     ctx,
-		logger:  log.WithFields(log.Fields{"component": "storage"}),
+		logger:  log.WithFields(log.Fields{"package": "storage"}),
 		retryOpts: []retry.Option{
 			retry.Attempts(DefaultRetryAttempts),
 			retry.LastErrorOnly(true),

@@ -27,7 +27,7 @@ import (
 //
 //	attCommand := attest.AttestCommand{
 //		KeyOpts: options.KeyOpts{
-//			KeyRef: "testdata/cosign.key",
+//			StaticKeyRef: "testdata/cosign.key",
 //		},
 //		RegistryOptions: options.RegistryOptions{},
 //		PredicatePath:   "testdata/sbom.json",
@@ -42,7 +42,7 @@ import (
 //	opts := &attestation.VerifyAttestationOpts{
 //		VerifyCmd: &verify.VerifyAttestationCommand{
 //			IgnoreTlog:    true,
-//			KeyRef:        "testdata/cosign.pub",
+//			StaticKeyRef:        "testdata/cosign.pub",
 //			PredicateType: "cyclonedx",
 //		},
 //	}

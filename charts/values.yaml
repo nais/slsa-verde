@@ -32,15 +32,12 @@ config:
     username: picante
     password:
     team: Administrators
-  identities:
-    - issuer:
-      subjectRegExp:
-    - issuerRegExp:
-      subject:
+  identities: [ ]
   teamIdentity:
-    prefix:
     issuer:
     domain:
+  github:
+    organizations: [ ]
 
 kms:
   pubKey: |

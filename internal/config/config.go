@@ -44,13 +44,17 @@ type Storage struct {
 type TeamIdentity struct {
 	Domain string `json:"domain"`
 	Issuer string `json:"issuer"`
-	Prefix string `json:"prefix"`
+}
+
+type GitHub struct {
+	Organizations []string `json:"organizations"`
 }
 
 type Config struct {
 	Cosign                    Cosign       `json:"cosign"`
 	DevelopmentMode           bool         `json:"development-mode"`
 	Features                  Features     `json:"features"`
+	GitHub                    GitHub       `json:"github"`
 	LogLevel                  string       `json:"log-level"`
 	MetricsBindAddress        string       `json:"metrics-address"`
 	PreConfiguredSaIdentities []Identity   `json:"identities"`
@@ -65,6 +69,7 @@ const (
 	CosignRekorURL         = "cosign.rekor-url"
 	DevelopmentMode        = "development-mode"
 	FeaturesLabelSelectors = "features.label-selectors"
+	GitHubOrganizations    = "github.organizations"
 	Identities             = "identities"
 	LogLevel               = "log-level"
 	MetricsAddress         = "metrics-address"
@@ -74,7 +79,6 @@ const (
 	StorageTeam            = "storage.team"
 	TeamIdentityDomain     = "teamIdentity.domain"
 	TeamIdentityIssuer     = "teamIdentity.issuer"
-	TeamIdentityPrefix     = "teamIdentity.prefix"
 )
 
 func init() {
@@ -93,17 +97,17 @@ func init() {
 	flag.Bool(DevelopmentMode, false, "Toggle for development mode.")
 	flag.String(CosignKeyRef, "", "The key reference, empty for keyless attestation")
 	flag.String(CosignRekorURL, "https://rekor.sigstore.dev", "Rekor URL")
-	flag.StringSlice(FeaturesLabelSelectors, []string{}, "List of labels to filter on")
-	flag.StringSlice(Identities, []string{}, "List of identities to filter on")
 	flag.String(LogLevel, "info", "Which log level to output")
 	flag.String(MetricsAddress, ":8080", "Bind address")
 	flag.String(StorageApi, "", "Salsa storage API endpoint")
-	flag.String(StorageUsername, "", "Salsa storage username")
 	flag.String(StoragePassword, "", "Salsa storage password")
 	flag.String(StorageTeam, "", "Salsa storage team")
-	flag.String(TeamIdentityPrefix, "", "Prefix for team identity")
+	flag.String(StorageUsername, "", "Salsa storage username")
 	flag.String(TeamIdentityDomain, "", "Domain for team identity")
 	flag.String(TeamIdentityIssuer, "", "Issuer for team identity")
+	flag.StringSlice(FeaturesLabelSelectors, []string{}, "List of labels to filter on")
+	flag.StringSlice(Identities, []string{}, "List of identities to filter on")
+	flag.StringSlice(GitHubOrganizations, []string{}, "List of GitHub organizations to filter on")
 }
 
 func Load() (*Config, error) {

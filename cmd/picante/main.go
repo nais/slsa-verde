@@ -81,8 +81,9 @@ func main() {
 
 	opts := attestation.NewVerifyAttestationOpts(
 		verifyCmd,
+		cfg.GitHub.Organizations,
 		cfg.GetPreConfiguredIdentities(),
-		team.NewCertificateIdentity(cfg.TeamIdentity.Prefix, cfg.TeamIdentity.Domain, cfg.TeamIdentity.Issuer),
+		team.NewCertificateIdentity(cfg.TeamIdentity.Domain, cfg.TeamIdentity.Issuer),
 		cfg.Cosign.KeyRef,
 	)
 

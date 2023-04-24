@@ -17,25 +17,24 @@ const (
 )
 
 type CertificateIdentity struct {
-	SubjectRegex string
-	Repository   string
-	ServerUrl    string
-	Sha          string
-	Workflow     string
-	WorkFlowRef  string
-	logger       *log.Entry
+	logger        *log.Entry
+	Organizations []string
+	Repository    string
+	ServerUrl     string
+	Sha           string
+	Workflow      string
+	WorkFlowRef   string
 }
 
-func NewCertificateIdentity(labels map[string]string) *CertificateIdentity {
+func NewCertificateIdentity(organisations []string, labels map[string]string) *CertificateIdentity {
 	return &CertificateIdentity{
-		// nais/yolo-bolo/.github/workflows/main.yml@refs/heads/master
-		SubjectRegex: "^(?:nais|navikt)\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/[a-zA-Z0-9_-]+?(?:.yaml|.yml)@refs\\/heads\\/[a-zA-Z0-9_-]+?$",
-		logger:       log.WithField("package", "github"),
-		Repository:   labels[ImageRepositoryLabelKey],
-		ServerUrl:    labels[ImageServerUrlLabelKey],
-		Sha:          labels[ImageShaLabelKey],
-		Workflow:     labels[ImageWorkflowLabelKey],
-		WorkFlowRef:  labels[ImageWorkflowRefLabelKey],
+		logger:        log.WithField("package", "github"),
+		Organizations: organisations,
+		Repository:    labels[ImageRepositoryLabelKey],
+		ServerUrl:     labels[ImageServerUrlLabelKey],
+		Sha:           labels[ImageShaLabelKey],
+		Workflow:      labels[ImageWorkflowLabelKey],
+		WorkFlowRef:   labels[ImageWorkflowRefLabelKey],
 	}
 }
 
@@ -51,9 +50,12 @@ func (c *CertificateIdentity) IsValid() bool {
 		return false
 	}
 
-	re := regexp.MustCompile(c.SubjectRegex)
-	if re.MatchString(c.WorkFlowRef) {
-		return true
+	for _, org := range c.Organizations {
+		// nais/yolo-bolo/.github/workflows/main.yml@refs/heads/master
+		re := regexp.MustCompile("^" + org + "\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/[a-zA-Z0-9_-]+?(?:.yaml|.yml)@refs\\/heads\\/[a-zA-Z0-9_-]+?$")
+		if re.MatchString(c.WorkFlowRef) {
+			return true
+		}
 	}
 	c.logger.WithFields(log.Fields{
 		"workFlowRef": c.WorkFlowRef,

@@ -106,7 +106,7 @@ func (c *Client) updateApiKey(token string) (string, error) {
 	log.Debugf("apiKey not set")
 	team, err := c.getTeam(token)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("getting team: %v", err)
 	}
 
 	if len(team.Apikeys) > 0 {
@@ -118,7 +118,7 @@ func (c *Client) updateApiKey(token string) (string, error) {
 	log.Debugf("getting new apiKey")
 	key, err := c.getApiKey(team.Uuid, token)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("getting apiKey: %v", err)
 	}
 	return key, nil
 }
@@ -150,9 +150,9 @@ func (c *Client) login() (string, error) {
 	return string(token), nil
 }
 
-func (c *Client) isExpired() bool {
+func (c *Client) isExpired() (bool, error) {
 	if c.Auth.accessToken == "" {
-		return true
+		return true, nil
 	}
 	parseOpts := []jwt.ParseOption{
 		jwt.WithVerify(false),
@@ -160,16 +160,21 @@ func (c *Client) isExpired() bool {
 	token, err := jwt.ParseString(c.Auth.accessToken, parseOpts...)
 	if err != nil {
 		log.Errorf("error parsing accessToken: %v", err)
-		return true
+		return true, err
 	}
 	if token.Expiration().Before(time.Now().Add(-1 * time.Minute)) {
-		return true
+		return true, nil
 	}
-	return false
+	return false, err
 }
 
 func (c *Client) ApiKey() (string, error) {
-	if c.Auth.accessToken == "" || c.isExpired() || c.Auth.apiKey == "" {
+	expired, err := c.isExpired()
+	if err != nil {
+		return "", err
+	}
+
+	if c.Auth.accessToken == "" || expired || c.Auth.apiKey == "" {
 		log.Debugf("accessToken expired, getting new one")
 		token, err := c.login()
 		if err != nil {

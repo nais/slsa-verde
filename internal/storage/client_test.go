@@ -132,3 +132,46 @@ func requestIsValid(t *testing.T, r *http.Request, expectedMethod, expectedURL s
 	}
 	return nil
 }
+
+func TestClient_ApiKey(t *testing.T) {
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		switch r.Method {
+		case http.MethodPost:
+			if r.URL.Path == "api/v1/user/login" {
+				_, err := fmt.Fprintf(w, "{\"token\":\"66c6c8f0-f826-40b9-acbf-ce99c0b8d2af\"}\n")
+				assert.NoError(t, err)
+			}
+		case http.MethodGet:
+			if r.URL.Path == "/api/v1/team" {
+				tt, err := json.Marshal([]Team{
+					{
+						Name: "Administrators",
+						Uuid: "1234",
+						Apikeys: []ApiKey{
+							{
+								Key: "key",
+							},
+						},
+					},
+				})
+				assert.NoError(t, err)
+				_, err = fmt.Fprintf(w, string(tt))
+				assert.NoError(t, err)
+			}
+		case http.MethodPut:
+			if r.URL.Path == "team/1234/key" {
+				_, err := fmt.Fprintf(w, "{\"key\":\"key\"}")
+				assert.NoError(t, err)
+			}
+		}
+	}))
+	defer server.Close()
+
+	client := NewClient(context.Background(), server.URL, "admin", "admin", "Administrators")
+	apiKey, err := client.ApiKey()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, apiKey)
+	assert.Equal(t, apiKey, "key")
+}

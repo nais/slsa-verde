@@ -2,4 +2,4 @@ apiVersion: v2
 name: picante
 description: Informer to update salsa storage with attestation data
 type: application
-version: 0.1.4
+version: 0.1.5

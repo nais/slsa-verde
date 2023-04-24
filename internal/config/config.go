@@ -23,6 +23,10 @@ type Label struct {
 	Value string `json:"value"`
 }
 
+type GitHub struct {
+	Organizations []string `json:"organizations"`
+}
+
 type Features struct {
 	LabelSelectors []Label `json:"label-selectors"`
 }
@@ -44,10 +48,6 @@ type Storage struct {
 type TeamIdentity struct {
 	Domain string `json:"domain"`
 	Issuer string `json:"issuer"`
-}
-
-type GitHub struct {
-	Organizations []string `json:"organizations"`
 }
 
 type Config struct {

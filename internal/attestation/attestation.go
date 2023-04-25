@@ -78,7 +78,7 @@ func (vao *VerifyAttestationOpts) BuildCertificateIdentities(team string, gCertI
 	return result
 }
 
-func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info, gCertId *github.CertificateIdentity) (*cosign.CheckOpts, error) {
+func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.Info, gCertId *github.CertificateIdentity) (*cosign.CheckOpts, error) {
 	co := &cosign.CheckOpts{}
 
 	var err error
@@ -158,7 +158,7 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 
 		gCertId := github.NewCertificateIdentity(vao.GithubOrganizations, m.Config.Labels)
 
-		opts, err := vao.options(ctx, pod, gCertId)
+		opts, err := vao.cosignOptions(ctx, pod, gCertId)
 		if err != nil {
 			return nil, fmt.Errorf("get options: %v", err)
 		}

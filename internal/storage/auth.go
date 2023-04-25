@@ -36,7 +36,7 @@ type ApiKey struct {
 }
 
 func (c *Client) getApiKey(uuid, token string) (string, error) {
-	request, err := c.createRequest(http.MethodPut, TeamPath+"/"+uuid+"/key", nil)
+	request, err := c.createRequest(http.MethodPut, TeamPath+"/"+uuid+"key", nil)
 	c.withHeaders(request, map[string]string{
 		"Authorization": "Bearer " + token,
 		"Accept":        "application/json",
@@ -46,11 +46,11 @@ func (c *Client) getApiKey(uuid, token string) (string, error) {
 		return "", err
 	}
 
-	authOpt := []retry.Option{
+	c.retryOpts = []retry.Option{
 		retry.Attempts(1),
 	}
 
-	resp, err := do(request, authOpt)
+	resp, err := c.do(request)
 	if err != nil {
 		return "", err
 	}
@@ -76,11 +76,11 @@ func (c *Client) getTeam(token string) (Team, error) {
 		return tt, err
 	}
 
-	authOpt := []retry.Option{
+	c.retryOpts = []retry.Option{
 		retry.Attempts(1),
 	}
 
-	resp, err := do(request, authOpt)
+	resp, err := c.do(request)
 	if err != nil {
 		return tt, err
 	}
@@ -138,11 +138,11 @@ func (c *Client) login() (string, error) {
 		return "", err
 	}
 
-	authOpt := []retry.Option{
+	c.retryOpts = []retry.Option{
 		retry.Attempts(1),
 	}
 
-	token, err := do(request, authOpt)
+	token, err := c.do(request)
 	if err != nil {
 		return "", err
 	}

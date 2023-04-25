@@ -18,15 +18,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOptions(t *testing.T) {
+func TestCosignOptions(t *testing.T) {
+	err := os.Setenv("SIGSTORE_CT_LOG_PUBLIC_KEY_FILE", "testdata/ct_log.pub")
+	assert.NoError(t, err)
+
 	for _, tc := range []struct {
-		desc    string
-		keyRef  string
-		tLog    bool
-		podInfo *pod.Info
+		desc      string
+		keyRef    string
+		tLog      bool
+		ignoreSCT bool
+		podInfo   *pod.Info
 	}{
 		{
-			desc:   "key ref options should match",
+			desc:   "key ref cosign options should match",
 			keyRef: "testdata/cosign.pub",
 			tLog:   true,
 			podInfo: &pod.Info{
@@ -36,11 +40,22 @@ func TestOptions(t *testing.T) {
 			},
 		},
 		{
-			desc:   "keyless options should match",
+			desc:   "keyless cosign options should match",
 			keyRef: "",
 			podInfo: &pod.Info{
 				Verifier: &pod.Verifier{
 					KeyRef: "",
+				},
+			},
+		},
+
+		{
+			desc:   "configured with tlog",
+			keyRef: "",
+			podInfo: &pod.Info{
+				Verifier: &pod.Verifier{
+					KeyRef:     "",
+					IgnoreTLog: "false",
 				},
 			},
 		},
@@ -49,6 +64,7 @@ func TestOptions(t *testing.T) {
 			v := &verify.VerifyAttestationCommand{
 				KeyRef:     tc.keyRef,
 				IgnoreTlog: tc.tLog,
+				IgnoreSCT:  tc.ignoreSCT,
 			}
 			co := &VerifyAttestationOpts{
 				StaticKeyRef: tc.keyRef,
@@ -58,10 +74,13 @@ func TestOptions(t *testing.T) {
 				VerifyAttestationCommand: v,
 			}
 
-			_, err := co.options(context.Background(), tc.podInfo, nil)
+			g := github.NewCertificateIdentity([]string{"google-yolo"}, map[string]string{})
+			_, err := co.cosignOptions(context.Background(), tc.podInfo, g)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.tLog, co.IgnoreTlog)
+			assert.Equal(t, tc.keyRef, co.KeyRef)
 			assert.Equal(t, tc.keyRef, co.StaticKeyRef)
+			assert.Equal(t, "", co.RekorURL)
 		})
 	}
 }

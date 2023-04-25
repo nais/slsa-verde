@@ -84,6 +84,10 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 		return err
 	}
 
+	if len(metadata) == 0 {
+		return nil
+	}
+
 	for _, m := range metadata {
 		project, version := projectAndVersion(p.Name, m.Image)
 

@@ -24,7 +24,8 @@ config:
   features:
     enabled: false
     labelSelectors:
-      "nais.io/salsa-verify-attestation": "true"
+      name: nais.io/salsa-verify-attestation
+      value: "true"
   cosign:
     keyRef: /etc/cosign/kms.pub
   storage:
@@ -32,15 +33,12 @@ config:
     username: picante
     password:
     team: Administrators
-  identities:
-    - issuer:
-      subjectRegExp:
-    - issuerRegExp:
-      subject:
+  identities: [ ]
   teamIdentity:
-    prefix:
     issuer:
     domain:
+  github:
+    organizations: [ ]
 
 kms:
   pubKey: |

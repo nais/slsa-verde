@@ -24,6 +24,7 @@ const (
 type Client struct {
 	Auth      *Auth
 	baseUrl   string
+	client    *http.Client
 	ctx       context.Context
 	logger    *log.Entry
 	retryOpts []retry.Option
@@ -65,7 +66,7 @@ type Tags struct {
 	Tags []Tag `json:"tags"`
 }
 
-func NewClient(ctx context.Context, baseUrl, username, password, team string) *Client {
+func NewClient(ctx context.Context, client *http.Client, baseUrl, username, password, team string) *Client {
 	return &Client{
 		Auth: &Auth{
 			username: username,
@@ -73,6 +74,7 @@ func NewClient(ctx context.Context, baseUrl, username, password, team string) *C
 			team:     team,
 		},
 		baseUrl: baseUrl + ApiVersion1,
+		client:  client,
 		ctx:     ctx,
 		logger:  log.WithFields(log.Fields{"package": "storage"}),
 		retryOpts: []retry.Option{
@@ -121,7 +123,7 @@ func (c *Client) UploadProject(projectName, projectVersion, team, namespace stri
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	_, err = do(req, c.retryOpts)
+	_, err = c.do(req)
 	if err != nil {
 		return err
 	}
@@ -163,7 +165,7 @@ func (c *Client) addAdditionalInfoToProject(projectUuid, projectVersion, team, n
 	}
 
 	c.withHeaders(req, map[string]string{"Accept": "application/json", "X-Api-Key": apiKey, "Content-Type": "application/json"})
-	_, err = do(req, c.retryOpts)
+	_, err = c.do(req)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -205,7 +207,7 @@ func (c *Client) GetProject(name string, version string) (*Project, error) {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
-	resBody, err := do(req, c.retryOpts)
+	resBody, err := c.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}
@@ -235,7 +237,7 @@ func (c *Client) CleanUpProjects(name string) error {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	resBody, err := do(req, c.retryOpts)
+	resBody, err := c.do(req)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -276,7 +278,7 @@ func (c *Client) DeleteProject(uuid string) error {
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	_, err = do(req, c.retryOpts)
+	_, err = c.do(req)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
@@ -304,14 +306,13 @@ func (c *Client) withHeaders(req *http.Request, headers map[string]string) {
 	}
 }
 
-func do(req *http.Request, options []retry.Option) ([]byte, error) {
+func (c *Client) do(req *http.Request) ([]byte, error) {
 	var resBody []byte
 	err := retry.Do(func() error {
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := c.client.Do(req)
 		if err != nil {
 			return fmt.Errorf("sending request: %w", err)
 		}
-
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNotFound && strings.Contains(req.URL.Path, "lookup") {
@@ -331,7 +332,7 @@ func do(req *http.Request, options []retry.Option) ([]byte, error) {
 			return fmt.Errorf("reading response body: %w", err)
 		}
 		return nil
-	}, options...)
+	}, c.retryOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}

@@ -18,15 +18,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOptions(t *testing.T) {
+func TestCosignOptions(t *testing.T) {
+	err := os.Setenv("SIGSTORE_CT_LOG_PUBLIC_KEY_FILE", "testdata/ct_log.pub")
+	assert.NoError(t, err)
+
 	for _, tc := range []struct {
-		desc    string
-		keyRef  string
-		tLog    bool
-		podInfo *pod.Info
+		desc      string
+		keyRef    string
+		tLog      bool
+		ignoreSCT bool
+		podInfo   *pod.Info
 	}{
 		{
-			desc:   "key ref options should match",
+			desc:   "key ref cosign options should match",
 			keyRef: "testdata/cosign.pub",
 			tLog:   true,
 			podInfo: &pod.Info{
@@ -36,11 +40,22 @@ func TestOptions(t *testing.T) {
 			},
 		},
 		{
-			desc:   "keyless options should match",
+			desc:   "keyless cosign options should match",
 			keyRef: "",
 			podInfo: &pod.Info{
 				Verifier: &pod.Verifier{
 					KeyRef: "",
+				},
+			},
+		},
+
+		{
+			desc:   "configured with tlog",
+			keyRef: "",
+			podInfo: &pod.Info{
+				Verifier: &pod.Verifier{
+					KeyRef:     "",
+					IgnoreTLog: "false",
 				},
 			},
 		},
@@ -49,19 +64,23 @@ func TestOptions(t *testing.T) {
 			v := &verify.VerifyAttestationCommand{
 				KeyRef:     tc.keyRef,
 				IgnoreTlog: tc.tLog,
+				IgnoreSCT:  tc.ignoreSCT,
 			}
 			co := &VerifyAttestationOpts{
-				KeyRef: tc.keyRef,
+				StaticKeyRef: tc.keyRef,
 				Logger: log.WithFields(log.Fields{
 					"test-app": "picante",
 				}),
-				VerifyCmd: v,
+				VerifyAttestationCommand: v,
 			}
 
-			_, err := co.options(context.Background(), tc.podInfo, nil)
+			g := github.NewCertificateIdentity([]string{"google-yolo"}, map[string]string{})
+			_, err := co.cosignOptions(context.Background(), tc.podInfo, g)
 			assert.NoError(t, err)
-			assert.Equal(t, tc.tLog, co.VerifyCmd.IgnoreTlog)
-			assert.Equal(t, tc.keyRef, co.VerifyCmd.KeyRef)
+			assert.Equal(t, tc.tLog, co.IgnoreTlog)
+			assert.Equal(t, tc.keyRef, co.KeyRef)
+			assert.Equal(t, tc.keyRef, co.StaticKeyRef)
+			assert.Equal(t, "", co.RekorURL)
 		})
 	}
 }
@@ -71,7 +90,6 @@ func TestBuildCertificateIdentities(t *testing.T) {
 		desc          string
 		keyRef        string
 		labels        map[string]string
-		serverUrl     string
 		team          string
 		tLog          bool
 		wantIssuerUrl string
@@ -93,11 +111,11 @@ func TestBuildCertificateIdentities(t *testing.T) {
 			tLog:          true,
 			team:          "github-yolo",
 			wantIssuerUrl: "https://token.actions.githubusercontent.com",
-			serverUrl:     "https://github.com",
 			labels: map[string]string{
-				github.ImageWorkflowRefLabelKey: "yolo/bolo/.github/workflows/picante.yaml@main",
+				github.ImageServerUrlLabelKey:   "https://github.com",
+				github.ImageWorkflowRefLabelKey: "yolo/bolo/.github/workflows/picante.yaml@refs/heads/main",
 			},
-			wantSubject: "https://github.com/yolo/bolo/.github/workflows/picante.yaml@main",
+			wantSubject: "https://github.com/yolo/bolo/.github/workflows/picante.yaml@refs/heads/main",
 		},
 		{
 			desc:          "static key is enabled, no certificate identity",
@@ -118,15 +136,11 @@ func TestBuildCertificateIdentities(t *testing.T) {
 				teamIdentity = &team.CertificateIdentity{
 					Domain: "some-project.iam.gserviceaccount.com",
 					Issuer: tc.wantIssuerUrl,
-					Prefix: "gar",
 				}
 			}
 
 			if tc.team == "github-yolo" {
-				g = &github.CertificateIdentity{
-					ServerUrl:   tc.serverUrl,
-					WorkFlowRef: tc.labels[github.ImageWorkflowRefLabelKey],
-				}
+				g = github.NewCertificateIdentity([]string{"yolo"}, tc.labels)
 			}
 
 			if tc.team == "static-team-yolo" {
@@ -142,22 +156,23 @@ func TestBuildCertificateIdentities(t *testing.T) {
 			}
 
 			co := &VerifyAttestationOpts{
-				KeyRef:     tc.keyRef,
-				Identities: static,
+				StaticKeyRef: tc.keyRef,
+				Identities:   static,
 				Logger: log.WithFields(log.Fields{
 					"test-app": "picante",
 				}),
 
 				TeamIdentity: teamIdentity,
-				VerifyCmd: &verify.VerifyAttestationCommand{
+				VerifyAttestationCommand: &verify.VerifyAttestationCommand{
 					KeyRef:     tc.keyRef,
 					IgnoreTlog: tc.tLog,
 				},
 			}
 
 			ids := co.BuildCertificateIdentities(tc.team, g)
-			assert.Equal(t, tc.tLog, co.VerifyCmd.IgnoreTlog)
-			assert.Equal(t, tc.keyRef, co.VerifyCmd.KeyRef)
+			assert.NotEmpty(t, ids)
+			assert.Equal(t, tc.tLog, co.IgnoreTlog)
+			assert.Equal(t, tc.keyRef, co.StaticKeyRef)
 			assert.Equal(t, tc.wantIssuerUrl, ids[0].Issuer)
 			assert.Equal(t, tc.wantSubject, ids[0].Subject)
 		})

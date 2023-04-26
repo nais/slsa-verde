@@ -31,20 +31,22 @@ type ImageMetadata struct {
 }
 
 type VerifyAttestationOpts struct {
-	Identities   []cosign.Identity
-	KeyRef       string
-	Logger       *log.Entry
-	TeamIdentity *team.CertificateIdentity
-	VerifyCmd    *verify.VerifyAttestationCommand
+	*verify.VerifyAttestationCommand
+	GithubOrganizations []string
+	Identities          []cosign.Identity
+	StaticKeyRef        string
+	Logger              *log.Entry
+	TeamIdentity        *team.CertificateIdentity
 }
 
-func NewVerifyAttestationOpts(verifyCmd *verify.VerifyAttestationCommand, identities []cosign.Identity, teamIdentity *team.CertificateIdentity, keyRef string) *VerifyAttestationOpts {
+func NewVerifyAttestationOpts(verifyCmd *verify.VerifyAttestationCommand, organizations []string, identities []cosign.Identity, teamIdentity *team.CertificateIdentity, keyRef string) *VerifyAttestationOpts {
 	return &VerifyAttestationOpts{
-		Identities:   identities,
-		KeyRef:       keyRef,
-		Logger:       log.WithFields(log.Fields{"package": "attestation"}),
-		TeamIdentity: teamIdentity,
-		VerifyCmd:    verifyCmd,
+		GithubOrganizations:      organizations,
+		Identities:               identities,
+		StaticKeyRef:             keyRef,
+		Logger:                   log.WithFields(log.Fields{"package": "attestation"}),
+		TeamIdentity:             teamIdentity,
+		VerifyAttestationCommand: verifyCmd,
 	}
 }
 
@@ -76,7 +78,7 @@ func (vao *VerifyAttestationOpts) BuildCertificateIdentities(team string, gCertI
 	return result
 }
 
-func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info, gCertId *github.CertificateIdentity) (*cosign.CheckOpts, error) {
+func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.Info, gCertId *github.CertificateIdentity) (*cosign.CheckOpts, error) {
 	co := &cosign.CheckOpts{}
 
 	var err error
@@ -88,8 +90,8 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info, gC
 	}
 
 	if !pod.IgnoreTLog() {
-		if vao.VerifyCmd.RekorURL != "" {
-			rekorClient, err := rekor.NewClient(vao.VerifyCmd.RekorURL)
+		if vao.RekorURL != "" {
+			rekorClient, err := rekor.NewClient(vao.RekorURL)
 			if err != nil {
 				return nil, fmt.Errorf("creating Rekor client: %w", err)
 			}
@@ -118,13 +120,13 @@ func (vao *VerifyAttestationOpts) options(ctx context.Context, pod *pod.Info, gC
 
 		vao.Logger.Debugf("enabled keyless verification")
 		// ensure that the public key is not used
-		vao.VerifyCmd.KeyRef = ""
+		vao.StaticKeyRef = ""
 	}
 
 	if !pod.KeylessVerification() {
 		// ensure that the static public key is used
-		vao.VerifyCmd.KeyRef = vao.KeyRef
-		co.SigVerifier, err = signature.PublicKeyFromKeyRef(ctx, vao.VerifyCmd.KeyRef)
+		vao.KeyRef = vao.StaticKeyRef
+		co.SigVerifier, err = signature.PublicKeyFromKeyRef(ctx, vao.StaticKeyRef)
 		if err != nil {
 			return nil, fmt.Errorf("loading public key: %w", err)
 		}
@@ -154,9 +156,9 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 			return nil, fmt.Errorf("fetch image config: %v", err)
 		}
 
-		gCertId := github.NewCertificateIdentity(m.Config.Labels)
+		gCertId := github.NewCertificateIdentity(vao.GithubOrganizations, m.Config.Labels)
 
-		opts, err := vao.options(ctx, pod, gCertId)
+		opts, err := vao.cosignOptions(ctx, pod, gCertId)
 		if err != nil {
 			return nil, fmt.Errorf("get options: %v", err)
 		}
@@ -170,7 +172,7 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 			"image": image,
 		}).Infof("verifying image attestations")
 
-		if vao.VerifyCmd.LocalImage {
+		if vao.LocalImage {
 			verified, bVerified, err = cosign.VerifyLocalImageAttestations(ctx, image, opts)
 			if err != nil {
 				return nil, err

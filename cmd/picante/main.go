@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/http"
 	"os"
 	"os/signal"
 	"picante/internal/attestation"
@@ -81,13 +82,14 @@ func main() {
 
 	opts := attestation.NewVerifyAttestationOpts(
 		verifyCmd,
+		cfg.GitHub.Organizations,
 		cfg.GetPreConfiguredIdentities(),
-		team.NewCertificateIdentity(cfg.TeamIdentity.Prefix, cfg.TeamIdentity.Domain, cfg.TeamIdentity.Issuer),
+		team.NewCertificateIdentity(cfg.TeamIdentity.Domain, cfg.TeamIdentity.Issuer),
 		cfg.Cosign.KeyRef,
 	)
 
 	mainLogger.Info("setting up storage client")
-	s := storage.NewClient(ctx, cfg.Storage.Api, cfg.Storage.Username, cfg.Storage.Password, cfg.Storage.Team)
+	s := storage.NewClient(ctx, http.DefaultClient, cfg.Storage.Api, cfg.Storage.Username, cfg.Storage.Password, cfg.Storage.Team)
 	if err != nil {
 		mainLogger.WithError(err).Fatal("failed to get teams")
 	}

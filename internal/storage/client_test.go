@@ -1,14 +1,14 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
+	"picante/internal/test"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,20 +22,25 @@ func TestUploadSbom(t *testing.T) {
 	err = json.Unmarshal(att, &a)
 	assert.NoError(t, err)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
+	client := test.NewTestClient(func(req *http.Request) *http.Response {
+		switch req.Method {
 		case http.MethodGet:
-			println(r.URL.Path)
-			switch r.URL.Path {
+			switch req.URL.Path {
 			case "/api/v1/project/lookup":
 				p, err := json.Marshal(Project{
 					Name:    "project1",
 					Uuid:    "1234",
 					Version: "1.0.1",
 				})
-				_, err = fmt.Fprintf(w, string(p))
 				assert.NoError(t, err)
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader(p)),
+				}
 			case "/api/v1/team":
+				assert.Equal(t, req.Method, http.MethodGet)
+				assert.Equal(t, req.Header.Get("Accept"), "application/json")
+				assert.Equal(t, req.Header.Get("Authorization"), "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c")
 				tt, err := json.Marshal([]Team{
 					{
 						Name: "Administrators",
@@ -48,29 +53,41 @@ func TestUploadSbom(t *testing.T) {
 					},
 				})
 				assert.NoError(t, err)
-				_, err = fmt.Fprintf(w, string(tt))
-				assert.NoError(t, err)
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader(tt)),
+				}
 			}
 		case http.MethodPut:
-			err = requestIsValid(t, r, http.MethodPut, "/api/v1/bom")
+			err = requestIsValid(t, req, http.MethodPut, "/api/v1/bom")
 			assert.NoError(t, err)
 		case http.MethodPost:
-			err = requestIsValid(t, r, http.MethodPost, "/api/v1/user/login")
+			switch req.URL.Path {
+			case "/api/v1/user/login":
+				assert.Equal(t, req.Method, http.MethodPost)
+				assert.Equal(t, req.Header.Get("Content-Type"), "application/x-www-form-urlencoded")
+				assert.Equal(t, req.Header.Get("Accept"), "text/plain")
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader([]byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"))),
+				}
+			}
+			err = requestIsValid(t, req, http.MethodPost, "/api/v1/user/login")
 		case http.MethodPatch:
-			err = requestIsValid(t, r, http.MethodPatch, "/api/v1/project/1234")
+			err = requestIsValid(t, req, http.MethodPatch, "/api/v1/project/1234")
 			assert.NoError(t, err)
 		default:
+			assert.Fail(t, "unexpected method")
 		}
-
-		w.Header().Set("Content-Type", "application/json")
-
-		// _, err = fmt.Fprintf(w, "{\"token\":\"66c6c8f0-f826-40b9-acbf-ce99c0b8d2af\"}\n")
 		assert.NoError(t, err)
-	}))
-	defer server.Close()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader([]byte{})),
+		}
+	})
 
-	client := NewClient(ctx, server.URL, "admin", "admin", "Administrators")
-	err = client.UploadProject("project1", "1.0.1", "team1", "namespace", a)
+	c := NewClient(ctx, client, "http://localhost", "admin", "admin", "Administrators")
+	err = c.UploadProject("project1", "1.0.1", "team1", "namespace", a)
 	assert.NoError(t, err)
 }
 
@@ -84,8 +101,6 @@ func requestIsValid(t *testing.T, r *http.Request, expectedMethod, expectedURL s
 			if err != nil {
 				assert.Error(t, err)
 			}
-
-			fmt.Println(r.URL.Path)
 
 			assert.NotEmpty(t, a.username, "username is empty")
 			assert.NotEmpty(t, a.password, "password is empty")
@@ -131,4 +146,184 @@ func requestIsValid(t *testing.T, r *http.Request, expectedMethod, expectedURL s
 		assert.NotEmpty(t, r.Header.Get("X-Api-Key"), "Authorization header is empty")
 	}
 	return nil
+}
+
+func TestClient_DeleteProject(t *testing.T) {
+	client := test.NewTestClient(func(req *http.Request) *http.Response {
+		switch req.URL.Path {
+		case "/api/v1/user/login":
+			assert.Equal(t, req.Method, http.MethodPost)
+			assert.Equal(t, req.Header.Get("Content-Type"), "application/x-www-form-urlencoded")
+			assert.Equal(t, req.Header.Get("Accept"), "text/plain")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"))),
+			}
+		case "/api/v1/team":
+			assert.Equal(t, req.Method, http.MethodGet)
+			assert.Equal(t, req.Header.Get("Accept"), "application/json")
+			assert.Equal(t, req.Header.Get("Authorization"), "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte(`[{"name":"team1","description":"team1","id":1}]`))),
+			}
+		case "/api/v1/project/1234":
+			assert.Equal(t, req.Method, http.MethodDelete)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte("1234"))),
+			}
+		default:
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+			}
+		}
+	})
+	c := NewClient(context.Background(), client, "http://localhost:8080", "admin", "admin", "Administrators")
+	c.Auth.accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	c.Auth.apiKey = "key"
+	err := c.DeleteProject("1234")
+	assert.NoError(t, err)
+}
+
+func TestClient_CleanUpProjects(t *testing.T) {
+	client := test.NewTestClient(func(req *http.Request) *http.Response {
+		switch req.URL.Path {
+		case "/api/v1/user/login":
+			assert.Equal(t, req.Method, http.MethodPost)
+			assert.Equal(t, req.Header.Get("Content-Type"), "application/x-www-form-urlencoded")
+			assert.Equal(t, req.Header.Get("Accept"), "text/plain")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"))),
+			}
+		case "/api/v1/team":
+			assert.Equal(t, req.Method, http.MethodGet)
+			assert.Equal(t, req.Header.Get("Accept"), "application/json")
+			assert.Equal(t, req.Header.Get("Authorization"), "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte(`[{"name":"team1","description":"team1","id":1}]`))),
+			}
+		case "/api/v1/team/key":
+			assert.Equal(t, req.Method, http.MethodPut)
+			assert.Equal(t, req.Header.Get("Accept"), "application/json")
+			assert.Equal(t, req.Header.Get("Authorization"), "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte(`{"apiKey":"6666"}`))),
+			}
+		case "/api/v1/project":
+			assert.Equal(t, req.Method, http.MethodGet)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte(`[{"name":"project1","description":"project1","id":1,"team":{"name":"team1","description":"team1","id":1}}]`))),
+			}
+		case "/api/v1/project/":
+			assert.Equal(t, req.Method, http.MethodDelete)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+			}
+		default:
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+			}
+		}
+	})
+	c := NewClient(context.Background(), client, "http://localhost:8080", "admin", "admin", "Administrators")
+	err := c.CleanUpProjects("project1")
+	assert.NoError(t, err)
+}
+
+func TestClient_ApiKey(t *testing.T) {
+	client := test.NewTestClient(func(req *http.Request) *http.Response {
+		switch req.URL.Path {
+		case "/api/v1/user/login":
+			assert.Equal(t, req.Method, http.MethodPost)
+			assert.Equal(t, req.Header.Get("Content-Type"), "application/x-www-form-urlencoded")
+			assert.Equal(t, req.Header.Get("Accept"), "text/plain")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte("66c6c8f0-f826-40b9-acbf-ce99c0b8d2af"))),
+			}
+		case "/api/v1/team":
+			assert.Equal(t, req.Method, http.MethodGet)
+			assert.Equal(t, req.Header.Get("Authorization"), "Bearer 66c6c8f0-f826-40b9-acbf-ce99c0b8d2af")
+			tt, err := json.Marshal([]Team{
+				{
+					Name: "Administrators",
+					Uuid: "1234",
+					Apikeys: []ApiKey{
+						{
+							Key: "key",
+						},
+					},
+				},
+			})
+			assert.NoError(t, err)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(tt)),
+			}
+		case "/team/1234/key":
+			assert.Equal(t, req.Method, http.MethodGet)
+			assert.Equal(t, req.Header.Get("Content-Type"), "application/json")
+			assert.Equal(t, req.Header.Get("X-Api-Key"), "66c6c8f0-f826-40b9-acbf-ce99c0b8d2af")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte("key"))),
+			}
+		default:
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+			}
+		}
+	})
+
+	c := NewClient(context.Background(), client, "http://localhost", "admin", "admin", "Administrators")
+	apiKey, err := c.ApiKey()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, apiKey)
+	assert.Equal(t, apiKey, "key")
+}
+
+func TestClient_GetProject(t *testing.T) {
+	client := test.NewTestClient(func(req *http.Request) *http.Response {
+		switch req.URL.Path {
+		case "/api/v1/user/login":
+			assert.Equal(t, "POST", req.Method)
+			assert.Equal(t, req.Header.Get("Content-Type"), "application/x-www-form-urlencoded")
+			assert.Equal(t, req.Header.Get("Accept"), "text/plain")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte("66c6c8f0-f826-40b9-acbf-ce99c0b8d2af"))),
+			}
+		case "/api/v1/project/lookup":
+			assert.Equal(t, "GET", req.Method)
+			assert.Equal(t, req.Header.Get("Content-Type"), "application/json")
+			assert.Equal(t, req.Header.Get("X-Api-Key"), "key")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte(`{"name":"project1","version":"1.0.1"}`))),
+			}
+		case "/api/v1/team":
+			assert.Equal(t, "GET", req.Method)
+			assert.Equal(t, req.Header.Get("Content-Type"), "")
+			assert.Equal(t, req.Header.Get("Authorization"), "Bearer 66c6c8f0-f826-40b9-acbf-ce99c0b8d2af")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte(`[{"name":"Administrators","uuid":"1234","apiKeys":[{"key":"key"}]}]`))),
+			}
+		default:
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+			}
+		}
+	})
+
+	c := NewClient(context.Background(), client, "http://localhost", "admin", "admin", "Administrators")
+	p, err := c.GetProject("project1", "1.0.1")
+	assert.NoError(t, err)
+	assert.Equal(t, p.Name, "project1")
+	assert.Equal(t, p.Version, "1.0.1")
 }

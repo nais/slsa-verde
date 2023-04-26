@@ -10,17 +10,16 @@ import (
 
 const (
 	IdentityTeamMaxLength = 30
+	DefaultTeamPrefix     = "gar"
 )
 
 type CertificateIdentity struct {
-	Prefix string
 	Domain string
 	Issuer string
 }
 
-func NewCertificateIdentity(prefix, domain, issuer string) *CertificateIdentity {
+func NewCertificateIdentity(domain, issuer string) *CertificateIdentity {
 	return &CertificateIdentity{
-		Prefix: prefix,
 		Domain: domain,
 		Issuer: issuer,
 	}
@@ -35,14 +34,14 @@ func truncate(s string, length int) string {
 
 func (i *CertificateIdentity) teamHashPrefixTruncate(team string, maxLength int) string {
 	hasher := sha256.New()
-	hasher.Write([]byte(i.Prefix))
+	hasher.Write([]byte(DefaultTeamPrefix))
 
-	prefixLength := len(i.Prefix)
+	prefixLength := len(DefaultTeamPrefix)
 	hashLength := 4
 	teamLength := maxLength - prefixLength - hashLength - 2 // 2 becasue we join parts with '-'
 
 	parts := []string{
-		i.Prefix,
+		DefaultTeamPrefix,
 		strings.TrimSuffix(truncate(team, teamLength), "-"),
 		truncate(hex.EncodeToString(hasher.Sum(nil)), hashLength),
 	}

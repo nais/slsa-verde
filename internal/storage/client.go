@@ -316,7 +316,6 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNotFound && strings.Contains(req.URL.Path, "lookup") {
-			// TODO find a better way to handle this
 			return nil
 		}
 

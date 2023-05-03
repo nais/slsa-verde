@@ -2,23 +2,22 @@ package monitor
 
 import (
 	"context"
+	"github.com/nais/dependencytrack/pkg/client"
 	log "github.com/sirupsen/logrus"
 	"picante/internal/pod"
 	"strings"
-
-	"picante/internal/storage"
 
 	"picante/internal/attestation"
 )
 
 type Config struct {
-	Client           *storage.Client
+	Client           client.Client
 	verifyAttestOpts *attestation.VerifyAttestationOpts
 	logger           *log.Entry
 	ctx              context.Context
 }
 
-func NewMonitor(ctx context.Context, client *storage.Client, opts *attestation.VerifyAttestationOpts) *Config {
+func NewMonitor(ctx context.Context, client client.Client, opts *attestation.VerifyAttestationOpts) *Config {
 	return &Config{
 		Client:           client,
 		verifyAttestOpts: opts,
@@ -34,9 +33,10 @@ func (c *Config) OnDelete(obj any) {
 		return
 	}
 
+	ctx := context.Background()
 	for _, m := range p.ContainerImages {
 		project, _ := projectAndVersion(p.Name, m)
-		if err := c.Client.CleanUpProjects(project); err != nil {
+		if err := c.Client.DeleteProjects(ctx, project); err != nil {
 			c.logger.Errorf("clean up projects: %v", err)
 			return
 		}
@@ -91,7 +91,7 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 	for _, m := range metadata {
 		project, version := projectAndVersion(p.Name, m.Image)
 
-		pp, err := c.Client.GetProject(project, version)
+		pp, err := c.Client.GetProject(ctx, project, version)
 		if err != nil {
 			return err
 		}
@@ -105,7 +105,11 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 			continue
 		}
 
-		if err = c.Client.UploadProject(project, version, p.Team, p.Namespace, m.Statement); err != nil {
+		if err = c.Client.UploadProject(ctx, project, version, m.Statement); err != nil {
+			return err
+		}
+
+		if err = c.Client.UpdateProjectInfo(ctx, pp.Uuid, version, p.Namespace, []string{p.Team}); err != nil {
 			return err
 		}
 	}

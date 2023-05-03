@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
 	"os"
 	"os/signal"
 	"picante/internal/attestation"
@@ -24,7 +24,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"picante/internal/monitor"
-	"picante/internal/storage"
 )
 
 const (
@@ -89,7 +88,7 @@ func main() {
 	)
 
 	mainLogger.Info("setting up storage client")
-	s := storage.NewClient(ctx, http.DefaultClient, cfg.Storage.Api, cfg.Storage.Username, cfg.Storage.Password, cfg.Storage.Team)
+	s := client.New(cfg.Storage.Api, cfg.Storage.Username, cfg.Storage.Password, client.WithApiKeySource(cfg.Storage.Team))
 	if err != nil {
 		mainLogger.WithError(err).Fatal("failed to get teams")
 	}

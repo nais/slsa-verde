@@ -2,10 +2,12 @@ package monitor
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
+
 	"github.com/nais/dependencytrack/pkg/client"
 	log "github.com/sirupsen/logrus"
 	"picante/internal/pod"
-	"strings"
 
 	"picante/internal/attestation"
 )
@@ -104,8 +106,12 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 			}).Info("project already exists, skipping")
 			continue
 		}
+		b, err := json.Marshal(m.Statement)
+		if err != nil {
+			return err
+		}
 
-		if err = c.Client.UploadProject(ctx, project, version, m.Statement); err != nil {
+		if err = c.Client.UploadProject(ctx, project, version, b); err != nil {
 			return err
 		}
 

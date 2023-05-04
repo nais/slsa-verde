@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/google/go-containerregistry/pkg/authn"
+	"strings"
+
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
@@ -21,7 +21,6 @@ import (
 	"picante/internal/github"
 	"picante/internal/pod"
 	"picante/internal/team"
-	"strings"
 )
 
 type ImageMetadata struct {
@@ -68,9 +67,9 @@ func (vao *VerifyAttestationOpts) BuildCertificateIdentities(team string, gCertI
 		result = append(result, vao.TeamIdentity.GetAccountIdEmailAddress(team))
 	}
 
-	if gCertId != nil && gCertId.Enabled() && gCertId.IsValid() {
-		id := gCertId.GetIdentity()
-		result = append(result, id)
+	if gCertId != nil {
+		id := gCertId.GetIdentities()
+		result = append(result, id...)
 	}
 
 	vao.Logger.WithFields(log.Fields{"identities": result}).Debug("Identities")
@@ -146,17 +145,7 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 	for _, image := range pod.ContainerImages {
 		ref, err := name.ParseReference(image)
 
-		img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
-		if err != nil {
-			return nil, fmt.Errorf("fetch image: %v", err)
-		}
-
-		m, err := img.ConfigFile()
-		if err != nil {
-			return nil, fmt.Errorf("fetch image config: %v", err)
-		}
-
-		gCertId := github.NewCertificateIdentity(vao.GithubOrganizations, m.Config.Labels)
+		gCertId := github.NewCertificateIdentity(vao.GithubOrganizations)
 
 		opts, err := vao.cosignOptions(ctx, pod, gCertId)
 		if err != nil {
@@ -218,7 +207,7 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 }
 
 func parseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {
-	var env = ssldsse.Envelope{}
+	env := ssldsse.Envelope{}
 	err := json.Unmarshal(dsseEnvelope, &env)
 	if err != nil {
 		return nil, err
@@ -228,7 +217,7 @@ func parseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {
 	if err != nil {
 		return nil, err
 	}
-	var stat = &in_toto.CycloneDXStatement{}
+	stat := &in_toto.CycloneDXStatement{}
 	err = json.Unmarshal(decodedPayload, &stat)
 	if err != nil {
 		return nil, err

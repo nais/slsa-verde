@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/in-toto/in-toto-golang/in_toto"
 	"io"
 	"net/http"
 	"os"
-	"picante/internal/test"
 	"testing"
+
+	"github.com/in-toto/in-toto-golang/in_toto"
+
+	"picante/internal/test"
 
 	"github.com/stretchr/testify/assert"
 )

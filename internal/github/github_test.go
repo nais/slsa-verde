@@ -1,12 +1,13 @@
 package github
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewCertificateIdentity(t *testing.T) {
-	defaultPattern := "https://github.com/nais/yolo-bolo/.github/workflows/main.yml@refs/heads/master"
+	defaultPattern := "^https:\\/\\/github\\.com\\/nais\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/[a-zA-Z0-9_-]+?(?:.yaml|.yml)@refs\\/heads\\/[a-zA-Z0-9_-]+?$"
 
 	for _, tt := range []struct {
 		name             string
@@ -32,23 +33,11 @@ func TestNewCertificateIdentity(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			var enabledConfig map[string]string
-
-			if tt.enabled {
-				enabledConfig = map[string]string{
-					"org.opencontainers.image.server.url":   tt.serverUrl,
-					"org.opencontainers.image.workflow.ref": tt.workFlowRef,
-				}
-			}
-
-			id := NewCertificateIdentity(tt.orgs, enabledConfig)
-			assert.Equal(t, tt.enabled, id.Enabled(), "enabled should be equal")
-			valid := id.IsValid()
-			assert.Equal(t, tt.wantValidPattern, valid, "pattern should be valid")
-			idPattern := id.GetIdentity()
-			if valid {
-				// if pattern is valid, the pattern should be equal (cosign does this check)
-				assert.Equal(t, defaultPattern, idPattern.Subject, "pattern should be equal")
+			id := NewCertificateIdentity(tt.orgs)
+			idPattern := id.GetIdentities()
+			for _, pattern := range idPattern {
+				assert.Equal(t, IssuerUrl, pattern.Issuer, "issuer should be empty")
+				assert.Equal(t, defaultPattern, pattern.SubjectRegExp, "pattern should be equal")
 			}
 		})
 	}

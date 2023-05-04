@@ -57,6 +57,7 @@ func GetInfo(obj any) *Info {
 		},
 	}
 }
+
 func (p *Info) IgnoreTLog() bool {
 	if p.Verifier == nil {
 		return false

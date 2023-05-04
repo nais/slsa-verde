@@ -6,12 +6,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/avast/retry-go/v4"
-	"github.com/in-toto/in-toto-golang/in_toto"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/avast/retry-go/v4"
+	"github.com/in-toto/in-toto-golang/in_toto"
+	log "github.com/sirupsen/logrus"
 )
 
 const (

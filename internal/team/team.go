@@ -4,8 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"strings"
+
+	"github.com/sigstore/cosign/v2/pkg/cosign"
 )
 
 const (

@@ -3,15 +3,17 @@ package attestation
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"testing"
+
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	log "github.com/sirupsen/logrus"
-	"os"
+
 	"picante/internal/config"
 	"picante/internal/github"
 	"picante/internal/pod"
 	"picante/internal/team"
-	"testing"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 
@@ -74,7 +76,7 @@ func TestCosignOptions(t *testing.T) {
 				VerifyAttestationCommand: v,
 			}
 
-			g := github.NewCertificateIdentity([]string{"google-yolo"}, map[string]string{})
+			g := github.NewCertificateIdentity([]string{"google-yolo"})
 			_, err := co.cosignOptions(context.Background(), tc.podInfo, g)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.tLog, co.IgnoreTlog)
@@ -89,12 +91,9 @@ func TestBuildCertificateIdentities(t *testing.T) {
 	for _, tc := range []struct {
 		desc          string
 		keyRef        string
-		labels        map[string]string
 		team          string
 		tLog          bool
 		wantIssuerUrl string
-		wantSubject   string
-		workFlowRef   string
 	}{
 		{
 			desc:          "keyless is enabled, build certificate identity with google",
@@ -102,8 +101,6 @@ func TestBuildCertificateIdentities(t *testing.T) {
 			tLog:          true,
 			team:          "google-yolo",
 			wantIssuerUrl: "https://google-provider-yolo.com",
-			labels:        map[string]string{},
-			wantSubject:   "gar-google-yolo-b974@some-project.iam.gserviceaccount.com",
 		},
 		{
 			desc:          "keyless is enabled, build certificate identity with github",
@@ -111,11 +108,6 @@ func TestBuildCertificateIdentities(t *testing.T) {
 			tLog:          true,
 			team:          "github-yolo",
 			wantIssuerUrl: "https://token.actions.githubusercontent.com",
-			labels: map[string]string{
-				github.ImageServerUrlLabelKey:   "https://github.com",
-				github.ImageWorkflowRefLabelKey: "yolo/bolo/.github/workflows/picante.yaml@refs/heads/main",
-			},
-			wantSubject: "https://github.com/yolo/bolo/.github/workflows/picante.yaml@refs/heads/main",
 		},
 		{
 			desc:          "static key is enabled, no certificate identity",
@@ -123,8 +115,6 @@ func TestBuildCertificateIdentities(t *testing.T) {
 			tLog:          false,
 			team:          "static-team-yolo",
 			wantIssuerUrl: "https://static-provider-yolo.com",
-			labels:        map[string]string{},
-			wantSubject:   "static-subject-yolo",
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -140,7 +130,7 @@ func TestBuildCertificateIdentities(t *testing.T) {
 			}
 
 			if tc.team == "github-yolo" {
-				g = github.NewCertificateIdentity([]string{"yolo"}, tc.labels)
+				g = github.NewCertificateIdentity([]string{"yolo"})
 			}
 
 			if tc.team == "static-team-yolo" {
@@ -148,7 +138,7 @@ func TestBuildCertificateIdentities(t *testing.T) {
 					PreConfiguredSaIdentities: []config.Identity{
 						{
 							Issuer:  tc.wantIssuerUrl,
-							Subject: tc.wantSubject,
+							Subject: "static-team-yolo",
 						},
 					},
 				}
@@ -173,8 +163,15 @@ func TestBuildCertificateIdentities(t *testing.T) {
 			assert.NotEmpty(t, ids)
 			assert.Equal(t, tc.tLog, co.IgnoreTlog)
 			assert.Equal(t, tc.keyRef, co.StaticKeyRef)
-			assert.Equal(t, tc.wantIssuerUrl, ids[0].Issuer)
-			assert.Equal(t, tc.wantSubject, ids[0].Subject)
+			for _, id := range ids {
+				if tc.team == "github-yolo" {
+					assert.Equal(t, tc.wantIssuerUrl, id.Issuer)
+					assert.NotEmpty(t, id.SubjectRegExp)
+				} else {
+					assert.Equal(t, tc.wantIssuerUrl, id.Issuer)
+					assert.NotEmpty(t, id.Subject)
+				}
+			}
 		})
 	}
 }

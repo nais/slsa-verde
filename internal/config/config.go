@@ -2,13 +2,14 @@ package config
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/mitchellh/mapstructure"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"sort"
-	"strings"
 )
 
 type Cosign struct {
@@ -172,7 +173,6 @@ func Print(redacted []string) {
 				log.Infof("%s: %s", key, viper.GetString(key))
 
 			}
-
 		} else {
 			log.Infof("%s: ***REDACTED***", key)
 		}
@@ -230,7 +230,7 @@ func (c *Config) GetPreConfiguredIdentities() []cosign.Identity {
 
 	var identities []cosign.Identity
 	for _, identity := range c.PreConfiguredSaIdentities {
-		var id = cosign.Identity{}
+		id := cosign.Identity{}
 		if len(identity.Issuer) == 0 {
 			id.IssuerRegExp = identity.IssuerRegExp
 		} else {

@@ -3,10 +3,11 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/avast/retry-go/v4"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/avast/retry-go/v4"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	log "github.com/sirupsen/logrus"

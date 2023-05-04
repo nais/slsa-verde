@@ -3,18 +3,20 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
-	"os/signal"
+
 	"picante/internal/attestation"
 	"picante/internal/config"
 	"picante/internal/team"
-	"syscall"
-	"time"
 
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
@@ -49,7 +51,7 @@ func main() {
 	defer cancel()
 
 	mainLogger.Info("setting up k8s client")
-	var kubeConfig = setupKubeConfig()
+	kubeConfig := setupKubeConfig()
 	k8sClient, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		mainLogger.WithError(err).Fatal("setting up k8s client")

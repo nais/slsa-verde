@@ -45,7 +45,7 @@ func GetInfo(obj any) *Info {
 
 	return &Info{
 		ContainerImages: c,
-		Name:            labels[AppK8sIoNameLabelKey],
+		Name:            pod.ObjectMeta.GetName(),
 		Namespace:       pod.GetNamespace(),
 		PodName:         pod.GetName(),
 		Team:            labels[TeamLabelKey],

@@ -29,6 +29,10 @@ type ImageMetadata struct {
 	Statement      *in_toto.CycloneDXStatement `json:"statement"`
 }
 
+type Verifier interface {
+	Verify(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error)
+}
+
 type VerifyAttestationOpts struct {
 	*verify.VerifyAttestationCommand
 	GithubOrganizations []string

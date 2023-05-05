@@ -13,18 +13,18 @@ import (
 )
 
 type Config struct {
-	Client           client.Client
-	verifyAttestOpts *attestation.VerifyAttestationOpts
-	logger           *log.Entry
-	ctx              context.Context
+	Client   client.Client
+	verifier attestation.Verifier
+	logger   *log.Entry
+	ctx      context.Context
 }
 
-func NewMonitor(ctx context.Context, client client.Client, opts *attestation.VerifyAttestationOpts) *Config {
+func NewMonitor(ctx context.Context, client client.Client, verifier attestation.Verifier) *Config {
 	return &Config{
-		Client:           client,
-		verifyAttestOpts: opts,
-		logger:           log.WithFields(log.Fields{"package": "monitor"}),
-		ctx:              ctx,
+		Client:   client,
+		verifier: verifier,
+		logger:   log.WithFields(log.Fields{"package": "monitor"}),
+		ctx:      ctx,
 	}
 }
 
@@ -81,7 +81,7 @@ func (c *Config) OnAdd(obj any) {
 }
 
 func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
-	metadata, err := c.verifyAttestOpts.Verify(ctx, p)
+	metadata, err := c.verifier.Verify(ctx, p)
 	if err != nil {
 		return err
 	}

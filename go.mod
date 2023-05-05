@@ -17,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/vektra/mockery/v2 v2.26.1
 	k8s.io/api v0.26.3
-	k8s.io/apimachinery v0.26.3
+	k8s.io/apimachinery v0.27.1
 	k8s.io/client-go v0.26.3
 	mvdan.cc/gofumpt v0.5.0
 )

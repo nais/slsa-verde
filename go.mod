@@ -8,7 +8,7 @@ require (
 	github.com/in-toto/in-toto-golang v0.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.9
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nais/dependencytrack v0.0.0-20230503115226-d324f48d9a9e
+	github.com/nais/dependencytrack v0.0.0-20230505084010-2b97ef84cc2c
 	github.com/secure-systems-lab/go-securesystemslib v0.4.0
 	github.com/sigstore/cosign/v2 v2.0.0
 	github.com/sirupsen/logrus v1.9.0
@@ -204,7 +204,7 @@ require (
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/oauth2 v0.6.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/term v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect

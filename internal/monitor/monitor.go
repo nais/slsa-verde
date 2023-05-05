@@ -95,28 +95,28 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 
 		pp, err := c.Client.GetProject(ctx, project, version)
 		if err != nil {
-			return err
+			if !client.IsNotFound(err) {
+				return err
+			}
 		}
 
-		if pp != nil {
+		if pp == nil {
 			c.logger.WithFields(log.Fields{
 				"project": project,
 				"version": version,
-				"uuid":    pp.Uuid,
-			}).Info("project already exists, skipping")
-			continue
-		}
-		b, err := json.Marshal(m.Statement)
-		if err != nil {
-			return err
-		}
+			}).Info("project does not exist, creating")
+			_, err = c.Client.CreateProject(ctx, project, version, p.Namespace, []string{p.Team})
+			if err != nil {
+				return err
+			}
+			b, err := json.Marshal(m.Statement)
+			if err != nil {
+				return err
+			}
 
-		if err = c.Client.UploadProject(ctx, project, version, b); err != nil {
-			return err
-		}
-
-		if err = c.Client.UpdateProjectInfo(ctx, pp.Uuid, version, p.Namespace, []string{p.Team}); err != nil {
-			return err
+			if err = c.Client.UploadProject(ctx, project, version, b); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

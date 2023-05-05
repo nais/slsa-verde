@@ -623,6 +623,10 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8m
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/nais/dependencytrack v0.0.0-20230503115226-d324f48d9a9e h1:PkP4lZOhxkeMONk3Q1JqpZSMK4hy5FaUmWVc1Esg+Pc=
 github.com/nais/dependencytrack v0.0.0-20230503115226-d324f48d9a9e/go.mod h1:xP5HPxmcMvx6nD2nPBZGEQVt7YbKug4VCHlwjGwqsx4=
+github.com/nais/dependencytrack v0.0.0-20230504130159-42a7fba3092f h1:Ehz5UQ7s0HsZ4PAMzPrqRKhskW8a9QwZN1IvrNRuw2Q=
+github.com/nais/dependencytrack v0.0.0-20230504130159-42a7fba3092f/go.mod h1:xP5HPxmcMvx6nD2nPBZGEQVt7YbKug4VCHlwjGwqsx4=
+github.com/nais/dependencytrack v0.0.0-20230505084010-2b97ef84cc2c h1:ryXedGFJhwf+0FfAqz7othq6s2G8YJA3vnCnQPj2JbI=
+github.com/nais/dependencytrack v0.0.0-20230505084010-2b97ef84cc2c/go.mod h1:xP5HPxmcMvx6nD2nPBZGEQVt7YbKug4VCHlwjGwqsx4=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
@@ -995,6 +999,8 @@ golang.org/x/sync v0.0.0-20210220032951-036812b2e83c/go.mod h1:RxMgew5VJxzue5/jJ
 golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.1.0 h1:wsuoTGHzEhffawBOhz5CYhcrV4IdKZbEyZjBMuTp12o=
 golang.org/x/sync v0.1.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+golang.org/x/sync v0.2.0 h1:PUR+T4wwASmuSTYdKjYHI5TD22Wy5ogLU5qZCOLxBrI=
+golang.org/x/sync v0.2.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20180830151530-49385e6e1522/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=

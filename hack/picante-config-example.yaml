@@ -1,23 +1,20 @@
-metrics-address: ":8080"
 development-mode: true
 features:
-  enabled: true
-  label-selectors:
-    - name: "nais.io/salsa-verify-attestation"
-      value: "true"
+  enabled: false
 cosign:
-  key-ref: /picante/kms.pub
+  key-ref: hack/kms-pub
 storage:
-  api: http://localhost:9001/api/v1
+  api: http://localhost:9001
   username: admin
-  password: admin
+  password: yolo
   team: Administrators
+github:
+  organizations:
+    - nais
+    - navikt
 identities:
-  - issuer-reg-exp: .*provider.com
-    subject-reg-exp: ".*@som-subject.com"
-  - issuer: https://provider2.com
-    subject: "id@som-subject2.com"
+  - issuer: https://accounts.google.com
+    subject-reg-exp: ".*@nais-io.iam.gserviceaccount.com"
 teamIdentity:
-  prefix: "gar"
-  issuer: https://provider.com
-  domain: "domain.com"
+  issuer: "https://accounts.google.com"
+  domain: "plattformsikkerhet-dev-496e.iam.gserviceaccount.com"

@@ -31,7 +31,7 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 func (c *Config) OnDelete(obj any) {
 	p := pod.GetInfo(obj)
 	if !p.HasTeamLabel() {
-		c.logger.Debugf("ignoring pod with no team label")
+		c.logger.Debugf("ignoring pod with no team label, %s", p.PodName)
 		return
 	}
 
@@ -52,7 +52,7 @@ func (c *Config) OnUpdate(old any, new any) {
 	p2 := pod.GetInfo(new)
 
 	if !p.HasTeamLabel() || !p2.HasTeamLabel() {
-		c.logger.Debugf("ignoring pod with no team label")
+		c.logger.Debugf("ignoring pod with no team label %s", p.PodName)
 		return
 	}
 
@@ -71,7 +71,7 @@ func (c *Config) OnAdd(obj any) {
 
 	p := pod.GetInfo(obj)
 	if !p.HasTeamLabel() {
-		c.logger.Debugf("ignoring pod with no team label")
+		c.logger.Debugf("ignoring pod with no team label %s", p.PodName)
 		return
 	}
 
@@ -104,12 +104,13 @@ func (c *Config) ensureAttested(ctx context.Context, p *pod.Info) error {
 			c.logger.WithFields(log.Fields{
 				"project": project,
 				"version": version,
+				"pod":     p.PodName,
 			}).Info("project does not exist, creating")
 			_, err = c.Client.CreateProject(ctx, project, version, p.Namespace, []string{p.Team})
 			if err != nil {
 				return err
 			}
-			b, err := json.Marshal(m.Statement)
+			b, err := json.Marshal(m.Statement.Predicate)
 			if err != nil {
 				return err
 			}

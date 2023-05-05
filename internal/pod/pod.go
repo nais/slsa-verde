@@ -11,6 +11,7 @@ const (
 	SalsaKeylessProviderLabelKey  = "nais.io/salsa-keyRef-provider"
 	SalsaPredicateLabelKey        = "nais.io/salsa-predicateType"
 	TeamLabelKey                  = "team"
+	AppLabelKey                   = "app"
 	IgnoreTransparencyLogLabelKey = "nais.io/salsa-ignore-transparency-log"
 )
 
@@ -45,7 +46,7 @@ func GetInfo(obj any) *Info {
 
 	return &Info{
 		ContainerImages: c,
-		Name:            pod.ObjectMeta.GetName(),
+		Name:            getAppName(labels),
 		Namespace:       pod.GetNamespace(),
 		PodName:         pod.GetName(),
 		Team:            labels[TeamLabelKey],
@@ -56,6 +57,14 @@ func GetInfo(obj any) *Info {
 			IgnoreTLog:      labels[IgnoreTransparencyLogLabelKey],
 		},
 	}
+}
+
+func getAppName(labels map[string]string) string {
+	appName := labels[AppK8sIoNameLabelKey]
+	if appName == "" {
+		appName = labels[AppLabelKey]
+	}
+	return appName
 }
 
 func (p *Info) IgnoreTLog() bool {

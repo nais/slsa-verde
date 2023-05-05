@@ -23,7 +23,7 @@ func TestConfig_OnAdd(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v)
-	pod := createPod("team1", "pod1", nil, "nginx:latest")
+	p := createPod("team1", "pod1", nil, "nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -49,7 +49,7 @@ func TestConfig_OnAdd(t *testing.T) {
 
 		c.On("UploadProject", mock.Anything, "pod1:nginx", "latest", mock.Anything).Return(nil, nil)
 
-		m.OnAdd(pod)
+		m.OnAdd(p)
 	})
 }
 
@@ -66,6 +66,7 @@ func createPod(namespace, name string, labels map[string]string, images ...strin
 		pod.SalsaPredicateLabelKey:        "cyclonedx",
 		pod.TeamLabelKey:                  namespace,
 		pod.IgnoreTransparencyLogLabelKey: "true",
+		pod.AppK8sIoNameLabelKey:          name,
 	}, labels)
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

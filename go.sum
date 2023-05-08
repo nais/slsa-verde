@@ -623,6 +623,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/nais/dependencytrack v0.0.0-20230505091608-5435414318aa h1:aHyVwkLeLqzkMKAKq1C4aHQug/69nwmAmhVnzxqvbZU=
 github.com/nais/dependencytrack v0.0.0-20230505091608-5435414318aa/go.mod h1:xP5HPxmcMvx6nD2nPBZGEQVt7YbKug4VCHlwjGwqsx4=
+github.com/nais/dependencytrack v0.0.0-20230508110629-1948df90544f h1:TDOHyxFGnkeaSphpDZt51qNhsIR+gkxTwWYirLvQkxo=
+github.com/nais/dependencytrack v0.0.0-20230508110629-1948df90544f/go.mod h1:xP5HPxmcMvx6nD2nPBZGEQVt7YbKug4VCHlwjGwqsx4=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=

@@ -16,12 +16,17 @@ const (
 )
 
 type Info struct {
-	ContainerImages []string
+	ContainerImages []Container
 	Name            string
 	Namespace       string
 	PodName         string
 	Team            string
 	Verifier        *Verifier
+}
+
+type Container struct {
+	Image string
+	Name  string
 }
 
 type Verifier struct {
@@ -33,15 +38,26 @@ type Verifier struct {
 
 func GetInfo(obj any) *Info {
 	pod := obj.(*v1.Pod)
+
+	if pod == nil {
+		return nil
+	}
+
 	labels := pod.GetLabels()
 
-	var c []string
+	var c []Container
 	for _, container := range pod.Spec.Containers {
-		c = append(c, container.Image)
+		c = append(c, Container{
+			Image: container.Image,
+			Name:  container.Name,
+		})
 	}
 
 	for _, container := range pod.Spec.InitContainers {
-		c = append(c, container.Image)
+		c = append(c, Container{
+			Image: container.Image,
+			Name:  container.Name,
+		})
 	}
 
 	return &Info{

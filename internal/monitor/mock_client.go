@@ -377,6 +377,20 @@ func (_m *MockClient) Headers(ctx context.Context) (http.Header, error) {
 	return r0, r1
 }
 
+// PortfolioRefresh provides a mock function with given fields: ctx
+func (_m *MockClient) PortfolioRefresh(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // RemoveAdminUsers provides a mock function with given fields: ctx, users
 func (_m *MockClient) RemoveAdminUsers(ctx context.Context, users *client.AdminUsers) error {
 	ret := _m.Called(ctx, users)

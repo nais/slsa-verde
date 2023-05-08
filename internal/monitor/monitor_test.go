@@ -45,7 +45,7 @@ func TestConfig_OnAdd(t *testing.T) {
 			Err:        errors.New("project not found"),
 		})
 
-		c.On("CreateProject", mock.Anything, "pod1:nginx", "latest", "team1", []string{"team1"}).Return(nil, nil)
+		c.On("CreateProject", mock.Anything, "pod1:nginx", "latest", "team1", []string{"team1", "pod1"}).Return(nil, nil)
 
 		c.On("UploadProject", mock.Anything, "pod1:nginx", "latest", mock.Anything).Return(nil, nil)
 
@@ -145,4 +145,14 @@ func TestProjectAndVersion(t *testing.T) {
 	p, v := projectAndVersion("yolo", image)
 	assert.Equal(t, "yolo:ghcr.io/securego/gosec", p)
 	assert.Equal(t, "v2.9.1", v)
+
+	image = "europe-north1-docker.pkg.dev/nais-io/nais/images/picante@sha256:456d4c3f4b2ae92baf02b2516e025abc44464be9447ea04b163a0c8d091d30b5"
+	p, v = projectAndVersion("yolo", image)
+	assert.Equal(t, "yolo:europe-north1-docker.pkg.dev/nais-io/nais/images/picante", p)
+	assert.Equal(t, "sha256:456d4c3f4b2ae92baf02b2516e025abc44464be9447ea04b163a0c8d091d30b5", v)
+
+	image = "europe-north1-docker.pkg.dev/nais-io/nais/images/picante:20230504-091909-3efbee3@sha256:456d4c3f4b2ae92baf02b2516e025abc44464be9447ea04b163a0c8d091d30b5"
+	p, v = projectAndVersion("yolo", image)
+	assert.Equal(t, "yolo:europe-north1-docker.pkg.dev/nais-io/nais/images/picante", p)
+	assert.Equal(t, "20230504-091909-3efbee3@sha256:456d4c3f4b2ae92baf02b2516e025abc44464be9447ea04b163a0c8d091d30b5", v)
 }

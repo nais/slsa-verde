@@ -26,6 +26,7 @@ import (
 type ImageMetadata struct {
 	BundleVerified bool                        `json:"bundleVerified"`
 	Image          string                      `json:"image"`
+	ContainerName  string                      `json:"containerName"`
 	Statement      *in_toto.CycloneDXStatement `json:"statement"`
 }
 
@@ -123,7 +124,7 @@ func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.In
 
 		vao.Logger.Debugf("enabled keyless verification")
 		// ensure that the public key is not used
-		vao.StaticKeyRef = ""
+		vao.KeyRef = ""
 	}
 
 	if !pod.KeylessVerification() {
@@ -146,8 +147,8 @@ func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.In
 
 func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error) {
 	metadata := make([]*ImageMetadata, 0)
-	for _, image := range pod.ContainerImages {
-		ref, err := name.ParseReference(image)
+	for _, container := range pod.ContainerImages {
+		ref, err := name.ParseReference(container.Image)
 
 		gCertId := github.NewCertificateIdentity(vao.GithubOrganizations)
 
@@ -161,12 +162,13 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 		var statement *in_toto.CycloneDXStatement
 
 		vao.Logger.WithFields(log.Fields{
-			"pod":   pod.Name,
-			"image": image,
+			"pod":            pod.Name,
+			"image":          container.Image,
+			"container-name": container.Name,
 		}).Infof("verifying image attestations")
 
 		if vao.LocalImage {
-			verified, bVerified, err = cosign.VerifyLocalImageAttestations(ctx, image, opts)
+			verified, bVerified, err = cosign.VerifyLocalImageAttestations(ctx, container.Image, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -175,8 +177,9 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 			if err != nil {
 				if strings.Contains(err.Error(), "no matching attestations") {
 					vao.Logger.WithFields(log.Fields{
-						"image": image,
-						"msg":   err.Error(),
+						"image":          container.Image,
+						"container-name": container.Name,
+						"msg":            err.Error(),
 					}).Warnf("no matching attestations found")
 					continue
 				}
@@ -198,13 +201,14 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]
 		vao.Logger.WithFields(log.Fields{
 			"predicate-type": statement.PredicateType,
 			"statement-type": statement.Type,
-			"ref":            image,
+			"ref":            container.Image,
 		}).Info("attestation verified and parsed statement")
 
 		metadata = append(metadata, &ImageMetadata{
 			Statement:      statement,
 			Image:          ref.String(),
 			BundleVerified: bVerified,
+			ContainerName:  container.Name,
 		})
 	}
 	return metadata, nil

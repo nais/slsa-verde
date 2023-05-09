@@ -7,6 +7,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/nais/dependencytrack/pkg/client"
+
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/dependencytrack/pkg/httpclient"
 	"github.com/stretchr/testify/mock"
@@ -51,6 +53,76 @@ func TestConfig_OnAdd(t *testing.T) {
 
 		m.OnAdd(p)
 	})
+
+	t.Run("should not create project if no metadata is found", func(t *testing.T) {
+		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{}, nil)
+
+		m.OnAdd(p)
+	})
+
+	t.Run("should not create project if already exists", func(t *testing.T) {
+		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
+			{
+				BundleVerified: false,
+				Image:          "nginx:latest",
+				Statement:      &statement,
+			},
+		}, nil)
+
+		c.On("GetProject", mock.Anything, "pod1:nginx", "latest").Return(&client.Project{
+			Classifier: "APPLICATION",
+			Group:      "team",
+			Name:       "project1",
+			Publisher:  "Team",
+			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
+			Version:    "",
+		}, nil)
+		m.OnAdd(p)
+	})
+
+	t.Run("should ignore nil pod object", func(t *testing.T) {
+		m.OnAdd(nil)
+	})
+}
+
+func TestConfig_OnDelete(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v)
+	p := createPod("team1", "pod1", nil, "nginx:latest")
+
+	t.Run("should delete project", func(t *testing.T) {
+		c.On("DeleteProjects", mock.Anything, "pod1:nginx").Return(nil)
+
+		m.OnDelete(p)
+	})
+	t.Run("should ignore nil pod object", func(t *testing.T) {
+		m.OnDelete(nil)
+	})
+}
+
+func TestConfig_OnUpdate(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v)
+	p := createPod("team1", "pod1", nil, "nginx:latest")
+	pLatest := createPod("team1", "pod1", nil, "nginx:laterthenlatest")
+
+	t.Run("should ignore old and new pod with equal container image(s) ", func(t *testing.T) {
+		m.OnUpdate(p, p)
+	})
+
+	t.Run("should attest image and create project", func(t *testing.T) {
+		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{}, nil)
+		m.OnUpdate(p, pLatest)
+	})
+
+	t.Run("should ignore nil pod object", func(t *testing.T) {
+		m.OnUpdate(nil, p)
+	})
+	t.Run("should ignore nil pod object", func(t *testing.T) {
+		m.OnUpdate(p, nil)
+	})
 }
 
 func createPod(namespace, name string, labels map[string]string, images ...string) *v1.Pod {
@@ -90,55 +162,6 @@ func merge(map1, map2 map[string]string) map[string]string {
 	}
 	return mergedMap
 }
-
-//func TestEnsureAttested(t *testing.T) {
-//	ctx := context.Background()
-//
-//	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//		w.Header().Set("Content-Type", "application/json")
-//		_, err := fmt.Fprintf(w, "{\"token\":\"token1\"}\n")
-//		assert.NoError(t, err)
-//	}))
-//	defer server.Close()
-//
-//	dockerRegistryUserID := "ttl.sh/nais/picante"
-//	tagName := "1h"
-//	tag := dockerRegistryUserID + ":" + tagName
-//	dCli, err := DockerBuild(dockerRegistryUserID, "testdata", "Dockerfile", tagName)
-//	assert.NoError(t, err)
-//
-//	err = DockerPush(dCli, dockerRegistryUserID, tagName)
-//	assert.NoError(t, err)
-//
-//	attCommand := attest.AttestCommand{
-//		KeyOpts: options.KeyOpts{
-//			StaticKeyRef: "testdata/cosign.key",
-//		},
-//		RegistryOptions: options.RegistryOptions{},
-//		PredicatePath:   "testdata/sbom.json",
-//		PredicateType:   "cyclonedx",
-//		TlogUpload:      false,
-//	}
-//
-//	err = attCommand.Exec(ctx, tag)
-//	assert.NoError(t, err)
-//
-//	sorageClient := storage.NewClient(server.URL+"/api/v1/bom", "token1")
-//	opts := &attestation.VerifyAttestationOpts{
-//		VerifyCmd: &verify.VerifyAttestationCommand{
-//			IgnoreTlog:    true,
-//			StaticKeyRef:        "testdata/cosign.pub",
-//			PredicateType: "cyclonedx",
-//		},
-//	}
-//	cfg := NewMonitor(ctx, sorageClient, opts)
-//
-//	err = cfg.ensureAttested(context.Background(), &pod.Info{
-//		Name:            "app2",
-//		ContainerImages: []string{tag},
-//	})
-//	assert.NoError(t, err)
-//}
 
 func TestProjectAndVersion(t *testing.T) {
 	image := "ghcr.io/securego/gosec:v2.9.1"

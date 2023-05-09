@@ -35,15 +35,9 @@ func (c *Config) OnDelete(obj any) {
 		return
 	}
 
-	//if !p.HasTeamLabel() {
-	//	c.logger.Debugf("ignoring pod with no team label, %s", p.PodName)
-	//	return
-	//}
-
-	ctx := context.Background()
 	for _, container := range p.ContainerImages {
 		project, _ := projectAndVersion(p.Name, container.Image)
-		if err := c.Client.DeleteProjects(ctx, project); err != nil {
+		if err := c.Client.DeleteProjects(c.ctx, project); err != nil {
 			c.logger.Errorf("clean up projects: %v", err)
 			return
 		}
@@ -65,11 +59,6 @@ func (c *Config) OnUpdate(old any, new any) {
 		return
 	}
 
-	//if !p.HasTeamLabel() || !p2.HasTeamLabel() {
-	//	c.logger.Debugf("ignoring pod with no team label %s", p.PodName)
-	//	return
-	//}
-
 	if equalSlice(p.ContainerImages, p2.ContainerImages) {
 		c.logger.Debugf("image has not changed, ignoring pod %s", p.PodName)
 		return
@@ -88,11 +77,6 @@ func (c *Config) OnAdd(obj any) {
 		c.logger.Debug("pod added event, but pod is nil")
 		return
 	}
-
-	//if !p.HasTeamLabel() {
-	//	c.logger.Debugf("ignoring pod with no team label %s", p.PodName)
-	//	return
-	//}
 
 	if err := c.ensureAttested(c.ctx, p); err != nil {
 		c.logger.Errorf("verify attestation: %v", err)

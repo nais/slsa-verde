@@ -37,12 +37,11 @@ type Verifier struct {
 }
 
 func GetInfo(obj any) *Info {
-	pod := obj.(*v1.Pod)
-
-	if pod == nil {
+	if obj == nil {
 		return nil
 	}
 
+	pod := obj.(*v1.Pod)
 	labels := pod.GetLabels()
 
 	var c []Container

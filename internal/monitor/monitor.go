@@ -47,24 +47,24 @@ func (c *Config) OnDelete(obj any) {
 func (c *Config) OnUpdate(old any, new any) {
 	c.logger.Debug("pod updated event, check if image needs to be attested")
 
-	p := pod.GetInfo(old)
-	if p == nil {
+	oldPod := pod.GetInfo(old)
+	if oldPod == nil {
 		c.logger.Debug("pod updated event, but pod is nil")
 		return
 	}
 
-	p2 := pod.GetInfo(new)
-	if p2 == nil {
+	newPod := pod.GetInfo(new)
+	if newPod == nil {
 		c.logger.Debug("pod updated event, but pod is nil")
 		return
 	}
 
-	if equalSlice(p.ContainerImages, p2.ContainerImages) {
-		c.logger.Debugf("image has not changed, ignoring pod %s", p.PodName)
+	if equalSlice(oldPod.ContainerImages, newPod.ContainerImages) {
+		c.logger.Debugf("image has not changed, ignoring pod %s", newPod.PodName)
 		return
 	}
 
-	if err := c.ensureAttested(c.ctx, p); err != nil {
+	if err := c.ensureAttested(c.ctx, newPod); err != nil {
 		c.logger.Errorf("verfy attesation pod %v", err)
 	}
 }
@@ -118,7 +118,7 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 			"pod":       p.PodName,
 			"container": metadata.ContainerName,
 		}).Info("project does not exist, creating")
-		_, err = c.Client.CreateProject(ctx, project, version, p.Namespace, []string{p.Team, p.PodName})
+		_, err = c.Client.CreateProject(ctx, project, version, p.Namespace, []string{p.Team, metadata.ContainerName})
 		if err != nil {
 			return err
 		}
@@ -131,6 +131,7 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 			return err
 		}
 	}
+
 	return nil
 }
 

@@ -39,6 +39,7 @@ func TestConfig_OnAdd(t *testing.T) {
 				BundleVerified: false,
 				Image:          "nginx:latest",
 				Statement:      &statement,
+				ContainerName:  "pod1",
 			},
 		}, nil)
 
@@ -112,8 +113,23 @@ func TestConfig_OnUpdate(t *testing.T) {
 		m.OnUpdate(p, p)
 	})
 
-	t.Run("should attest image and create project", func(t *testing.T) {
-		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{}, nil)
+	t.Run("should ignore existing project", func(t *testing.T) {
+		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
+			{
+				BundleVerified: true,
+				Image:          "nginx:laterthenlatest",
+				Statement:      nil,
+			},
+		}, nil)
+		c.On("GetProject", mock.Anything, "pod1:nginx", "laterthenlatest").Return(&client.Project{
+			Classifier: "APPLICATION",
+			Group:      "team1",
+			Uuid:       "1234",
+			Name:       "project1",
+			Publisher:  "Team",
+			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
+			Version:    "latest",
+		}, nil)
 		m.OnUpdate(p, pLatest)
 	})
 

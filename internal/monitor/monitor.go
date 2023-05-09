@@ -118,7 +118,7 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 			"pod":       p.PodName,
 			"container": metadata.ContainerName,
 		}).Info("project does not exist, creating")
-		_, err = c.Client.CreateProject(ctx, project, version, p.Namespace, []string{p.Team, metadata.ContainerName})
+		_, err = c.Client.CreateProject(ctx, project, version, p.Namespace, []string{p.Namespace, metadata.ContainerName})
 		if err != nil {
 			return err
 		}

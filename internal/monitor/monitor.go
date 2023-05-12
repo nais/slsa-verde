@@ -41,6 +41,7 @@ func (c *Config) OnDelete(obj any) {
 			c.logger.Errorf("clean up projects: %v", err)
 			return
 		}
+		c.logger.Debugf("clean up project %s", project)
 	}
 }
 

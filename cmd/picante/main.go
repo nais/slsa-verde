@@ -63,7 +63,10 @@ func main() {
 			if cfg.Features.LabelSelectors != nil && len(cfg.Features.LabelSelectors) > 0 {
 				options.LabelSelector = cfg.GetLabelSelectors()
 			}
-			options.FieldSelector = "status.phase=Running"
+			options.FieldSelector = "status.phase=Running," +
+				"metadata.namespace!=kube-system," +
+				"metadata.namespace!=kube-public," +
+				"metadata.namespace!=cnrm-system"
 		}),
 	)
 	podInformer := factory.Core().V1().Pods().Informer()

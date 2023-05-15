@@ -1,9 +1,9 @@
 package pod
 
 import (
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
+
+	"picante/internal/test"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -48,7 +48,7 @@ func TestGetInfo(t *testing.T) {
 			l[SalsaPredicateLabelKey] = tt.predicateType
 			l[SalsaKeyRefLabelKey] = tt.keyRef
 			l[IgnoreTransparencyLogLabelKey] = tt.tlog
-			p := createPod("team1", "pod1", l, "nginx:latest")
+			p := test.CreatePod("team1", "pod1", l, "nginx:latest")
 
 			inf := GetInfo(p)
 			assert.Equal(t, tt.wantPredicateType, inf.GetPredicateType(), "predicate type should match")
@@ -59,44 +59,7 @@ func TestGetInfo(t *testing.T) {
 			assert.Equal(t, "pod1", inf.Name, "name should match")
 			assert.Equal(t, "team1", inf.Namespace, "namespace should match")
 			assert.Equal(t, "nginx:latest", inf.ContainerImages[0].Image, "image should match")
+			assert.Equal(t, "pod1", inf.ContainerImages[0].Name, "name should match")
 		})
 	}
-}
-
-func createPod(namespace, name string, labels map[string]string, images ...string) *v1.Pod {
-	c := make([]v1.Container, 0)
-	for _, image := range images {
-		c = append(c, v1.Container{
-			Image: image,
-		})
-	}
-	l := merge(map[string]string{
-		SalsaKeylessProviderLabelKey:  "cosign",
-		SalsaKeyRefLabelKey:           "testdata/cosign.key",
-		SalsaPredicateLabelKey:        "cyclonedx",
-		TeamLabelKey:                  namespace,
-		IgnoreTransparencyLogLabelKey: "true",
-		AppK8sIoNameLabelKey:          name,
-	}, labels)
-	return &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels:    l,
-		},
-		Spec: v1.PodSpec{
-			Containers: c,
-		},
-	}
-}
-
-func merge(map1, map2 map[string]string) map[string]string {
-	mergedMap := make(map[string]string)
-	for key, value := range map1 {
-		mergedMap[key] = value
-	}
-	for key, value := range map2 {
-		mergedMap[key] = value
-	}
-	return mergedMap
 }

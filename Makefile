@@ -27,4 +27,3 @@ local:
 generate-mocks:
 	go run github.com/vektra/mockery/v2 --inpackage --case snake --srcpkg ./internal/monitor --name Client
 	go run github.com/vektra/mockery/v2 --inpackage --case snake --srcpkg ./internal/attestation --name Verifier
-	#go run github.com/vektra/mockery/v2 --srcpkg=github.com/sigstore/cosign/v2/pkg/cosign --name=Cosign

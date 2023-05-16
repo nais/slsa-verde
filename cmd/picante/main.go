@@ -99,7 +99,7 @@ func main() {
 	}
 
 	mainLogger.Info("setting up monitor")
-	m := monitor.NewMonitor(ctx, s, opts)
+	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
 
 	mainLogger.Info("setting up informer event handler")
 	_, err = podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -159,6 +159,7 @@ func setupConfig() (*config.Config, error) {
 		config.StoragePassword,
 		config.CosignLocalImage,
 		config.Identities,
+		config.Cluster,
 	}); err != nil {
 		return cfg, err
 	}

@@ -26,6 +26,7 @@ config:
     labelSelectors:
       name: nais.io/salsa-verify-attestation
       value: "true"
+  cluster: test
   cosign:
     keyRef: /etc/cosign/kms.pub
   storage:

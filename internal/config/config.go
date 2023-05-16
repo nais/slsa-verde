@@ -52,6 +52,7 @@ type TeamIdentity struct {
 }
 
 type Config struct {
+	Cluster                   string       `json:"cluster"`
 	Cosign                    Cosign       `json:"cosign"`
 	DevelopmentMode           bool         `json:"development-mode"`
 	Features                  Features     `json:"features"`
@@ -64,6 +65,7 @@ type Config struct {
 }
 
 const (
+	Cluster                = "cluster"
 	CosignIgnoreTLog       = "cosign.ignore-tlog"
 	CosignKeyRef           = "cosign.key-ref"
 	CosignLocalImage       = "cosign.local-image"
@@ -93,6 +95,7 @@ func init() {
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("/etc/picante")
 
+	flag.String(Cluster, "", "Cluster name, e.g. dev")
 	flag.Bool(CosignIgnoreTLog, false, "Ignore transparency log")
 	flag.Bool(CosignLocalImage, false, "Use local image")
 	flag.Bool(DevelopmentMode, false, "Toggle for development mode.")

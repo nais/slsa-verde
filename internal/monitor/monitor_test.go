@@ -21,7 +21,7 @@ import (
 func TestConfig_OnAdd(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v)
+	m := NewMonitor(context.Background(), c, v, "test")
 	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
@@ -40,14 +40,14 @@ func TestConfig_OnAdd(t *testing.T) {
 			},
 		}, nil)
 
-		c.On("GetProject", mock.Anything, "pod1:nginx", "latest").Return(nil, &httpclient.RequestError{
+		c.On("GetProjectsByTag", mock.Anything, "pod1").Return(nil, &httpclient.RequestError{
 			StatusCode: 404,
 			Err:        errors.New("project not found"),
 		})
 
-		c.On("CreateProject", mock.Anything, "pod1:nginx", "latest", "team1", []string{"team1", "pod1"}).Return(nil, nil)
+		c.On("CreateProject", mock.Anything, "test:pod1", "latest", "team1", []string{"team1", "pod1", "pod1", "test", "nginx:latest"}).Return(nil, nil)
 
-		c.On("UploadProject", mock.Anything, "pod1:nginx", "latest", mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, "test:pod1", "latest", mock.Anything).Return(nil, nil)
 
 		m.OnAdd(p)
 	})
@@ -67,13 +67,15 @@ func TestConfig_OnAdd(t *testing.T) {
 			},
 		}, nil)
 
-		c.On("GetProject", mock.Anything, "pod1:nginx", "latest").Return(&client.Project{
-			Classifier: "APPLICATION",
-			Group:      "team",
-			Name:       "project1",
-			Publisher:  "Team",
-			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
-			Version:    "",
+		c.On("GetProjectsByTag", mock.Anything, "pod1").Return([]client.Project{
+			{
+				Classifier: "APPLICATION",
+				Group:      "team",
+				Name:       "project1",
+				Publisher:  "Team",
+				Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
+				Version:    "",
+			},
 		}, nil)
 		m.OnAdd(p)
 	})
@@ -86,11 +88,11 @@ func TestConfig_OnAdd(t *testing.T) {
 func TestConfig_OnDelete(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v)
+	m := NewMonitor(context.Background(), c, v, "test")
 	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
 
 	t.Run("should delete project", func(t *testing.T) {
-		c.On("DeleteProjects", mock.Anything, "pod1:nginx").Return(nil)
+		c.On("DeleteProjects", mock.Anything, "test:pod1").Return(nil)
 
 		m.OnDelete(p)
 	})
@@ -102,7 +104,7 @@ func TestConfig_OnDelete(t *testing.T) {
 func TestConfig_OnUpdate(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v)
+	m := NewMonitor(context.Background(), c, v, "test")
 	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
 	pLatest := test.CreatePod("team1", "pod1", nil, "nginx:laterthenlatest")
 
@@ -118,7 +120,7 @@ func TestConfig_OnUpdate(t *testing.T) {
 				Statement:      nil,
 			},
 		}, nil)
-		c.On("GetProject", mock.Anything, "pod1:nginx", "laterthenlatest").Return(&client.Project{
+		c.On("GetProject", mock.Anything, "test:pod1", "laterthenlatest").Return(&client.Project{
 			Classifier: "APPLICATION",
 			Group:      "team1",
 			Uuid:       "1234",
@@ -127,6 +129,8 @@ func TestConfig_OnUpdate(t *testing.T) {
 			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
 			Version:    "latest",
 		}, nil)
+
+		c.On("UpdateProjectInfo", mock.Anything, "1234", "laterthenlatest", "team1", []string{"team1", "pod1"}).Return(nil, nil)
 		m.OnUpdate(p, pLatest)
 	})
 

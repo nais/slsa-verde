@@ -1,8 +1,9 @@
 development-mode: true
+cluster: test
 features:
   enabled: false
 cosign:
-  key-ref: hack/kms-pub
+  key-ref: etc/cosign/kms-pub
 storage:
   api: http://localhost:9001
   username: admin

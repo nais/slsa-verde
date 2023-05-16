@@ -63,7 +63,10 @@ func main() {
 			if cfg.Features.LabelSelectors != nil && len(cfg.Features.LabelSelectors) > 0 {
 				options.LabelSelector = cfg.GetLabelSelectors()
 			}
-			options.FieldSelector = "status.phase=Running"
+			options.FieldSelector = "status.phase=Running," +
+				"metadata.namespace!=kube-system," +
+				"metadata.namespace!=kube-public," +
+				"metadata.namespace!=cnrm-system"
 		}),
 	)
 	podInformer := factory.Core().V1().Pods().Informer()
@@ -96,7 +99,7 @@ func main() {
 	}
 
 	mainLogger.Info("setting up monitor")
-	m := monitor.NewMonitor(ctx, s, opts)
+	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
 
 	mainLogger.Info("setting up informer event handler")
 	_, err = podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -156,6 +159,7 @@ func setupConfig() (*config.Config, error) {
 		config.StoragePassword,
 		config.CosignLocalImage,
 		config.Identities,
+		config.Cluster,
 	}); err != nil {
 		return cfg, err
 	}

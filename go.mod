@@ -8,7 +8,7 @@ require (
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/lestrrat-go/jwx/v2 v2.0.9
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nais/dependencytrack v0.0.0-20230508115207-865ec953a9d6
+	github.com/nais/dependencytrack v0.0.0-20230516082842-94fe1023586e
 	github.com/secure-systems-lab/go-securesystemslib v0.6.0
 	github.com/sigstore/cosign/v2 v2.0.2
 	github.com/sirupsen/logrus v1.9.0

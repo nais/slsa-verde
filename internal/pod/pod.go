@@ -113,7 +113,3 @@ func (p *Info) KeylessVerification() bool {
 	}
 	return true
 }
-
-func (p *Info) HasTeamLabel() bool {
-	return p.Team != ""
-}

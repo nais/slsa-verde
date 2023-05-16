@@ -299,6 +299,32 @@ func (_m *MockClient) GetProject(ctx context.Context, name string, version strin
 	return r0, r1
 }
 
+// GetProjectsByTag provides a mock function with given fields: ctx, tag
+func (_m *MockClient) GetProjectsByTag(ctx context.Context, tag string) ([]*client.Project, error) {
+	ret := _m.Called(ctx, tag)
+
+	var r0 []*client.Project
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]*client.Project, error)); ok {
+		return rf(ctx, tag)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []*client.Project); ok {
+		r0 = rf(ctx, tag)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*client.Project)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, tag)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetTeam provides a mock function with given fields: ctx, team
 func (_m *MockClient) GetTeam(ctx context.Context, team string) (*client.Team, error) {
 	ret := _m.Called(ctx, team)

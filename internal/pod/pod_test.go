@@ -3,6 +3,8 @@ package pod
 import (
 	"testing"
 
+	"picante/internal/test"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,16 +44,22 @@ func TestGetInfo(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			pInfo := &Info{
-				Verifier: &Verifier{
-					KeyRef:        tt.keyRef,
-					PredicateType: tt.predicateType,
-					IgnoreTLog:    tt.tlog,
-				},
-			}
-			assert.Equal(t, tt.wantPredicateType, pInfo.GetPredicateType(), "predicate type should match")
-			assert.Equal(t, tt.wantKeyless, pInfo.KeylessVerification(), "keyRef should match")
-			assert.Equal(t, tt.wantTlog, pInfo.IgnoreTLog(), "tlog should match")
+			l := make(map[string]string)
+			l[SalsaPredicateLabelKey] = tt.predicateType
+			l[SalsaKeyRefLabelKey] = tt.keyRef
+			l[IgnoreTransparencyLogLabelKey] = tt.tlog
+			p := test.CreatePod("team1", "pod1", l, "nginx:latest")
+
+			inf := GetInfo(p)
+			assert.Equal(t, tt.wantPredicateType, inf.GetPredicateType(), "predicate type should match")
+			assert.Equal(t, tt.wantKeyless, inf.KeylessVerification(), "keyRef should match")
+			assert.Equal(t, tt.wantTlog, inf.IgnoreTLog(), "tlog should match")
+			assert.Equal(t, "pod1", inf.PodName, "pod name should match")
+			assert.Equal(t, "team1", inf.Team, "team name should match")
+			assert.Equal(t, "pod1", inf.Name, "name should match")
+			assert.Equal(t, "team1", inf.Namespace, "namespace should match")
+			assert.Equal(t, "nginx:latest", inf.ContainerImages[0].Image, "image should match")
+			assert.Equal(t, "pod1", inf.ContainerImages[0].Name, "name should match")
 		})
 	}
 }

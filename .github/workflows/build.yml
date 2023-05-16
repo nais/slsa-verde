@@ -37,7 +37,7 @@ jobs:
       version: ${{ steps.build_push_sign.outputs.version }}
     steps:
       - uses: actions/checkout@v3
-      - uses: nais/platform-build-push-sign@salsa02
+      - uses: nais/platform-build-push-sign@main
         id: build_push_sign
         with:
           name: picante

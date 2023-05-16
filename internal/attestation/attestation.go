@@ -77,8 +77,6 @@ func (vao *VerifyAttestationOpts) BuildCertificateIdentities(team string, gCertI
 		result = append(result, id...)
 	}
 
-	// vao.Logger.WithFields(log.Fields{"identities": result}).Debug("Identities")
-
 	return result
 }
 

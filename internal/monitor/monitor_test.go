@@ -45,9 +45,9 @@ func TestConfig_OnAdd(t *testing.T) {
 			Err:        errors.New("project not found"),
 		})
 
-		c.On("CreateProject", mock.Anything, "test:pod1", "latest", "team1", []string{"team1", "pod1", "pod1", "test", "nginx:latest"}).Return(nil, nil)
+		c.On("CreateProject", mock.Anything, "test:pod1:team1", "latest", "team1", []string{"pod1", "test", "nginx:latest"}).Return(nil, nil)
 
-		c.On("UploadProject", mock.Anything, "test:pod1", "latest", mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, "test:pod1:team1", "latest", mock.Anything).Return(nil, nil)
 
 		m.OnAdd(p)
 	})
@@ -92,7 +92,7 @@ func TestConfig_OnDelete(t *testing.T) {
 	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
 
 	t.Run("should delete project", func(t *testing.T) {
-		c.On("DeleteProjects", mock.Anything, "test:pod1").Return(nil)
+		c.On("DeleteProjects", mock.Anything, "test:pod1:team1").Return(nil)
 
 		m.OnDelete(p)
 	})
@@ -106,33 +106,6 @@ func TestConfig_OnUpdate(t *testing.T) {
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
 	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
-	pLatest := test.CreatePod("team1", "pod1", nil, "nginx:laterthenlatest")
-
-	t.Run("should ignore old and new pod with equal container image(s) ", func(t *testing.T) {
-		m.OnUpdate(p, p)
-	})
-
-	t.Run("should ignore existing project", func(t *testing.T) {
-		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
-			{
-				BundleVerified: true,
-				Image:          "nginx:laterthenlatest",
-				Statement:      nil,
-			},
-		}, nil)
-		c.On("GetProject", mock.Anything, "test:pod1", "laterthenlatest").Return(&client.Project{
-			Classifier: "APPLICATION",
-			Group:      "team1",
-			Uuid:       "1234",
-			Name:       "project1",
-			Publisher:  "Team",
-			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
-			Version:    "latest",
-		}, nil)
-
-		c.On("UpdateProjectInfo", mock.Anything, "1234", "laterthenlatest", "team1", []string{"team1", "pod1"}).Return(nil, nil)
-		m.OnUpdate(p, pLatest)
-	})
 
 	t.Run("should ignore nil pod object", func(t *testing.T) {
 		m.OnUpdate(nil, p)

@@ -39,7 +39,7 @@ func (c *Config) OnDelete(obj any) {
 
 	for _, container := range p.ContainerImages {
 		project, _ := projectAndVersion(p.Name, container.Image)
-		if err := c.Client.DeleteProjects(c.ctx, c.projectName(p.Name)); err != nil {
+		if err := c.Client.DeleteProjects(c.ctx, p.ProjectName(c.Cluster)); err != nil {
 			c.logger.Errorf("clean up projects: %v", err)
 			return
 		}
@@ -63,25 +63,8 @@ func (c *Config) OnUpdate(old any, new any) {
 	}
 
 	if equalSlice(oldPod.ContainerImages, newPod.ContainerImages) {
-		c.logger.Debugf("image has not changed, ignoring pod %s", newPod.PodName)
+		c.logger.Debug("pod updated event, but container images are the same")
 		return
-	}
-
-	metadata, err := c.verifier.Verify(c.ctx, newPod)
-	if err != nil {
-		c.logger.Errorf("verify attestation: %v", err)
-		return
-	}
-
-	if len(metadata) == 0 {
-		c.logger.Debugf("no metadata found for pod %s", newPod.PodName)
-		return
-	}
-
-	for _, m := range metadata {
-		if err := c.updateProject(c.ctx, newPod, m); err != nil {
-			c.logger.Errorf("verfy attesation pod %v", err)
-		}
 	}
 }
 
@@ -112,33 +95,6 @@ func (c *Config) OnAdd(obj any) {
 	}
 }
 
-func (c *Config) updateProject(ctx context.Context, p *pod.Info, metadata *attestation.ImageMetadata) error {
-	_, version := projectAndVersion(p.Name, metadata.Image)
-	pp, err := c.Client.GetProject(ctx, c.projectName(p.Name), version)
-	if err != nil {
-		return err
-	}
-
-	if pp != nil {
-		c.logger.WithFields(log.Fields{
-			"project":   p.Name,
-			"version":   version,
-			"pod":       p.PodName,
-			"container": metadata.ContainerName,
-		}).Info("project exists, updating")
-
-		var tags []string
-		for _, tag := range pp.Tags {
-			tags = append(tags, tag.Name)
-		}
-
-		if err = c.Client.UpdateProjectInfo(ctx, pp.Uuid, version, p.Namespace, tags); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attestation.ImageMetadata) error {
 	pp, err := c.Client.GetProjectsByTag(ctx, metadata.ContainerName)
 	if err != nil {
@@ -155,9 +111,7 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 			"pod":       p.PodName,
 			"container": metadata.ContainerName,
 		}).Info("project does not exist, creating")
-		_, err = c.Client.CreateProject(ctx, c.projectName(p.Name), version, p.Namespace, []string{
-			p.Namespace,
-			p.PodName,
+		_, err = c.Client.CreateProject(ctx, p.ProjectName(c.Cluster), version, p.Namespace, []string{
 			metadata.ContainerName,
 			c.Cluster,
 			metadata.Image,
@@ -170,15 +124,11 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 			return err
 		}
 
-		if err = c.Client.UploadProject(ctx, c.projectName(p.Name), version, b); err != nil {
+		if err = c.Client.UploadProject(ctx, p.ProjectName(c.Cluster), version, b); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func (c *Config) projectName(appName string) string {
-	return c.Cluster + ":" + appName
 }
 
 func equalSlice(containers1, containers2 []pod.Container) bool {

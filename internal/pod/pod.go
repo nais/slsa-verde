@@ -113,3 +113,7 @@ func (p *Info) KeylessVerification() bool {
 	}
 	return true
 }
+
+func (p *Info) ProjectName(cluster string) string {
+	return cluster + ":" + p.Name + ":" + p.Namespace
+}

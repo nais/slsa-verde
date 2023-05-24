@@ -106,14 +106,68 @@ func (c *Config) OnAdd(obj any) {
 		return
 	}
 
+	var parent *client.Project
 	for _, m := range metadata {
-		if err := c.createProject(c.ctx, p, m); err != nil {
+		appName := pod.AppName(p.Labels)
+		parent, err = c.createProject(c.ctx, p, m, appName)
+		if err != nil {
 			c.logger.Warnf("verify attestation: %v", err)
+		}
+
+		if parent != nil {
+			if err := c.createChildProject(c.ctx, p, m, parent); err != nil {
+				c.logger.Warnf("verify attestation: %v", err)
+			}
+		} else {
+			_, err = c.createProject(c.ctx, p, m, appName)
+			if err != nil {
+				c.logger.Warnf("verify attestation: %v", err)
+			}
 		}
 	}
 }
 
-func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attestation.ImageMetadata) error {
+func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attestation.ImageMetadata, appName string) (*client.Project, error) {
+	projectVersion := version(metadata.Image)
+	project := projectName(p.Namespace, appName, metadata.ContainerName)
+
+	pp, err := c.Client.GetProject(ctx, project, projectVersion)
+	if err != nil {
+		if !client.IsNotFound(err) {
+			return nil, err
+		}
+	}
+
+	var pro *client.Project
+	if pp == nil {
+		c.logger.WithFields(log.Fields{
+			"projectVersion": projectVersion,
+			"pod":            p.Name,
+			"container":      metadata.ContainerName,
+		}).Info("project does not exist, creating")
+
+		pro, err = c.Client.CreateProject(ctx, project, projectVersion, p.Namespace, []string{
+			p.Namespace,
+			appName,
+			metadata.ContainerName,
+			metadata.Image,
+		})
+		if err != nil {
+			return nil, err
+		}
+		b, err := json.Marshal(metadata.Statement.Predicate)
+		if err != nil {
+			return nil, err
+		}
+
+		if err = c.Client.UploadProject(ctx, project, projectVersion, b); err != nil {
+			return nil, err
+		}
+	}
+	return pro, nil
+}
+
+func (c *Config) createChildProject(ctx context.Context, p *pod.Info, metadata *attestation.ImageMetadata, parent *client.Project) error {
 	projectVersion := version(metadata.Image)
 	appName := pod.AppName(p.Labels)
 	project := projectName(p.Namespace, appName, metadata.ContainerName)
@@ -130,9 +184,9 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 			"projectVersion": projectVersion,
 			"pod":            p.Name,
 			"container":      metadata.ContainerName,
-		}).Info("project does not exist, creating")
+		}).Info("child project does not exist, creating")
 
-		_, err = c.Client.CreateProject(ctx, project, projectVersion, p.Namespace, []string{
+		_, err = c.Client.CreateChildProject(ctx, parent, project, projectVersion, p.Namespace, []string{
 			p.Namespace,
 			appName,
 			metadata.ContainerName,

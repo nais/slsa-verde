@@ -30,7 +30,7 @@ func TestConfig_OnAdd(t *testing.T) {
 	err = json.Unmarshal(file, &statement)
 	assert.NoError(t, err)
 
-	t.Run("should attest image and create project", func(t *testing.T) {
+	t.Run("should attest image and create a single project", func(t *testing.T) {
 		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
 			{
 				BundleVerified: false,
@@ -52,6 +52,65 @@ func TestConfig_OnAdd(t *testing.T) {
 		m.OnAdd(p)
 	})
 
+	t.Run("should attest image and create a parent and a child project", func(t *testing.T) {
+		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
+			{
+				BundleVerified: false,
+				Image:          "nginx:latest",
+				Statement:      &statement,
+				ContainerName:  "pod1",
+			},
+			{
+				BundleVerified: false,
+				Image:          "nginx:latest",
+				Statement:      &statement,
+				ContainerName:  "container1",
+			},
+		}, nil)
+
+		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return(nil, &httpclient.RequestError{
+			StatusCode: 404,
+			Err:        errors.New("project not found"),
+		})
+
+		c.On("CreateProject", mock.Anything, "team1:pod1", "latest", "team1", []string{"team1", "pod1", "pod1", "nginx:latest"}).Return(nil, nil)
+
+		c.On("UploadProject", mock.Anything, "team1:pod1", "latest", mock.Anything).Return(nil, nil)
+
+		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return(nil, &httpclient.RequestError{
+			StatusCode: 404,
+			Err:        errors.New("project not found"),
+		})
+
+		c.On("CreateProject", mock.Anything, "team1:pod1:container1", "latest", "team1", []string{"team1", "pod1", "container1", "nginx:latest"}).Return(nil, nil)
+
+		c.On("UploadProject", mock.Anything, "team1:pod1:container1", "latest", mock.Anything).Return(nil, nil)
+
+		m.OnAdd(p)
+	})
+
+	t.Run("should attest image and create project", func(t *testing.T) {
+		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
+			{
+				BundleVerified: false,
+				Image:          "nginx:latest",
+				Statement:      &statement,
+				ContainerName:  "pod1",
+			},
+		}, nil)
+
+		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return(nil, &httpclient.RequestError{
+			StatusCode: 404,
+			Err:        errors.New("project not found"),
+		})
+
+		c.On("CreateProject", mock.Anything, "team1:pod1", "latest", "team1", []string{"team1", "pod1", "pod1", "nginx:latest"}).Return(nil, nil)
+
+		c.On("UploadProject", mock.Anything, "team1:pod1", "latest", mock.Anything).Return(nil, nil)
+
+		m.OnAdd(p)
+	})
+
 	t.Run("should not create project if no metadata is found", func(t *testing.T) {
 		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{}, nil)
 
@@ -67,11 +126,11 @@ func TestConfig_OnAdd(t *testing.T) {
 			},
 		}, nil)
 
-		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return([]client.Project{
+		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return([]client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "team",
-				Name:       "team1:pod1:container1",
+				Name:       "team1:pod1",
 				Publisher:  "Team",
 				Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
 				Version:    "",

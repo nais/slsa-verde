@@ -7,7 +7,7 @@ require (
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/joho/godotenv v1.5.1
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nais/dependencytrack v0.0.0-20230523110945-d54449451633
+	github.com/nais/dependencytrack v0.0.0-20230524221839-5276454aca2d
 	github.com/secure-systems-lab/go-securesystemslib v0.6.0
 	github.com/sigstore/cosign/v2 v2.0.2
 	github.com/sirupsen/logrus v1.9.0

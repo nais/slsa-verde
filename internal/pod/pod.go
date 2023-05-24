@@ -7,6 +7,7 @@ import (
 const (
 	DefaultPredicateType          = "cyclonedx"
 	AppK8sIoNameLabelKey          = "app.kubernetes.io/name"
+	AppK8sIoInstanceLabelKey      = "app.kubernetes.io/instance"
 	SalsaKeyRefLabelKey           = "nais.io/salsa-key-ref"
 	SalsaKeylessProviderLabelKey  = "nais.io/salsa-keyRef-provider"
 	SalsaPredicateLabelKey        = "nais.io/salsa-predicateType"
@@ -19,9 +20,9 @@ type Info struct {
 	ContainerImages []Container
 	Name            string
 	Namespace       string
-	PodName         string
 	Team            string
 	Verifier        *Verifier
+	Labels          map[string]string
 }
 
 type Container struct {
@@ -61,10 +62,10 @@ func GetInfo(obj any) *Info {
 
 	return &Info{
 		ContainerImages: c,
-		Name:            getAppName(labels),
+		Name:            pod.GetName(),
 		Namespace:       pod.GetNamespace(),
-		PodName:         pod.GetName(),
 		Team:            labels[TeamLabelKey],
+		Labels:          labels,
 		Verifier: &Verifier{
 			PredicateType:   labels[SalsaPredicateLabelKey],
 			KeyRef:          labels[SalsaKeyRefLabelKey],
@@ -74,10 +75,13 @@ func GetInfo(obj any) *Info {
 	}
 }
 
-func getAppName(labels map[string]string) string {
+func AppName(labels map[string]string) string {
 	appName := labels[AppK8sIoNameLabelKey]
 	if appName == "" {
 		appName = labels[AppLabelKey]
+	}
+	if appName == "" {
+		appName = labels[AppK8sIoInstanceLabelKey]
 	}
 	return appName
 }
@@ -115,5 +119,5 @@ func (p *Info) KeylessVerification() bool {
 }
 
 func (p *Info) ProjectName(cluster string) string {
-	return cluster + ":" + p.Name + ":" + p.Namespace
+	return cluster + ":" + p.Namespace + ":" + p.Name
 }

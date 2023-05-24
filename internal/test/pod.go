@@ -15,6 +15,7 @@ func CreatePod(namespace, name string, labels map[string]string, images ...strin
 		})
 		initc = append(initc, v1.Container{
 			Image: image,
+			Name:  name,
 		})
 	}
 	l := merge(map[string]string{

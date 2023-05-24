@@ -37,9 +37,15 @@ func (c *Config) OnDelete(obj any) {
 		return
 	}
 
+	appName := pod.AppName(p.Labels)
+	if appName == "" {
+		c.logger.Debug("pod deleted event, but no app name found")
+		return
+	}
+
 	for _, container := range p.ContainerImages {
-		project, _ := projectAndVersion(p.Name, container.Image)
-		if err := c.Client.DeleteProjects(c.ctx, p.ProjectName(c.Cluster)); err != nil {
+		project := projectName(p.Namespace, appName, container.Name)
+		if err := c.Client.DeleteProjects(c.ctx, project); err != nil {
 			c.logger.Errorf("clean up projects: %v", err)
 			return
 		}
@@ -62,6 +68,12 @@ func (c *Config) OnUpdate(old any, new any) {
 		return
 	}
 
+	name := pod.AppName(newPod.Labels)
+	if name == "" {
+		c.logger.Debug("pod updated event, but no app name found")
+		return
+	}
+
 	if equalSlice(oldPod.ContainerImages, newPod.ContainerImages) {
 		c.logger.Debug("pod updated event, but container images are the same")
 		return
@@ -77,6 +89,12 @@ func (c *Config) OnAdd(obj any) {
 		return
 	}
 
+	name := pod.AppName(p.Labels)
+	if name == "" {
+		c.logger.Debug("pod added event, but no app name found")
+		return
+	}
+
 	metadata, err := c.verifier.Verify(c.ctx, p)
 	if err != nil {
 		c.logger.Errorf("verify attestation: %v", err)
@@ -84,7 +102,7 @@ func (c *Config) OnAdd(obj any) {
 	}
 
 	if len(metadata) == 0 {
-		c.logger.Debugf("no metadata found for pod %s", p.PodName)
+		c.logger.Debugf("no metadata found for pod %s", p.Name)
 		return
 	}
 
@@ -96,24 +114,28 @@ func (c *Config) OnAdd(obj any) {
 }
 
 func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attestation.ImageMetadata) error {
-	pp, err := c.Client.GetProjectsByTag(ctx, metadata.ContainerName)
+	projectVersion := version(metadata.Image)
+	appName := pod.AppName(p.Labels)
+	project := projectName(p.Namespace, appName, metadata.ContainerName)
+
+	pp, err := c.Client.GetProject(ctx, project, projectVersion)
 	if err != nil {
 		if !client.IsNotFound(err) {
 			return err
 		}
 	}
 
-	if len(pp) == 0 {
-		_, version := projectAndVersion(p.Name, metadata.Image)
+	if pp == nil {
 		c.logger.WithFields(log.Fields{
-			"project":   p.Name,
-			"version":   version,
-			"pod":       p.PodName,
-			"container": metadata.ContainerName,
+			"projectVersion": projectVersion,
+			"pod":            p.Name,
+			"container":      metadata.ContainerName,
 		}).Info("project does not exist, creating")
-		_, err = c.Client.CreateProject(ctx, p.ProjectName(c.Cluster), version, p.Namespace, []string{
+
+		_, err = c.Client.CreateProject(ctx, project, projectVersion, p.Namespace, []string{
+			p.Namespace,
+			appName,
 			metadata.ContainerName,
-			c.Cluster,
 			metadata.Image,
 		})
 		if err != nil {
@@ -124,11 +146,18 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 			return err
 		}
 
-		if err = c.Client.UploadProject(ctx, p.ProjectName(c.Cluster), version, b); err != nil {
+		if err = c.Client.UploadProject(ctx, project, projectVersion, b); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func projectName(namespace, appName, containerName string) string {
+	if appName == containerName {
+		return namespace + ":" + appName
+	}
+	return namespace + ":" + appName + ":" + containerName
 }
 
 func equalSlice(containers1, containers2 []pod.Container) bool {
@@ -143,30 +172,22 @@ func equalSlice(containers1, containers2 []pod.Container) bool {
 	return true
 }
 
-func projectAndVersion(name, image string) (project string, version string) {
+func version(image string) string {
 	if !strings.Contains(image, "@") {
-		image = name + ":" + image
 		i := strings.LastIndex(image, ":")
-		project = image[0:i]
-		version = image[i+1:]
-		return
+		return image[i+1:]
 	}
 
-	project, version = handleImageDigest(name, image)
-	return
+	return handleImageDigest(image)
 }
 
-func handleImageDigest(name, image string) (project string, version string) {
+func handleImageDigest(image string) string {
 	// format: <image>@<digest>
 	imageArray := strings.Split(image, "@")
 	i := strings.LastIndex(imageArray[0], ":")
 	// format: <image>:<tag>@<digest>
 	if i != -1 {
-		project = name + ":" + imageArray[0][0:i]
-		version = imageArray[0][i+1:] + "@" + imageArray[1]
-		return project, version
+		return imageArray[0][i+1:] + "@" + imageArray[1]
 	}
-	project = name + ":" + imageArray[0]
-	version = imageArray[1]
-	return project, version
+	return imageArray[1]
 }

@@ -12,6 +12,9 @@ resources:
     cpu: 100m
     memory: 256Mi
 
+google:
+  serviceAccountEmail:
+
 fqdns:
   - ttl.sh
   - sigstore-tuf-root.storage.googleapis.com

@@ -6,3 +6,4 @@ secret.json
 cover.out
 etc
 /bin/picante
+/.env

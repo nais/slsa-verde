@@ -4,3 +4,5 @@ metadata:
   name: {{ include "picante.name" . }}
   labels:
     {{- include "picante.labels" . | nindent 4 }}
+  annotations:
+    iam.gke.io/gcp-service-account: {{ .Values.google.serviceAccountEmail }}

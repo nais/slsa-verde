@@ -5,10 +5,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strings"
-
 	"github.com/google/go-containerregistry/pkg/authn"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/sigstore/cosign/v2/pkg/oci/remote"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/in-toto/in-toto-golang/in_toto"
@@ -19,7 +19,6 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sigstore/cosign/v2/pkg/cosign/pkcs11key"
 	"github.com/sigstore/cosign/v2/pkg/oci"
-	"github.com/sigstore/cosign/v2/pkg/oci/remote"
 	"github.com/sigstore/cosign/v2/pkg/signature"
 	log "github.com/sirupsen/logrus"
 	"picante/internal/github"
@@ -128,9 +127,6 @@ func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.In
 		// ensure that the public key is not used
 		vao.KeyRef = ""
 
-		co.RegistryClientOpts = []remote.Option{
-			remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(authn.DefaultKeychain)),
-		}
 	}
 
 	if !pod.KeylessVerification() {
@@ -146,6 +142,10 @@ func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.In
 		}
 		co.IgnoreTlog = pod.IgnoreTLog()
 		vao.Logger.Debugf("enabled static public key verification")
+	}
+
+	co.RegistryClientOpts = []remote.Option{
+		remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(authn.DefaultKeychain)),
 	}
 
 	return co, nil

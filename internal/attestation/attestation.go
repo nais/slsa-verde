@@ -5,11 +5,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
+
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/cosign/v2/pkg/oci/remote"
-	"strings"
 
+	gh "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
@@ -144,8 +147,14 @@ func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.In
 		vao.Logger.Debugf("enabled static public key verification")
 	}
 
+	keychain := authn.NewMultiKeychain(
+		authn.DefaultKeychain,
+		google.Keychain,
+		gh.Keychain,
+	)
+
 	co.RegistryClientOpts = []remote.Option{
-		remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(google.Keychain)),
+		remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(keychain)),
 	}
 
 	return co, nil

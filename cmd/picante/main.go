@@ -3,14 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/google"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"cloud.google.com/go/storage"
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	log "github.com/sirupsen/logrus"
@@ -51,30 +48,6 @@ func main() {
 	mainLogger.Info("starting picante")
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
-
-	cs, err := storage.NewClient(ctx)
-	if err != nil {
-		mainLogger.WithError(err).Fatal("failed to create storage client")
-	}
-
-	ref, err := name.ParseReference("europe-north1-docker.pkg.dev/nais-management-233d/nais-verification/gar_push_test:2023.03.22-11.10-d11eb0b")
-	keychain := google.Keychain
-	authenticator, err := keychain.Resolve(ref.Context())
-	if err != nil {
-		mainLogger.WithError(err).Fatal("failed to resolve keychain")
-	}
-	authCfg, err := authenticator.Authorization()
-	if err != nil {
-		mainLogger.WithError(err).Fatal("failed to get authorization config")
-	}
-
-	mainLogger.Infof("auth: %v\n", authCfg)
-
-	bi := cs.Buckets(ctx, "nais-dev-2e7b")
-	_, err = bi.Next()
-	if err != nil {
-		mainLogger.WithError(err).Fatal("failed to list buckets")
-	}
 
 	mainLogger.Info("setting up k8s client")
 	kubeConfig := setupKubeConfig()

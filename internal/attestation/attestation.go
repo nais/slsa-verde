@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/v1/google"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/cosign/v2/pkg/oci/remote"
 	"strings"
@@ -145,7 +145,7 @@ func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.In
 	}
 
 	co.RegistryClientOpts = []remote.Option{
-		remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(authn.DefaultKeychain)),
+		remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(google.Keychain)),
 	}
 
 	return co, nil

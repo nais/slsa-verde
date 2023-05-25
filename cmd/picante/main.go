@@ -8,12 +8,12 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"picante/internal/attestation"
 	"picante/internal/config"
 	"picante/internal/team"
@@ -49,6 +49,17 @@ func main() {
 	mainLogger.Info("starting picante")
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
+
+	cs, err := storage.NewClient(ctx)
+	if err != nil {
+		mainLogger.WithError(err).Fatal("failed to create storage client")
+	}
+
+	bi := cs.Buckets(ctx, "nais-dev-2e7b")
+	_, err = bi.Next()
+	if err != nil {
+		mainLogger.WithError(err).Fatal("failed to list buckets")
+	}
 
 	mainLogger.Info("setting up k8s client")
 	kubeConfig := setupKubeConfig()

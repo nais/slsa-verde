@@ -27,6 +27,9 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}"
           imagePullPolicy: Always
+          env:
+            - name: DOCKER_CONFIG
+              value: /etc/docker-credentials
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -47,6 +50,8 @@ spec:
               mountPath: "/etc/picante"
             - mountPath: /.sigstore
               name: writable-tmp
+            - mountPath: /etc/docker-credentials
+              name: docker-credentials
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
@@ -59,3 +64,11 @@ spec:
           secret:
             secretName: {{ include "picante.fullname" . }}
             optional: true
+        - name: docker-credentials
+          secret:
+            defaultMode: 420
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+            optional: true
+            secretName: picante-docker-credentials

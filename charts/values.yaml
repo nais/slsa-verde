@@ -12,6 +12,8 @@ resources:
     cpu: 100m
     memory: 256Mi
 
+dockerconfigjson:
+
 google:
   serviceAccountEmail:
 

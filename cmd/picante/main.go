@@ -13,7 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"picante/internal/attestation"
 	"picante/internal/config"
 	"picante/internal/team"

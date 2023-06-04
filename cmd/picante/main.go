@@ -97,6 +97,14 @@ func main() {
 		mainLogger.WithError(err).Fatal("failed to get teams")
 	}
 
+	picante := "nais-system" + ":" + "picante"
+	if err := s.DeleteProjects(ctx, picante); err != nil {
+		mainLogger.Errorf("clean up projects: %v", err)
+		return
+	}
+
+	mainLogger.Infof("clean up project %s", picante)
+
 	mainLogger.Info("setting up monitor")
 	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
 

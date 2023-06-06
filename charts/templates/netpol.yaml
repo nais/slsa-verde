@@ -40,7 +40,6 @@ spec:
           {{- range $key, $value := .Values.fqdns }}
             - {{ $value }}
           {{- end }}
-            - {{ get (urlParse .Values.config.storage.api) "host" }}
   podSelector:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name }}

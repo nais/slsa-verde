@@ -32,7 +32,7 @@ config:
   cosign:
     keyRef: /etc/cosign/kms.pub
   storage:
-    api:
+    api: http://dependencytrack-backend:8080
     username: picante
     password:
     team: Administrators

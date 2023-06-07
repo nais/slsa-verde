@@ -107,6 +107,12 @@ func (c *Config) OnAdd(obj any) {
 	}
 
 	for _, m := range metadata {
+		project := projectName(p.Namespace, name, m.ContainerName)
+		if err := c.Client.DeleteProjects(c.ctx, project); err != nil {
+			c.logger.Errorf("deleting projects before create: %v", err)
+			return
+		}
+		c.logger.Debugf("deleting projects before create: %s", project)
 		if err := c.createProject(c.ctx, p, m); err != nil {
 			c.logger.Warnf("verify attestation: %v", err)
 		}

@@ -67,18 +67,18 @@ func TestConfig_OnAdd(t *testing.T) {
 }
 
 func TestConfig_OnAdd_Exists(t *testing.T) {
-	c := NewMockClient(t)
-	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "test")
-	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
-
-	var statement in_toto.CycloneDXStatement
-	file, err := os.ReadFile("testdata/sbom.json")
-	assert.NoError(t, err)
-	err = json.Unmarshal(file, &statement)
-	assert.NoError(t, err)
-
 	t.Run("should not create project if already exists", func(t *testing.T) {
+		c := NewMockClient(t)
+		v := attestation.NewMockVerifier(t)
+		m := NewMonitor(context.Background(), c, v, "test")
+		p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
+
+		var statement in_toto.CycloneDXStatement
+		file, err := os.ReadFile("testdata/sbom.json")
+		assert.NoError(t, err)
+		err = json.Unmarshal(file, &statement)
+		assert.NoError(t, err)
+
 		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
 			{
 				BundleVerified: false,
@@ -101,6 +101,17 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 	})
 
 	t.Run("should update project if a project with same name already exists", func(t *testing.T) {
+		c := NewMockClient(t)
+		v := attestation.NewMockVerifier(t)
+		m := NewMonitor(context.Background(), c, v, "test")
+		p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
+
+		var statement in_toto.CycloneDXStatement
+		file, err := os.ReadFile("testdata/sbom.json")
+		assert.NoError(t, err)
+		err = json.Unmarshal(file, &statement)
+		assert.NoError(t, err)
+
 		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
 			{
 				BundleVerified: false,

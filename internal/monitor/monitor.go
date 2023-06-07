@@ -124,27 +124,45 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 	}
 
 	if pp == nil {
-		// deleting projects with same name if they exist
-		if err := c.Client.DeleteProjects(c.ctx, project); err != nil {
-			c.logger.Errorf("deleting projects before create: %v", err)
+
+		projects, err := c.Client.GetProjectsByTag(ctx, project)
+		if err != nil {
 			return err
 		}
-
-		c.logger.WithFields(log.Fields{
-			"projectVersion": projectVersion,
-			"pod":            p.Name,
-			"container":      metadata.ContainerName,
-		}).Info("project does not exist, creating")
-
-		_, err := c.Client.CreateProject(ctx, project, projectVersion, p.Namespace, []string{
+		tags := []string{
+			project,
 			p.Namespace,
 			appName,
 			metadata.ContainerName,
 			metadata.Image,
-		})
-		if err != nil {
-			return err
 		}
+
+		if len(projects) > 0 {
+
+			c.logger.WithFields(log.Fields{
+				"projectVersion": projectVersion,
+				"pod":            p.Name,
+				"container":      metadata.ContainerName,
+			}).Info("project exist update version")
+
+			_, err = c.Client.UpdateProject(ctx, projects[0].Uuid, project, projectVersion, p.Namespace, tags)
+			if err != nil {
+				return err
+			}
+
+		} else {
+			c.logger.WithFields(log.Fields{
+				"projectVersion": projectVersion,
+				"pod":            p.Name,
+				"container":      metadata.ContainerName,
+			}).Info("project does not exist, creating")
+
+			_, err = c.Client.CreateProject(ctx, project, projectVersion, p.Namespace, tags)
+			if err != nil {
+				return err
+			}
+		}
+
 		b, err := json.Marshal(metadata.Statement.Predicate)
 		if err != nil {
 			return err
@@ -154,7 +172,6 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 			return err
 		}
 	}
-
 	return nil
 }
 

@@ -31,7 +31,7 @@ func TestConfig_OnAdd(t *testing.T) {
 	t.Run("should attest image and create project", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return(nil, nil)
 
-		c.On("DeleteProjects", mock.Anything, "team1:pod1:container1").Return(nil)
+		c.On("GetProjectsByTag", mock.Anything, "team1:pod1:container1").Return([]*client.Project{}, nil)
 
 		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
 			{
@@ -42,7 +42,13 @@ func TestConfig_OnAdd(t *testing.T) {
 			},
 		}, nil)
 
-		c.On("CreateProject", mock.Anything, "team1:pod1:container1", "latest", "team1", []string{"team1", "pod1", "container1", "nginx:latest"}).Return(nil, nil)
+		c.On("CreateProject", mock.Anything, "team1:pod1:container1", "latest", "team1", []string{
+			"team1:pod1:container1",
+			"team1",
+			"pod1",
+			"container1",
+			"nginx:latest",
+		}).Return(nil, nil)
 
 		c.On("UploadProject", mock.Anything, "team1:pod1:container1", "latest", mock.Anything).Return(nil, nil)
 
@@ -90,6 +96,43 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
 			Version:    "latest",
 		}, nil)
+
+		m.OnAdd(p)
+	})
+
+	t.Run("should update project if a project with same name already exists", func(t *testing.T) {
+		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
+			{
+				BundleVerified: false,
+				Image:          "nginx:latest",
+				Statement:      &statement,
+				ContainerName:  "container1",
+			},
+		}, nil)
+
+		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return(nil, nil)
+
+		c.On("GetProjectsByTag", mock.Anything, "team1:pod1:container1").Return([]*client.Project{
+			{
+				Classifier: "APPLICATION",
+				Group:      "team",
+				Uuid:       "uuid1",
+				Name:       "team1:pod1:container1",
+				Publisher:  "Team",
+				Tags:       []client.Tag{{Name: "team1:pod1:container1"}, {Name: "team1"}, {Name: "pod1"}},
+				Version:    "version1",
+			},
+		}, nil)
+
+		c.On("UpdateProject", mock.Anything, "uuid1", "team1:pod1:container1", "latest", "team1", []string{
+			"team1:pod1:container1",
+			"team1",
+			"pod1",
+			"container1",
+			"nginx:latest",
+		}).Return(nil, nil)
+
+		c.On("UploadProject", mock.Anything, "team1:pod1:container1", "latest", mock.Anything).Return(nil, nil)
 
 		m.OnAdd(p)
 	})

@@ -3,7 +3,6 @@ package monitor
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"os"
 	"testing"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/nais/dependencytrack/pkg/client"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
-	"github.com/nais/dependencytrack/pkg/httpclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"picante/internal/attestation"
@@ -31,6 +29,10 @@ func TestConfig_OnAdd(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("should attest image and create project", func(t *testing.T) {
+		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return(nil, nil)
+
+		c.On("DeleteProjects", mock.Anything, "team1:pod1:container1").Return(nil)
+
 		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
 			{
 				BundleVerified: false,
@@ -39,11 +41,6 @@ func TestConfig_OnAdd(t *testing.T) {
 				ContainerName:  "container1",
 			},
 		}, nil)
-
-		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return(nil, &httpclient.RequestError{
-			StatusCode: 404,
-			Err:        errors.New("project not found"),
-		})
 
 		c.On("CreateProject", mock.Anything, "team1:pod1:container1", "latest", "team1", []string{"team1", "pod1", "container1", "nginx:latest"}).Return(nil, nil)
 
@@ -58,30 +55,43 @@ func TestConfig_OnAdd(t *testing.T) {
 		m.OnAdd(p)
 	})
 
+	t.Run("should ignore nil pod object", func(t *testing.T) {
+		m.OnAdd(nil)
+	})
+}
+
+func TestConfig_OnAdd_Exists(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v, "test")
+	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
+
+	var statement in_toto.CycloneDXStatement
+	file, err := os.ReadFile("testdata/sbom.json")
+	assert.NoError(t, err)
+	err = json.Unmarshal(file, &statement)
+	assert.NoError(t, err)
+
 	t.Run("should not create project if already exists", func(t *testing.T) {
 		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
 			{
 				BundleVerified: false,
 				Image:          "nginx:latest",
 				Statement:      &statement,
+				ContainerName:  "container1",
 			},
 		}, nil)
 
-		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return([]client.Project{
-			{
-				Classifier: "APPLICATION",
-				Group:      "team",
-				Name:       "team1:pod1:container1",
-				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
-				Version:    "",
-			},
+		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return(&client.Project{
+			Classifier: "APPLICATION",
+			Group:      "team",
+			Name:       "team1:pod1:container1",
+			Publisher:  "Team",
+			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
+			Version:    "latest",
 		}, nil)
+
 		m.OnAdd(p)
-	})
-
-	t.Run("should ignore nil pod object", func(t *testing.T) {
-		m.OnAdd(nil)
 	})
 }
 

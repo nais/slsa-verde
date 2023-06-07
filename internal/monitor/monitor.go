@@ -107,12 +107,6 @@ func (c *Config) OnAdd(obj any) {
 	}
 
 	for _, m := range metadata {
-		project := projectName(p.Namespace, name, m.ContainerName)
-		if err := c.Client.DeleteProjects(c.ctx, project); err != nil {
-			c.logger.Errorf("deleting projects before create: %v", err)
-			return
-		}
-		c.logger.Debugf("deleting projects before create: %s", project)
 		if err := c.createProject(c.ctx, p, m); err != nil {
 			c.logger.Warnf("verify attestation: %v", err)
 		}
@@ -126,19 +120,23 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 
 	pp, err := c.Client.GetProject(ctx, project, projectVersion)
 	if err != nil {
-		if !client.IsNotFound(err) {
-			return err
-		}
+		return err
 	}
 
 	if pp == nil {
+		// deleting projects with same name if they exist
+		if err := c.Client.DeleteProjects(c.ctx, project); err != nil {
+			c.logger.Errorf("deleting projects before create: %v", err)
+			return err
+		}
+
 		c.logger.WithFields(log.Fields{
 			"projectVersion": projectVersion,
 			"pod":            p.Name,
 			"container":      metadata.ContainerName,
 		}).Info("project does not exist, creating")
 
-		_, err = c.Client.CreateProject(ctx, project, projectVersion, p.Namespace, []string{
+		_, err := c.Client.CreateProject(ctx, project, projectVersion, p.Namespace, []string{
 			p.Namespace,
 			appName,
 			metadata.ContainerName,
@@ -156,6 +154,7 @@ func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attes
 			return err
 		}
 	}
+
 	return nil
 }
 

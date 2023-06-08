@@ -633,6 +633,8 @@ github.com/nais/dependencytrack v0.0.0-20230607120215-82d537d93e97 h1:pcWicBZhVu
 github.com/nais/dependencytrack v0.0.0-20230607120215-82d537d93e97/go.mod h1:xDrl0kOf6mjyAIvo4SFW0PCTh+KPt4R40eKZ3lWLNlg=
 github.com/nais/dependencytrack v0.0.0-20230607130243-bd29178d898d h1:Xc1a7UsMskaZgh2keiVufirIGr79jXxGs4jVDKw3vpU=
 github.com/nais/dependencytrack v0.0.0-20230607130243-bd29178d898d/go.mod h1:xDrl0kOf6mjyAIvo4SFW0PCTh+KPt4R40eKZ3lWLNlg=
+github.com/nais/dependencytrack v0.0.0-20230608082404-d08d7554dab4 h1:DbPtOOS/RxJifamj0CHefJ1jyICHpSlX0UtM5kj+bpU=
+github.com/nais/dependencytrack v0.0.0-20230608082404-d08d7554dab4/go.mod h1:xDrl0kOf6mjyAIvo4SFW0PCTh+KPt4R40eKZ3lWLNlg=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=

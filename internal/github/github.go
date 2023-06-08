@@ -26,7 +26,7 @@ func (c *CertificateIdentity) GetIdentities() []cosign.Identity {
 	for _, org := range c.Organizations {
 		ids = append(ids, cosign.Identity{
 			Issuer:        IssuerUrl,
-			SubjectRegExp: "^https:\\/\\/github\\.com\\/" + org + "\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/[a-zA-Z0-9_-]+?(?:.yaml|.yml)@refs\\/heads\\/[a-zA-Z0-9_-]+?$",
+			SubjectRegExp: "^https:\\/\\/github\\.com\\/" + org + "\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/[a-zA-Z0-9_.-]+?(?:.yaml|.yml)@refs[a-zA-Z0-9-_\\/]+$",
 		})
 	}
 	return ids

@@ -627,12 +627,6 @@ github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de h1:D5x39vF5KCwKQaw+OC9
 github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de/go.mod h1:kJun4WP5gFuHZgRjZUWWuH1DTxCtxbHDOIJsudS8jzY=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/nais/dependencytrack v0.0.0-20230523110945-d54449451633 h1:f2x6zsI/zFyv1fsgGQPe+eM9U8JlPipaqxVN2/DimYA=
-github.com/nais/dependencytrack v0.0.0-20230523110945-d54449451633/go.mod h1:giqNWMcQX0RU4DXmJ6fhU+cL2wy9eUDHIvWuDuDU9OA=
-github.com/nais/dependencytrack v0.0.0-20230607120215-82d537d93e97 h1:pcWicBZhVuRSiAZ30qXVmq2PREufRDzbPlm29VLR6PY=
-github.com/nais/dependencytrack v0.0.0-20230607120215-82d537d93e97/go.mod h1:xDrl0kOf6mjyAIvo4SFW0PCTh+KPt4R40eKZ3lWLNlg=
-github.com/nais/dependencytrack v0.0.0-20230607130243-bd29178d898d h1:Xc1a7UsMskaZgh2keiVufirIGr79jXxGs4jVDKw3vpU=
-github.com/nais/dependencytrack v0.0.0-20230607130243-bd29178d898d/go.mod h1:xDrl0kOf6mjyAIvo4SFW0PCTh+KPt4R40eKZ3lWLNlg=
 github.com/nais/dependencytrack v0.0.0-20230608082404-d08d7554dab4 h1:DbPtOOS/RxJifamj0CHefJ1jyICHpSlX0UtM5kj+bpU=
 github.com/nais/dependencytrack v0.0.0-20230608082404-d08d7554dab4/go.mod h1:xDrl0kOf6mjyAIvo4SFW0PCTh+KPt4R40eKZ3lWLNlg=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
@@ -1134,8 +1128,6 @@ golang.org/x/tools v0.0.0-20210108195828-e2f9c7f1fc8e/go.mod h1:emZCQorbCU4vsT4f
 golang.org/x/tools v0.1.0/go.mod h1:xkSsbof2nBLbhDlRMhhhyNLN/zl3eTqcnHD5viDpcZ0=
 golang.org/x/tools v0.1.12/go.mod h1:hNGJHUnrk76NpqgfD5Aqm5Crs+Hm0VOH/i9J2+nxYbc=
 golang.org/x/tools v0.6.0/go.mod h1:Xwgl3UAJ/d3gWutnCtw505GrjyAbvKui8lOU390QaIU=
-golang.org/x/tools v0.9.1 h1:8WMNJAz3zrtPmnYC7ISf5dEn3MT0gY7jBJfw27yrrLo=
-golang.org/x/tools v0.9.1/go.mod h1:owI94Op576fPu3cIGQeHs3joujW/2Oc6MtlxbF5dfNc=
 golang.org/x/tools v0.9.3 h1:Gn1I8+64MsuTb/HpH+LmQtNas23LhUVr3rYZ0eKuaMM=
 golang.org/x/tools v0.9.3/go.mod h1:owI94Op576fPu3cIGQeHs3joujW/2Oc6MtlxbF5dfNc=
 golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=

@@ -156,7 +156,16 @@ func TestConfig_OnDelete(t *testing.T) {
 	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
 
 	t.Run("should delete project", func(t *testing.T) {
-		c.On("DeleteProjects", mock.Anything, "team1:pod1").Return(nil)
+		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return(&client.Project{
+			Uuid:       "1",
+			Classifier: "APPLICATION",
+			Group:      "team",
+			Name:       "team1:pod1",
+			Publisher:  "Team",
+			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
+			Version:    "latest",
+		}, nil)
+		c.On("DeleteProject", mock.Anything, "1").Return(nil)
 
 		m.OnDelete(p)
 	})

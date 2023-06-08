@@ -31,6 +31,8 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 }
 
 func (c *Config) OnDelete(obj any) {
+	c.logger.WithFields(log.Fields{"event": "delete"})
+
 	p := pod.GetInfo(obj)
 	if p == nil {
 		c.logger.Debug("pod deleted event, but pod is nil")
@@ -47,8 +49,13 @@ func (c *Config) OnDelete(obj any) {
 		projectVersion := version(container.Image)
 		project := projectName(p.Namespace, appName, container.Name)
 		p, err := c.Client.GetProject(c.ctx, project, projectVersion)
-		if err != nil || p == nil {
+		if err != nil {
 			c.logger.Infof("get project: %v", err)
+			continue
+		}
+
+		if p == nil {
+			c.logger.Infof("project %s not found", project)
 			continue
 		}
 
@@ -62,6 +69,7 @@ func (c *Config) OnDelete(obj any) {
 }
 
 func (c *Config) OnUpdate(old any, new any) {
+	c.logger.WithFields(log.Fields{"event": "update"})
 	c.logger.Debug("pod updated event, check if image needs to be attested")
 
 	oldPod := pod.GetInfo(old)
@@ -89,6 +97,7 @@ func (c *Config) OnUpdate(old any, new any) {
 }
 
 func (c *Config) OnAdd(obj any) {
+	c.logger.WithFields(log.Fields{"event": "add"})
 	c.logger.Debug("new pod event, check if image needs to be attested")
 
 	p := pod.GetInfo(obj)

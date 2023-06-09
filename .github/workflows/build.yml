@@ -20,7 +20,7 @@ jobs:
         with:
           go-version-file: ./go.mod
           cache-dependency-path: ./go.sum
-          cache: true
+          cache: false
       - run: go test -cover ./...
       - name: Vulnerability check
         run: |

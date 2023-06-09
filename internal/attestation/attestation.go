@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/google"
@@ -184,14 +183,6 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container pod.Cont
 	} else {
 		verified, bVerified, err = cosign.VerifyImageAttestations(ctx, ref, opts)
 		if err != nil {
-			if strings.Contains(err.Error(), "no matching attestations") {
-				vao.Logger.WithFields(log.Fields{
-					"image":          container.Image,
-					"container-name": container.Name,
-					"msg":            err.Error(),
-				}).Warnf("no matching attestations found")
-				return nil, nil
-			}
 			return nil, err
 		}
 	}

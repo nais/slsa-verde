@@ -13,7 +13,6 @@ import (
 	"picante/internal/config"
 	"picante/internal/github"
 	"picante/internal/pod"
-	"picante/internal/team"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 
@@ -76,8 +75,7 @@ func TestCosignOptions(t *testing.T) {
 				VerifyAttestationCommand: v,
 			}
 
-			g := github.NewCertificateIdentity([]string{"google-yolo"})
-			_, err := co.cosignOptions(context.Background(), tc.podInfo, g)
+			_, err := CosignOptions(context.Background(), tc.keyRef, []cosign.Identity{})
 			assert.NoError(t, err)
 			assert.Equal(t, tc.tLog, co.IgnoreTlog)
 			assert.Equal(t, tc.keyRef, co.KeyRef)
@@ -96,13 +94,6 @@ func TestBuildCertificateIdentities(t *testing.T) {
 		wantIssuerUrl string
 	}{
 		{
-			desc:          "keyless is enabled, build certificate identity with google",
-			keyRef:        "",
-			tLog:          true,
-			team:          "google-yolo",
-			wantIssuerUrl: "https://google-provider-yolo.com",
-		},
-		{
 			desc:          "keyless is enabled, build certificate identity with github",
 			keyRef:        "",
 			tLog:          true,
@@ -118,16 +109,8 @@ func TestBuildCertificateIdentities(t *testing.T) {
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			var teamIdentity *team.CertificateIdentity
 			var g *github.CertificateIdentity
 			var static []cosign.Identity
-
-			if tc.team == "google-yolo" {
-				teamIdentity = &team.CertificateIdentity{
-					Domain: "some-project.iam.gserviceaccount.com",
-					Issuer: tc.wantIssuerUrl,
-				}
-			}
 
 			if tc.team == "github-yolo" {
 				g = github.NewCertificateIdentity([]string{"yolo"})
@@ -152,14 +135,13 @@ func TestBuildCertificateIdentities(t *testing.T) {
 					"test-app": "picante",
 				}),
 
-				TeamIdentity: teamIdentity,
 				VerifyAttestationCommand: &verify.VerifyAttestationCommand{
 					KeyRef:     tc.keyRef,
 					IgnoreTlog: tc.tLog,
 				},
 			}
 
-			ids := co.BuildCertificateIdentities(tc.team, g)
+			ids := BuildCertificateIdentities(g, static)
 			assert.NotEmpty(t, ids)
 			assert.Equal(t, tc.tLog, co.IgnoreTlog)
 			assert.Equal(t, tc.keyRef, co.StaticKeyRef)

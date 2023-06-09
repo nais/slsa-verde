@@ -17,7 +17,6 @@ import (
 	"github.com/in-toto/in-toto-golang/in_toto"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
-	"github.com/sigstore/cosign/v2/cmd/cosign/cli/rekor"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sigstore/cosign/v2/pkg/cosign/pkcs11key"
@@ -26,7 +25,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"picante/internal/github"
 	"picante/internal/pod"
-	"picante/internal/team"
 )
 
 type ImageMetadata struct {
@@ -37,45 +35,51 @@ type ImageMetadata struct {
 }
 
 type Verifier interface {
-	Verify(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error)
+	Verify(ctx context.Context, container pod.Container) (*ImageMetadata, error)
 }
+
+var _ Verifier = &VerifyAttestationOpts{}
 
 type VerifyAttestationOpts struct {
 	*verify.VerifyAttestationCommand
+	CheckOpts           *cosign.CheckOpts
 	GithubOrganizations []string
 	Identities          []cosign.Identity
 	StaticKeyRef        string
 	Logger              *log.Entry
-	TeamIdentity        *team.CertificateIdentity
 }
 
-func NewVerifyAttestationOpts(verifyCmd *verify.VerifyAttestationCommand, organizations []string, identities []cosign.Identity, teamIdentity *team.CertificateIdentity, keyRef string) *VerifyAttestationOpts {
+func NewVerifyAttestationOpts(
+	verifyCmd *verify.VerifyAttestationCommand,
+	organizations []string,
+	identities []cosign.Identity,
+	keyRef string,
+) (*VerifyAttestationOpts, error) {
+	gCertId := github.NewCertificateIdentity(organizations)
+	ids := BuildCertificateIdentities(gCertId, identities)
+	opts, err := CosignOptions(context.Background(), keyRef, ids)
+	if err != nil {
+		return nil, err
+	}
+
 	return &VerifyAttestationOpts{
+		CheckOpts:                opts,
 		GithubOrganizations:      organizations,
-		Identities:               identities,
+		Identities:               ids,
 		StaticKeyRef:             keyRef,
 		Logger:                   log.WithFields(log.Fields{"package": "attestation"}),
-		TeamIdentity:             teamIdentity,
 		VerifyAttestationCommand: verifyCmd,
-	}
+	}, nil
 }
 
-func (vao *VerifyAttestationOpts) certificateIdentityPreConfiguredEnabled() bool {
-	return vao.Identities != nil && len(vao.Identities) > 0
+func certificateIdentityPreConfiguredEnabled(identities []cosign.Identity) bool {
+	return identities != nil && len(identities) > 0
 }
 
-func (vao *VerifyAttestationOpts) certificateIdentityTeamEnabled(team string) bool {
-	return vao.TeamIdentity != nil && team != ""
-}
-
-func (vao *VerifyAttestationOpts) BuildCertificateIdentities(team string, gCertId *github.CertificateIdentity) []cosign.Identity {
+func BuildCertificateIdentities(gCertId *github.CertificateIdentity, identities []cosign.Identity) []cosign.Identity {
 	var result []cosign.Identity
-	if vao.certificateIdentityPreConfiguredEnabled() {
-		result = append(result, vao.Identities...)
-	}
-
-	if vao.certificateIdentityTeamEnabled(team) {
-		result = append(result, vao.TeamIdentity.GetAccountIdEmailAddress(team))
+	if certificateIdentityPreConfiguredEnabled(identities) {
+		result = append(result, identities...)
 	}
 
 	if gCertId != nil {
@@ -86,7 +90,7 @@ func (vao *VerifyAttestationOpts) BuildCertificateIdentities(team string, gCertI
 	return result
 }
 
-func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.Info, gCertId *github.CertificateIdentity) (*cosign.CheckOpts, error) {
+func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign.Identity) (*cosign.CheckOpts, error) {
 	co := &cosign.CheckOpts{}
 
 	var err error
@@ -97,23 +101,7 @@ func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.In
 		}
 	}
 
-	if !pod.IgnoreTLog() {
-		if vao.RekorURL != "" {
-			rekorClient, err := rekor.NewClient(vao.RekorURL)
-			if err != nil {
-				return nil, fmt.Errorf("creating Rekor client: %w", err)
-			}
-			co.RekorClient = rekorClient
-		}
-		// This performs an online fetch of the Rekor public keys, but this is needed
-		// for verifying tlog entries (both online and offline).
-		co.RekorPubKeys, err = cosign.GetRekorPubs(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("getting Rekor public keys: %w", err)
-		}
-	}
-
-	if pod.KeylessVerification() {
+	if staticKeyRef == "" {
 		// This performs an online fetch of the Fulcio roots. This is needed
 		// for verifying keyless certificates (both online and offline).
 		co.RootCerts, err = fulcio.GetRoots()
@@ -124,18 +112,24 @@ func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.In
 		if err != nil {
 			return nil, fmt.Errorf("getting Fulcio intermediates: %w", err)
 		}
-		co.Identities = vao.BuildCertificateIdentities(pod.Team, gCertId)
+		co.Identities = identities
 
-		vao.Logger.Debugf("enabled keyless verification")
+		// vao.Logger.Debugf("enabled keyless verification")
 		// ensure that the public key is not used
-		vao.KeyRef = ""
+		// vao.KeyRef = ""
 
+		// This performs an online fetch of the Rekor public keys, but this is needed
+		// for verifying tlog entries (both online and offline).
+		co.RekorPubKeys, err = cosign.GetRekorPubs(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("getting Rekor public keys: %w", err)
+		}
 	}
 
-	if !pod.KeylessVerification() {
+	if staticKeyRef != "" {
 		// ensure that the static public key is used
-		vao.KeyRef = vao.StaticKeyRef
-		co.SigVerifier, err = signature.PublicKeyFromKeyRef(ctx, vao.StaticKeyRef)
+		// vao.KeyRef = vao.StaticKeyRef
+		co.SigVerifier, err = signature.PublicKeyFromKeyRef(ctx, staticKeyRef)
 		if err != nil {
 			return nil, fmt.Errorf("loading public key: %w", err)
 		}
@@ -143,8 +137,8 @@ func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.In
 		if ok {
 			defer pkcs11Key.Close()
 		}
-		co.IgnoreTlog = pod.IgnoreTLog()
-		vao.Logger.Debugf("enabled static public key verification")
+		co.IgnoreTlog = true
+		// vao.Logger.Debugf("enabled static public key verification")
 	}
 
 	keychain := authn.NewMultiKeychain(
@@ -160,73 +154,71 @@ func (vao *VerifyAttestationOpts) cosignOptions(ctx context.Context, pod *pod.In
 	return co, nil
 }
 
-func (vao *VerifyAttestationOpts) Verify(ctx context.Context, pod *pod.Info) ([]*ImageMetadata, error) {
-	metadata := make([]*ImageMetadata, 0)
-	for _, container := range pod.ContainerImages {
-		ref, err := name.ParseReference(container.Image)
+func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container pod.Container) (*ImageMetadata, error) {
+	ref, err := name.ParseReference(container.Image)
 
-		gCertId := github.NewCertificateIdentity(vao.GithubOrganizations)
+	opts := vao.CheckOpts
 
-		opts, err := vao.cosignOptions(ctx, pod, gCertId)
-		if err != nil {
-			return nil, fmt.Errorf("get options: %v", err)
-		}
-
-		var verified []oci.Signature
-		var bVerified bool
-		var statement *in_toto.CycloneDXStatement
-
-		vao.Logger.WithFields(log.Fields{
-			"pod":            pod.Name,
-			"image":          container.Image,
-			"container-name": container.Name,
-		}).Infof("verifying image attestations")
-
-		if vao.LocalImage {
-			verified, bVerified, err = cosign.VerifyLocalImageAttestations(ctx, container.Image, opts)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			verified, bVerified, err = cosign.VerifyImageAttestations(ctx, ref, opts)
-			if err != nil {
-				if strings.Contains(err.Error(), "no matching attestations") {
-					vao.Logger.WithFields(log.Fields{
-						"image":          container.Image,
-						"container-name": container.Name,
-						"msg":            err.Error(),
-					}).Warnf("no matching attestations found")
-					continue
-				}
-				return nil, err
-			}
-		}
-
-		att := verified[len(verified)-1]
-
-		env, err := att.Payload()
-		if err != nil {
-			return nil, fmt.Errorf("get payload: %v", err)
-		}
-		statement, err = parseEnvelope(env)
-		if err != nil {
-			return nil, fmt.Errorf("parse payload: %v", err)
-		}
-
-		vao.Logger.WithFields(log.Fields{
-			"predicate-type": statement.PredicateType,
-			"statement-type": statement.Type,
-			"ref":            container.Image,
-		}).Info("attestation verified and parsed statement")
-
-		metadata = append(metadata, &ImageMetadata{
-			Statement:      statement,
-			Image:          ref.String(),
-			BundleVerified: bVerified,
-			ContainerName:  container.Name,
-		})
+	if opts.SigVerifier != nil {
+		vao.KeyRef = vao.StaticKeyRef
 	}
-	return metadata, nil
+
+	if err != nil {
+		return nil, fmt.Errorf("get options: %v", err)
+	}
+
+	var verified []oci.Signature
+	var bVerified bool
+	var statement *in_toto.CycloneDXStatement
+
+	vao.Logger.WithFields(log.Fields{
+		"image":          container.Image,
+		"container-name": container.Name,
+	}).Infof("verifying image attestations")
+
+	if vao.LocalImage {
+		verified, bVerified, err = cosign.VerifyLocalImageAttestations(ctx, container.Image, opts)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		verified, bVerified, err = cosign.VerifyImageAttestations(ctx, ref, opts)
+		if err != nil {
+			if strings.Contains(err.Error(), "no matching attestations") {
+				vao.Logger.WithFields(log.Fields{
+					"image":          container.Image,
+					"container-name": container.Name,
+					"msg":            err.Error(),
+				}).Warnf("no matching attestations found")
+				return nil, nil
+			}
+			return nil, err
+		}
+	}
+
+	att := verified[len(verified)-1]
+
+	env, err := att.Payload()
+	if err != nil {
+		return nil, fmt.Errorf("get payload: %v", err)
+	}
+	statement, err = parseEnvelope(env)
+	if err != nil {
+		return nil, fmt.Errorf("parse payload: %v", err)
+	}
+
+	vao.Logger.WithFields(log.Fields{
+		"predicate-type": statement.PredicateType,
+		"statement-type": statement.Type,
+		"ref":            container.Image,
+	}).Info("attestation verified and parsed statement")
+
+	return &ImageMetadata{
+		Statement:      statement,
+		Image:          ref.String(),
+		BundleVerified: bVerified,
+		ContainerName:  container.Name,
+	}, nil
 }
 
 func parseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {

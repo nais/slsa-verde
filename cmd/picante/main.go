@@ -13,10 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"picante/internal/attestation"
-	"picante/internal/config"
-	"picante/internal/team"
-
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -24,6 +20,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"picante/internal/attestation"
+	"picante/internal/config"
 	"picante/internal/monitor"
 )
 
@@ -83,13 +81,15 @@ func main() {
 		IgnoreTlog: cfg.Cosign.IgnoreTLog,
 	}
 
-	opts := attestation.NewVerifyAttestationOpts(
+	opts, err := attestation.NewVerifyAttestationOpts(
 		verifyCmd,
 		cfg.GitHub.Organizations,
 		cfg.GetPreConfiguredIdentities(),
-		team.NewCertificateIdentity(cfg.TeamIdentity.Domain, cfg.TeamIdentity.Issuer),
 		cfg.Cosign.KeyRef,
 	)
+	if err != nil {
+		mainLogger.WithError(err).Fatal("failed to setup verify attestation opts")
+	}
 
 	mainLogger.Info("setting up storage client")
 	s := client.New(cfg.Storage.Api, cfg.Storage.Username, cfg.Storage.Password, client.WithApiKeySource(cfg.Storage.Team))
@@ -166,7 +166,6 @@ func setupConfig() (*config.Config, error) {
 		config.StoragePassword,
 		config.CosignLocalImage,
 		config.Identities,
-		config.Cluster,
 	}); err != nil {
 		return cfg, err
 	}

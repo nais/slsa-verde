@@ -30,7 +30,7 @@ config:
       value: "true"
   cluster: test
   cosign:
-    keyRef: /etc/cosign/kms.pub
+    keyRef:
   storage:
     api: http://dependencytrack-backend:8080
     username: picante

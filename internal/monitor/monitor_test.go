@@ -29,28 +29,26 @@ func TestConfig_OnAdd(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("should attest image and create project", func(t *testing.T) {
-		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return(nil, nil)
+		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return(nil, nil)
 
-		c.On("GetProjectsByTag", mock.Anything, "team1:pod1:container1").Return([]*client.Project{}, nil)
-
-		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
-			{
-				BundleVerified: false,
-				Image:          "nginx:latest",
-				Statement:      &statement,
-				ContainerName:  "container1",
-			},
+		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
+			BundleVerified: false,
+			Image:          "nginx:latest",
+			Statement:      &statement,
+			ContainerName:  "pod1",
 		}, nil)
 
-		c.On("CreateProject", mock.Anything, "team1:pod1:container1", "latest", "team1", []string{
-			"team1:pod1:container1",
+		c.On("GetProjectsByTag", mock.Anything, "team1:pod1").Return([]*client.Project{}, nil)
+
+		c.On("CreateProject", mock.Anything, "team1:pod1", "latest", "team1", []string{
+			"team1:pod1",
 			"team1",
 			"pod1",
-			"container1",
+			"pod1",
 			"nginx:latest",
 		}).Return(nil, nil)
 
-		c.On("UploadProject", mock.Anything, "team1:pod1:container1", "latest", mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, "team1:pod1", "latest", mock.Anything).Return(nil, nil)
 
 		m.OnAdd(p)
 	})
@@ -79,19 +77,10 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		err = json.Unmarshal(file, &statement)
 		assert.NoError(t, err)
 
-		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
-			{
-				BundleVerified: false,
-				Image:          "nginx:latest",
-				Statement:      &statement,
-				ContainerName:  "container1",
-			},
-		}, nil)
-
-		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return(&client.Project{
+		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return(&client.Project{
 			Classifier: "APPLICATION",
 			Group:      "team",
-			Name:       "team1:pod1:container1",
+			Name:       "team1:pod1",
 			Publisher:  "Team",
 			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
 			Version:    "latest",
@@ -112,38 +101,36 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		err = json.Unmarshal(file, &statement)
 		assert.NoError(t, err)
 
-		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{
-			{
-				BundleVerified: false,
-				Image:          "nginx:latest",
-				Statement:      &statement,
-				ContainerName:  "container1",
-			},
+		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return(nil, nil)
+
+		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
+			BundleVerified: false,
+			Image:          "nginx:latest",
+			Statement:      &statement,
+			ContainerName:  "pod1",
 		}, nil)
 
-		c.On("GetProject", mock.Anything, "team1:pod1:container1", "latest").Return(nil, nil)
-
-		c.On("GetProjectsByTag", mock.Anything, "team1:pod1:container1").Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, "team1:pod1").Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "team",
 				Uuid:       "uuid1",
-				Name:       "team1:pod1:container1",
+				Name:       "team1:pod1",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: "team1:pod1:container1"}, {Name: "team1"}, {Name: "pod1"}},
+				Tags:       []client.Tag{{Name: "team1:pod1"}, {Name: "team1"}, {Name: "pod1"}},
 				Version:    "version1",
 			},
 		}, nil)
 
-		c.On("UpdateProject", mock.Anything, "uuid1", "team1:pod1:container1", "latest", "team1", []string{
-			"team1:pod1:container1",
+		c.On("UpdateProject", mock.Anything, "uuid1", "team1:pod1", "latest", "team1", []string{
+			"team1:pod1",
 			"team1",
 			"pod1",
-			"container1",
+			"pod1",
 			"nginx:latest",
 		}).Return(nil, nil)
 
-		c.On("UploadProject", mock.Anything, "team1:pod1:container1", "latest", mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, "team1:pod1", "latest", mock.Anything).Return(nil, nil)
 
 		m.OnAdd(p)
 	})

@@ -14,25 +14,25 @@ type MockVerifier struct {
 	mock.Mock
 }
 
-// Verify provides a mock function with given fields: ctx, _a1
-func (_m *MockVerifier) Verify(ctx context.Context, _a1 *pod.Info) ([]*ImageMetadata, error) {
-	ret := _m.Called(ctx, _a1)
+// Verify provides a mock function with given fields: ctx, container
+func (_m *MockVerifier) Verify(ctx context.Context, container pod.Container) (*ImageMetadata, error) {
+	ret := _m.Called(ctx, container)
 
-	var r0 []*ImageMetadata
+	var r0 *ImageMetadata
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *pod.Info) ([]*ImageMetadata, error)); ok {
-		return rf(ctx, _a1)
+	if rf, ok := ret.Get(0).(func(context.Context, pod.Container) (*ImageMetadata, error)); ok {
+		return rf(ctx, container)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *pod.Info) []*ImageMetadata); ok {
-		r0 = rf(ctx, _a1)
+	if rf, ok := ret.Get(0).(func(context.Context, pod.Container) *ImageMetadata); ok {
+		r0 = rf(ctx, container)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*ImageMetadata)
+			r0 = ret.Get(0).(*ImageMetadata)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *pod.Info) error); ok {
-		r1 = rf(ctx, _a1)
+	if rf, ok := ret.Get(1).(func(context.Context, pod.Container) error); ok {
+		r1 = rf(ctx, container)
 	} else {
 		r1 = ret.Error(1)
 	}

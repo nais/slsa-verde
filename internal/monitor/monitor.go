@@ -31,6 +31,8 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 }
 
 func (c *Config) OnDelete(obj any) {
+	c.logger.WithFields(log.Fields{"event": "delete"})
+
 	p := pod.GetInfo(obj)
 	if p == nil {
 		c.logger.Debug("pod deleted event, but pod is nil")
@@ -47,8 +49,13 @@ func (c *Config) OnDelete(obj any) {
 		projectVersion := version(container.Image)
 		project := projectName(p.Namespace, appName, container.Name)
 		p, err := c.Client.GetProject(c.ctx, project, projectVersion)
-		if err != nil || p == nil {
+		if err != nil {
 			c.logger.Infof("get project: %v", err)
+			continue
+		}
+
+		if p == nil {
+			c.logger.Infof("project %s not found", project)
 			continue
 		}
 
@@ -62,6 +69,7 @@ func (c *Config) OnDelete(obj any) {
 }
 
 func (c *Config) OnUpdate(old any, new any) {
+	c.logger.WithFields(log.Fields{"event": "update"})
 	c.logger.Debug("pod updated event, check if image needs to be attested")
 
 	oldPod := pod.GetInfo(old)
@@ -89,6 +97,7 @@ func (c *Config) OnUpdate(old any, new any) {
 }
 
 func (c *Config) OnAdd(obj any) {
+	c.logger.WithFields(log.Fields{"event": "add"})
 	c.logger.Debug("new pod event, check if image needs to be attested")
 
 	p := pod.GetInfo(obj)
@@ -103,35 +112,36 @@ func (c *Config) OnAdd(obj any) {
 		return
 	}
 
-	metadata, err := c.verifier.Verify(c.ctx, p)
-	if err != nil {
-		c.logger.Errorf("verify attestation: %v", err)
-		return
-	}
-
-	if len(metadata) == 0 {
-		c.logger.Debugf("no metadata found for pod %s", p.Name)
-		return
-	}
-
-	for _, m := range metadata {
-		if err := c.createProject(c.ctx, p, m); err != nil {
-			c.logger.Warnf("verify attestation: %v", err)
-		}
+	if err := c.verifyContainers(c.ctx, p); err != nil {
+		c.logger.Warnf("verify attestation: %v", err)
 	}
 }
 
-func (c *Config) createProject(ctx context.Context, p *pod.Info, metadata *attestation.ImageMetadata) error {
-	projectVersion := version(metadata.Image)
-	appName := pod.AppName(p.Labels)
-	project := projectName(p.Namespace, appName, metadata.ContainerName)
+func (c *Config) verifyContainers(ctx context.Context, p *pod.Info) error {
+	for _, container := range p.ContainerImages {
+		projectVersion := version(container.Image)
+		appName := pod.AppName(p.Labels)
+		project := projectName(p.Namespace, appName, container.Name)
 
-	pp, err := c.Client.GetProject(ctx, project, projectVersion)
-	if err != nil {
-		return err
-	}
+		pp, err := c.Client.GetProject(ctx, project, projectVersion)
+		if err != nil {
+			return err
+		}
 
-	if pp == nil {
+		if pp != nil {
+			c.logger.WithFields(log.Fields{
+				"projectVersion": projectVersion,
+				"pod":            p.Name,
+				"container":      container.Name,
+			}).Info("project exist, skipping")
+			continue
+		}
+
+		metadata, err := c.verifier.Verify(c.ctx, container)
+		if err != nil {
+			c.logger.Warnf("verify attestation: %v", err)
+			continue
+		}
 
 		projects, err := c.Client.GetProjectsByTag(ctx, project)
 		if err != nil {

@@ -16,7 +16,7 @@ require (
 	github.com/vektra/mockery/v2 v2.30.1
 	k8s.io/api v0.27.3
 	k8s.io/apimachinery v0.27.3
-	k8s.io/client-go v0.27.2
+	k8s.io/client-go v0.27.3
 	mvdan.cc/gofumpt v0.5.0
 )
 

@@ -1,0 +1,65 @@
+dependencies:
+  - allOf:
+      - dependencytrack
+environmentKinds:
+  - tenant
+  - legacy
+  - onprem
+values:
+  apiserverIP:
+    displayName: API server IP
+    computed:
+      template: '"{{.Env.apiserver_endpoint}}"'
+  config.cluster:
+    displayName: Current cluster
+    computed:
+      template: '"{{.Env.name}}"'
+  config.github.organizations:
+    description: Required GitHub organizations to verify image attestations
+    displayName: GitHub organization(s)
+    computed:
+      template: |
+        {{ if or (eq .Tenant.Name "nav") (eq .Tenant.Name "dev-nais") }}
+          - nais
+          - navikt
+        {{ else }}
+          - "{{.Tenant.Name}}"
+        {{ end }}
+    config:
+      type: string
+  config.identities:
+    displayName: Preconfigured signature sa Identities
+    computed:
+      template: |
+        - issuer: "https://accounts.google.com"
+          subjectRegExp: ".*@nais-io.iam.gserviceaccount.com"
+  config.storage.password:
+    displayName: dependencytrack API password
+    computed:
+      template: '"{{.Env.picante_dependencytrack_password}}"'
+  config.teamIdentity:
+    displayName: Preconfigured team identity
+    computed:
+      template: |
+        {{ if or (eq .Kind "onprem") (eq .Kind "legacy") (eq .Tenant.Name "nav") }}
+          issuer: "https://accounts.google.com"
+          domain: "nais-management-233d.iam.gserviceaccount.com"
+        {{ else }}
+          issuer: "https://accounts.google.com"
+          domain: "{{.Management.project_id}}.iam.gserviceaccount.com"
+        {{ end }}
+  dockerconfigjson:
+    displayName: Docker config json
+    required: true
+    config:
+      type: string
+      secret: true
+  google.serviceAccountEmail:
+    displayName: Google service account email
+    computed:
+      template: '"{{.Env.picante_service_account}}"'
+  image.tag:
+    displayName: Image tag
+    required: true
+    config:
+      type: string

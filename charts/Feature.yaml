@@ -60,6 +60,5 @@ values:
       template: '"{{.Env.picante_service_account}}"'
   image.tag:
     displayName: Image tag
-    required: true
     config:
       type: string

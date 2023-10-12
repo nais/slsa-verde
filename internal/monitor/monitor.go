@@ -197,7 +197,6 @@ func (c *Config) projectName(namespace, appName, containerName string) string {
 	// TODO: delete this when finished migrating to management cluster
 	if c.Cluster == "management" {
 		projectName = c.Cluster + ":" + projectName
-
 	}
 	if appName == containerName {
 		return projectName

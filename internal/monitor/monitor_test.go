@@ -46,6 +46,7 @@ func TestConfig_OnAdd(t *testing.T) {
 			"pod1",
 			"pod1",
 			"nginx:latest",
+			"test",
 		}).Return(nil, nil)
 
 		c.On("UploadProject", mock.Anything, "team1:pod1", "latest", mock.Anything).Return(nil, nil)
@@ -117,7 +118,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 				Uuid:       "uuid1",
 				Name:       "team1:pod1",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: "team1:pod1"}, {Name: "team1"}, {Name: "pod1"}},
+				Tags:       []client.Tag{{Name: "team1:pod1"}, {Name: "team1"}, {Name: "pod1"}, {Name: "test"}},
 				Version:    "version1",
 			},
 		}, nil)
@@ -128,6 +129,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			"pod1",
 			"pod1",
 			"nginx:latest",
+			"test",
 		}).Return(nil, nil)
 
 		c.On("UploadProject", mock.Anything, "team1:pod1", "latest", mock.Anything).Return(nil, nil)

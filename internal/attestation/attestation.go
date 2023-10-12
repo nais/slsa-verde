@@ -72,7 +72,7 @@ func NewVerifyAttestationOpts(
 }
 
 func certificateIdentityPreConfiguredEnabled(identities []cosign.Identity) bool {
-	return identities != nil && len(identities) > 0
+	return len(identities) > 0
 }
 
 func BuildCertificateIdentities(gCertId *github.CertificateIdentity, identities []cosign.Identity) []cosign.Identity {

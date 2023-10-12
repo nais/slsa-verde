@@ -159,13 +159,15 @@ func Print(redacted []string) {
 	keys.Sort()
 	log.Infof("Configuration file in use: %s", viper.ConfigFileUsed())
 	for _, key := range keys {
-		if ok(key) {
+		if !ok(key) {
+			log.Infof("%s: ***REDACTED***", key)
+		} else {
 			switch viper.Get(key).(type) {
 			case []interface{}:
 				for _, value := range viper.Get(key).([]interface{}) {
-					switch value.(type) {
+					switch v := value.(type) {
 					case map[string]interface{}:
-						for k, v := range value.(map[string]interface{}) {
+						for k, v := range v {
 							log.Infof("%s.%s: %s", key, k, v)
 						}
 					default:
@@ -176,8 +178,6 @@ func Print(redacted []string) {
 				log.Infof("%s: %s", key, viper.GetString(key))
 
 			}
-		} else {
-			log.Infof("%s: ***REDACTED***", key)
 		}
 	}
 }

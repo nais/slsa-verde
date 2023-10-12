@@ -2,7 +2,7 @@
 picante:
 	go build -o bin/picante cmd/picante/*.go
 
-test: fmt vet
+test: check fmt vet
 	go test ./... -coverprofile cover.out -short
 fmt:
 	go run mvdan.cc/gofumpt -w ./
@@ -27,3 +27,7 @@ local:
 generate-mocks:
 	go run github.com/vektra/mockery/v2 --inpackage --case snake --srcpkg ./internal/monitor --name Client
 	go run github.com/vektra/mockery/v2 --inpackage --case snake --srcpkg ./internal/attestation --name Verifier
+
+check:
+	go run honnef.co/go/tools/cmd/staticcheck ./...
+	go run golang.org/x/vuln/cmd/govulncheck ./...

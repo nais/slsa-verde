@@ -46,8 +46,8 @@ func (c *Config) OnDelete(obj any) {
 	}
 
 	for _, container := range p.ContainerImages {
+		project := c.projectName(p.Namespace, appName, container.Name)
 		projectVersion := version(container.Image)
-		project := projectName(p.Namespace, appName, container.Name)
 		p, err := c.Client.GetProject(c.ctx, project, projectVersion)
 		if err != nil {
 			c.logger.Infof("get project: %v", err)
@@ -119,10 +119,9 @@ func (c *Config) OnAdd(obj any) {
 
 func (c *Config) verifyContainers(ctx context.Context, p *pod.Info) error {
 	for _, container := range p.ContainerImages {
-		projectVersion := version(container.Image)
 		appName := pod.AppName(p.Labels)
-		project := projectName(p.Namespace, appName, container.Name)
-
+		project := c.projectName(p.Namespace, appName, container.Name)
+		projectVersion := version(container.Image)
 		pp, err := c.Client.GetProject(ctx, project, projectVersion)
 		if err != nil {
 			return err
@@ -153,10 +152,10 @@ func (c *Config) verifyContainers(ctx context.Context, p *pod.Info) error {
 			appName,
 			metadata.ContainerName,
 			metadata.Image,
+			c.Cluster,
 		}
 
 		if len(projects) > 0 {
-
 			c.logger.WithFields(log.Fields{
 				"projectVersion": projectVersion,
 				"pod":            p.Name,
@@ -193,11 +192,17 @@ func (c *Config) verifyContainers(ctx context.Context, p *pod.Info) error {
 	return nil
 }
 
-func projectName(namespace, appName, containerName string) string {
-	if appName == containerName {
-		return namespace + ":" + appName
+func (c *Config) projectName(namespace, appName, containerName string) string {
+	projectName := namespace + ":" + appName
+	// TODO: delete this when finished migrating to management cluster
+	if c.Cluster == "management" {
+		projectName = c.Cluster + ":" + projectName
+
 	}
-	return namespace + ":" + appName + ":" + containerName
+	if appName == containerName {
+		return projectName
+	}
+	return projectName + ":" + containerName
 }
 
 func equalSlice(containers1, containers2 []pod.Container) bool {

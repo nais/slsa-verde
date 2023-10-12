@@ -25,7 +25,7 @@ jobs:
   dependabot_pr:
     runs-on: ubuntu-latest
     if: ${{ github.actor == 'dependabot[bot]' }}
-    needs: tests-pr
+    needs: test-pr
     steps:
       - name: Dependabot metadata
         id: dependabot-metadata

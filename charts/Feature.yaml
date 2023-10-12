@@ -39,9 +39,9 @@ values:
     computed:
       template: |
         {{ if eq .Kind "management" }}
-          "{{.Management.dependencytrack_password}}"
+          "{{.Management.picante_dependencytrack_password}}"
         {{ else }}
-          "{{.Env.dependencytrack_password}}"
+          "{{.Env..picante_dependencytrack_password}}"
         {{ end }}
   config.storage.api:
     displayName: dependencytrack API endpoint

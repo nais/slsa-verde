@@ -41,7 +41,7 @@ values:
         {{ if eq .Kind "management" }}
           "{{.Management.picante_dependencytrack_password}}"
         {{ else }}
-          "{{.Env..picante_dependencytrack_password}}"
+          "{{.Env.picante_dependencytrack_password}}"
         {{ end }}
   config.storage.api:
     displayName: dependencytrack API endpoint

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	"os"
 	"os/signal"
 	"syscall"
@@ -65,7 +66,12 @@ func main() {
 				"metadata.namespace!=kube-public," +
 				"metadata.namespace!=cnrm-system"
 		})
-	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 5*time.Minute, tweakListOpts)
+
+	customReSyncPod := informers.WithCustomResyncConfig(map[v1.Object]time.Duration{
+		&corev1.Pod{}: 2 * time.Minute,
+	})
+
+	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 0, customReSyncPod, tweakListOpts)
 	podInformer := factory.Core().V1().Pods().Informer()
 	err = podInformer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
 	if err != nil {

@@ -55,7 +55,7 @@ func main() {
 	}
 
 	mainLogger.Info("setting up informer")
-	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 0, informers.WithTweakListOptions(
+	tweakListOpts := informers.WithTweakListOptions(
 		func(options *v1.ListOptions) {
 			if cfg.Features.LabelSelectors != nil && len(cfg.Features.LabelSelectors) > 0 {
 				options.LabelSelector = cfg.GetLabelSelectors()
@@ -64,8 +64,8 @@ func main() {
 				"metadata.namespace!=kube-system," +
 				"metadata.namespace!=kube-public," +
 				"metadata.namespace!=cnrm-system"
-		}),
-	)
+		})
+	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 5*time.Minute, tweakListOpts)
 	podInformer := factory.Core().V1().Pods().Informer()
 	err = podInformer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
 	if err != nil {

@@ -65,6 +65,8 @@ values:
     displayName: Google service account email
     computed:
       template: '"{{.Env.picante_service_account}}"'
+    config:
+      type: string
   image.tag:
     displayName: Image tag
     config:

@@ -16,10 +16,12 @@ import (
 	"picante/internal/attestation"
 )
 
+var cluster = "test"
+
 func TestConfig_OnAdd(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "test")
+	m := NewMonitor(context.Background(), c, v, cluster)
 	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
@@ -29,7 +31,7 @@ func TestConfig_OnAdd(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("should attest image and create project", func(t *testing.T) {
-		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return(nil, nil)
+		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(nil, nil)
 
 		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
 			BundleVerified: false,
@@ -38,18 +40,18 @@ func TestConfig_OnAdd(t *testing.T) {
 			ContainerName:  "pod1",
 		}, nil)
 
-		c.On("GetProjectsByTag", mock.Anything, "team1:pod1").Return([]*client.Project{}, nil)
+		c.On("GetProjectsByTag", mock.Anything, cluster+":team1:pod1").Return([]*client.Project{}, nil)
 
-		c.On("CreateProject", mock.Anything, "team1:pod1", "latest", "team1", []string{
-			"team1:pod1",
+		c.On("CreateProject", mock.Anything, cluster+":team1:pod1", "latest", "team1", []string{
+			cluster + ":team1:pod1",
 			"team1",
 			"pod1",
 			"pod1",
 			"nginx:latest",
-			"test",
+			cluster,
 		}).Return(nil, nil)
 
-		c.On("UploadProject", mock.Anything, "team1:pod1", "latest", mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", mock.Anything).Return(nil, nil)
 
 		m.OnAdd(p)
 	})
@@ -69,7 +71,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 	t.Run("should not create project if already exists", func(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
-		m := NewMonitor(context.Background(), c, v, "test")
+		m := NewMonitor(context.Background(), c, v, cluster)
 		p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
@@ -78,12 +80,12 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		err = json.Unmarshal(file, &statement)
 		assert.NoError(t, err)
 
-		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return(&client.Project{
+		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(&client.Project{
 			Classifier: "APPLICATION",
 			Group:      "team",
-			Name:       "team1:pod1",
+			Name:       cluster + ":team1:pod1",
 			Publisher:  "Team",
-			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
+			Tags:       []client.Tag{{Name: "test:team1"}, {Name: "pod1"}},
 			Version:    "latest",
 		}, nil)
 
@@ -93,7 +95,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 	t.Run("should update project if a project with same name already exists", func(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
-		m := NewMonitor(context.Background(), c, v, "test")
+		m := NewMonitor(context.Background(), c, v, cluster)
 		p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
@@ -102,7 +104,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		err = json.Unmarshal(file, &statement)
 		assert.NoError(t, err)
 
-		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return(nil, nil)
+		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(nil, nil)
 
 		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
 			BundleVerified: false,
@@ -111,28 +113,28 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			ContainerName:  "pod1",
 		}, nil)
 
-		c.On("GetProjectsByTag", mock.Anything, "team1:pod1").Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, cluster+":team1:pod1").Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "team",
 				Uuid:       "uuid1",
-				Name:       "team1:pod1",
+				Name:       cluster + ":team1:pod1",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: "team1:pod1"}, {Name: "team1"}, {Name: "pod1"}, {Name: "test"}},
+				Tags:       []client.Tag{{Name: cluster + ":team1:pod1"}, {Name: "team1"}, {Name: "pod1"}, {Name: "test"}},
 				Version:    "version1",
 			},
 		}, nil)
 
-		c.On("UpdateProject", mock.Anything, "uuid1", "team1:pod1", "latest", "team1", []string{
-			"team1:pod1",
+		c.On("UpdateProject", mock.Anything, "uuid1", cluster+":team1:pod1", "latest", "team1", []string{
+			cluster + ":team1:pod1",
 			"team1",
 			"pod1",
 			"pod1",
 			"nginx:latest",
-			"test",
+			cluster,
 		}).Return(nil, nil)
 
-		c.On("UploadProject", mock.Anything, "team1:pod1", "latest", mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", mock.Anything).Return(nil, nil)
 
 		m.OnAdd(p)
 	})
@@ -145,13 +147,13 @@ func TestConfig_OnDelete(t *testing.T) {
 	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
 
 	t.Run("should delete project", func(t *testing.T) {
-		c.On("GetProject", mock.Anything, "team1:pod1", "latest").Return(&client.Project{
+		c.On("GetProject", mock.Anything, "test:team1:pod1", "latest").Return(&client.Project{
 			Uuid:       "1",
 			Classifier: "APPLICATION",
 			Group:      "team",
 			Name:       "team1:pod1",
 			Publisher:  "Team",
-			Tags:       []client.Tag{{Name: "team1"}, {Name: "pod1"}},
+			Tags:       []client.Tag{{Name: "test:team1"}, {Name: "pod1"}},
 			Version:    "latest",
 		}, nil)
 		c.On("DeleteProject", mock.Anything, "1").Return(nil)

@@ -193,11 +193,7 @@ func (c *Config) verifyContainers(ctx context.Context, p *pod.Info) error {
 }
 
 func (c *Config) projectName(namespace, appName, containerName string) string {
-	projectName := namespace + ":" + appName
-	// TODO: delete this when finished migrating to management cluster
-	if c.Cluster == "management" {
-		projectName = c.Cluster + ":" + projectName
-	}
+	projectName := c.Cluster + ":" + namespace + ":" + appName
 	if appName == containerName {
 		return projectName
 	}

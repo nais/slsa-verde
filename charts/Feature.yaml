@@ -50,10 +50,8 @@ values:
         {{ if eq .Kind "management" }}
           "http://dependencytrack-backend:8080"
         {{ else }}
-          "http://dependencytrack-backend:8080"
+          "https://dependencytrack-backend.{{.Tenant.Name}}.cloud.nais.io"
         {{ end }}
-  # should be "dependencytrack-backend.{{.Tenant.Name}}.cloud.nais.io" if it's not a management cluster
-  # keep for migration purposes and backwards compatibility
   config.teamIdentity:
     displayName: Preconfigured team identity
     computed:

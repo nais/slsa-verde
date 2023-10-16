@@ -43,7 +43,7 @@ spec:
             - {{ $value }}
           {{- end }}
           {{- if hasPrefix  "https" .Values.config.storage.api }}
-            - {{ .Values.config.storage.api }}
+            - {{ get (urlParse .Values.config.storage.api) "host" }}
           {{- end }}
   podSelector:
     matchLabels:

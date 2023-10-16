@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/vektra/mockery/v2 v2.35.4
 	golang.org/x/vuln v1.0.1
-	honnef.co/go/tools v0.4.3
+	honnef.co/go/tools v0.4.6
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v0.28.2

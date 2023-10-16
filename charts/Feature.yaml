@@ -37,12 +37,7 @@ values:
   config.storage.password:
     displayName: dependencytrack API password
     computed:
-      template: |
-        {{ if eq .Kind "management" }}
-          "{{.Management.picante_dependencytrack_password}}"
-        {{ else }}
-          "{{.Env.picante_dependencytrack_password}}"
-        {{ end }}
+      template: '"{{.Management.picante_dependencytrack_password}}"'
   config.storage.api:
     displayName: dependencytrack API endpoint
     computed:

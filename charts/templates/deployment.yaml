@@ -32,7 +32,7 @@ spec:
               value: /etc/docker-credentials
           {{- if contains "fss" .Values.config.cluster }}
             - name: SIGSTORE_CT_LOG_PUBLIC_KEY_FILE
-              value: /etc/root-8
+              value: /etc/root-json
           {{- end }}
           securityContext:
             runAsNonRoot: true
@@ -48,12 +48,12 @@ spec:
               containerPort: 8080
               protocol: TCP
           volumeMounts:
-            - mountPath: /etc/tuf
-              name: root-8
+            - mountPath: /etc/root-json
+              name: root-json
             - mountPath: /etc/cosign
               name: config-volume
-            - name: picante-config
-              mountPath: "/etc/picante"
+            - mountPath: "/etc/picante"
+              name: picante-config
             - mountPath: /.sigstore
               name: writable-tmp
             - mountPath: /etc/docker-credentials
@@ -70,12 +70,8 @@ spec:
           secret:
             secretName: {{ include "picante.fullname" . }}
             optional: true
-        - name: root-8
+        - name: root-json
           secret:
-            defaultMode: 420
-            items:
-              - key: 8.root.json
-                path: config.json
             optional: true
             secretName: tuf-root-8-json
         - name: docker-credentials

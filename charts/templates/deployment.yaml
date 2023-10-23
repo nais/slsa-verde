@@ -73,6 +73,10 @@ spec:
         - name: root-json
           secret:
             optional: true
+            defaultMode: 420
+            items:
+              - key: .root.json
+                path: root.json
             secretName: tuf-root-8-json
         - name: docker-credentials
           secret:

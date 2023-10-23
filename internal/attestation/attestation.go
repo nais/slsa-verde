@@ -5,13 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-
-	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/v1/google"
-	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/sigstore/cosign/v2/pkg/oci/remote"
-
-	gh "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
@@ -57,6 +50,8 @@ func NewVerifyAttestationOpts(
 	gCertId := github.NewCertificateIdentity(organizations)
 	ids := BuildCertificateIdentities(gCertId, identities)
 	opts, err := CosignOptions(context.Background(), keyRef, ids)
+	// use the kubernetes keychain available to cosign
+	verifyCmd.KubernetesKeychain = true
 	if err != nil {
 		return nil, err
 	}
@@ -140,15 +135,21 @@ func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign
 		// vao.Logger.Debugf("enabled static public key verification")
 	}
 
-	keychain := authn.NewMultiKeychain(
-		authn.DefaultKeychain,
-		google.Keychain,
-		gh.Keychain,
-	)
-
-	co.RegistryClientOpts = []remote.Option{
-		remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(keychain)),
-	}
+	//keychain := authn.NewMultiKeychain(
+	//	authn.DefaultKeychain,
+	//	google.Keychain,
+	//	gh.Keychain,
+	//	authn.NewKeychainFromHelper(ecr.NewECRHelper(ecr.WithLogger(io.Discard))),
+	//	authn.NewKeychainFromHelper(credhelper.NewACRCredentialsHelper()),
+	//	authn.NewKeychainFromHelper(alibabaacr.NewACRHelper().WithLoggerOut(io.Discard)),
+	//)
+	//
+	//co.RegistryClientOpts = []remote.Option{
+	//	remote.WithRemoteOptions(
+	//		ociremote.WithAuthFromKeychain(keychain),
+	//		ociremote.WithUserAgent(options.UserAgent())),
+	//		ociremote.WithTransport(&http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}), // #nosec G402
+	//}
 
 	return co, nil
 }

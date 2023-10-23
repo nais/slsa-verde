@@ -48,7 +48,7 @@ func (c *Config) OnDelete(obj any) {
 	for _, container := range p.ContainerImages {
 		project := c.projectName(p.Namespace, appName, container.Name)
 		projectVersion := version(container.Image)
-		p, err := c.Client.GetProject(c.ctx, project, projectVersion)
+		pr, err := c.Client.GetProject(c.ctx, project, projectVersion)
 		if err != nil {
 			c.logger.Infof("get project: %v", err)
 			continue
@@ -59,7 +59,7 @@ func (c *Config) OnDelete(obj any) {
 			continue
 		}
 
-		if err := c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
+		if err = c.Client.DeleteProject(c.ctx, pr.Uuid); err != nil {
 			c.logger.Errorf("delete project: %v", err)
 			continue
 		}

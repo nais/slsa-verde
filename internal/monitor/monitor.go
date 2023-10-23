@@ -54,7 +54,7 @@ func (c *Config) OnDelete(obj any) {
 			continue
 		}
 
-		if p == nil {
+		if pr == nil {
 			c.logger.Infof("project %s not found", project)
 			continue
 		}

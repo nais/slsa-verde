@@ -32,7 +32,7 @@ spec:
               value: /etc/docker-credentials
           {{- if contains "fss" .Values.config.cluster }}
             - name: SIGSTORE_CT_LOG_PUBLIC_KEY_FILE
-              value: /etc/root-json
+              value: /etc/root-json/.root.json
           {{- end }}
           securityContext:
             runAsNonRoot: true

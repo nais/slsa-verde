@@ -4,4 +4,4 @@ sources:
   - https://github.com/nais/picante/tree/main/charts
 description: Informer to update salsa storage with attestation data
 type: application
-version: 0.2.2
+version: 0.2.3

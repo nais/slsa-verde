@@ -4,6 +4,10 @@ environmentKinds:
   - legacy
   - onprem
 values:
+  webproxy:
+    displayName: Enable webproxy
+    computed:
+      template: '{{ eq .Kind "onprem" }}'
   apiserverIP:
     displayName: API server IP
     computed:

@@ -30,9 +30,19 @@ spec:
           env:
             - name: DOCKER_CONFIG
               value: /etc/docker-credentials
-          {{- if contains "fss" .Values.config.cluster }}
-            - name: SIGSTORE_CT_LOG_PUBLIC_KEY_FILE
-              value: /etc/root-json/.root.json
+          {{- if .Values.webproxy }}
+            - name: HTTP_PROXY
+              value: http://webproxy.nais:8088
+            - name: http_proxy
+              value: http://webproxy.nais:8088
+            - name: HTTPS_PROXY
+              value: http://webproxy.nais:8088
+            - name: https_proxy
+              value: http://webproxy.nais:8088
+            - name: NO_PROXY
+              value: localhost,127.0.0.1,10.254.0.1,.local,.adeo.no,.nav.no,.aetat.no,.devillo.no,.oera.no,.nais.io,.aivencloud.com,.intern.dev.nav.no
+            - name: no_proxy
+              value: localhost,127.0.0.1,10.254.0.1,.local,.adeo.no,.nav.no,.aetat.no,.devillo.no,.oera.no,.nais.io,.aivencloud.com,.intern.dev.nav.no
           {{- end }}
           securityContext:
             runAsNonRoot: true
@@ -48,8 +58,6 @@ spec:
               containerPort: 8080
               protocol: TCP
           volumeMounts:
-            - mountPath: /etc/root-json
-              name: root-json
             - mountPath: /etc/cosign
               name: config-volume
             - mountPath: "/etc/picante"
@@ -70,14 +78,6 @@ spec:
           secret:
             secretName: {{ include "picante.fullname" . }}
             optional: true
-        - name: root-json
-          secret:
-            optional: true
-            defaultMode: 420
-            items:
-              - key: .root.json
-                path: root.json
-            secretName: tuf-root-8-json
         - name: docker-credentials
           secret:
             defaultMode: 420

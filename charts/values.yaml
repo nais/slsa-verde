@@ -7,6 +7,8 @@ image:
 
 team: nais
 
+webproxy: false
+
 resources:
   requests:
     cpu: 100m

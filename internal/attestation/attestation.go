@@ -5,6 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/v1/google"
+	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/sigstore/cosign/v2/pkg/oci/remote"
+
+	gh "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
@@ -51,7 +57,7 @@ func NewVerifyAttestationOpts(
 	ids := BuildCertificateIdentities(gCertId, identities)
 	opts, err := CosignOptions(context.Background(), keyRef, ids)
 	// use the kubernetes keychain available to cosign
-	verifyCmd.KubernetesKeychain = true
+	// verifyCmd.KubernetesKeychain = true
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +134,16 @@ func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign
 			defer pkcs11Key.Close()
 		}
 		co.IgnoreTlog = true
+	}
+
+	keychain := authn.NewMultiKeychain(
+		authn.DefaultKeychain,
+		google.Keychain,
+		gh.Keychain,
+	)
+
+	co.RegistryClientOpts = []remote.Option{
+		remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(keychain)),
 	}
 
 	return co, nil

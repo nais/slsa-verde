@@ -5,7 +5,7 @@ on:
       - main
     paths-ignore:
       - '*.md'
-      - 'LICENSE'
+      - 'LICENSE.md'
 env:
   NAME: picante
   FEATURE_REPOSITORY: oci://europe-north1-docker.pkg.dev/nais-io/nais/feature

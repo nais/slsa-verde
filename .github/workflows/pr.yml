@@ -6,7 +6,7 @@ on:
       - 'charts/**'
       - '.github/workflows/chart.yaml'
       - '*.md'
-      - 'LICENSE'
+      - 'LICENSE.md'
 
 permissions:
   pull-requests: write

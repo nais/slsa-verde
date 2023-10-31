@@ -127,12 +127,12 @@ func (c *Config) verifyContainers(ctx context.Context, p *pod.Info) error {
 			return err
 		}
 
-		if pp != nil {
+		if pp != nil && pp.LastBomImportFormat != "" {
 			c.logger.WithFields(log.Fields{
 				"projectVersion": projectVersion,
 				"pod":            p.Name,
 				"container":      container.Name,
-			}).Info("project exist, skipping")
+			}).Info("project exist and has bom, skipping")
 			continue
 		}
 

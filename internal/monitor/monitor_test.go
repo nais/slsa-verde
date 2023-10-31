@@ -81,12 +81,13 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		assert.NoError(t, err)
 
 		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(&client.Project{
-			Classifier: "APPLICATION",
-			Group:      "team",
-			Name:       cluster + ":team1:pod1",
-			Publisher:  "Team",
-			Tags:       []client.Tag{{Name: "test:team1"}, {Name: "pod1"}},
-			Version:    "latest",
+			Classifier:          "APPLICATION",
+			Group:               "team",
+			Name:                cluster + ":team1:pod1",
+			Publisher:           "Team",
+			Tags:                []client.Tag{{Name: "test:team1"}, {Name: "pod1"}},
+			Version:             "latest",
+			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
 
 		m.OnAdd(p)

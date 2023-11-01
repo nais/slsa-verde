@@ -60,7 +60,7 @@ func (c *Config) OnDelete(obj any) {
 		}
 
 		if err = c.Client.DeleteProject(c.ctx, pr.Uuid); err != nil {
-			c.logger.Errorf("delete project: %v", err)
+			c.logger.Errorf("delete project:%s: %v", project, err)
 			continue
 		}
 

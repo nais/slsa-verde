@@ -60,8 +60,7 @@ func main() {
 			if cfg.Features.LabelSelectors != nil && len(cfg.Features.LabelSelectors) > 0 {
 				options.LabelSelector = cfg.GetLabelSelectors()
 			}
-			options.FieldSelector = "status.phase=Running," +
-				"metadata.namespace!=kube-system," +
+			options.FieldSelector = "metadata.namespace!=kube-system," +
 				"metadata.namespace!=kube-public," +
 				"metadata.namespace!=cnrm-system"
 		})
@@ -110,7 +109,7 @@ func main() {
 	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
 
 	mainLogger.Info("setting up informer event handler")
-	_, err = podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	event, err := podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    m.OnAdd,
 		UpdateFunc: m.OnUpdate,
 		DeleteFunc: m.OnDelete,
@@ -127,7 +126,7 @@ func main() {
 		return
 	}
 
-	mainLogger.Infof("informer cache synced")
+	mainLogger.Infof("informer cache synced: %v", event.HasSynced())
 
 	<-ctx.Done()
 	mainLogger.Info("shutting down")

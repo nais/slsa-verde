@@ -55,7 +55,7 @@ func (c *Config) OnDelete(obj any) {
 		}
 
 		if pr == nil {
-			c.logger.Infof("project %s not found", project)
+			c.logger.Infof("trying to delete project %s, but project not found", project)
 			continue
 		}
 
@@ -72,12 +72,6 @@ func (c *Config) OnUpdate(old any, new any) {
 	c.logger.WithFields(log.Fields{"event": "update"})
 	c.logger.Debug("pod updated event, check if image needs to be attested")
 
-	oldPod := pod.GetInfo(old)
-	if oldPod == nil {
-		c.logger.Debug("pod updated event, but pod is nil")
-		return
-	}
-
 	newPod := pod.GetInfo(new)
 	if newPod == nil {
 		c.logger.Debug("pod updated event, but pod is nil")
@@ -90,9 +84,8 @@ func (c *Config) OnUpdate(old any, new any) {
 		return
 	}
 
-	if equalSlice(oldPod.ContainerImages, newPod.ContainerImages) {
-		c.logger.Debug("pod updated event, but container images are the same")
-		return
+	if err := c.verifyContainers(c.ctx, newPod); err != nil {
+		c.logger.Warnf("verify attestation: %v", err)
 	}
 }
 
@@ -198,18 +191,6 @@ func (c *Config) projectName(namespace, appName, containerName string) string {
 		return projectName
 	}
 	return projectName + ":" + containerName
-}
-
-func equalSlice(containers1, containers2 []pod.Container) bool {
-	if len(containers1) != len(containers2) {
-		return false
-	}
-	for i, c := range containers1 {
-		if c.Image != containers2[i].Image {
-			return false
-		}
-	}
-	return true
 }
 
 func version(image string) string {

@@ -22,7 +22,7 @@ dtrack-down:
 	docker compose -f hack/docker-compse-dtrack.yaml down
 
 local:
-	go run cmd/picante/main.go
+	go build -o bin/picante cmd/picante/*.go && go run cmd/picante/main.go
 
 generate-mocks:
 	go run github.com/vektra/mockery/v2 --inpackage --case snake --srcpkg ./internal/monitor --name Client

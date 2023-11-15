@@ -114,7 +114,6 @@ func main() {
 		UpdateFunc: m.OnUpdate,
 		DeleteFunc: m.OnDelete,
 	})
-
 	if err != nil {
 		mainLogger.Errorf("error setting event handler: %v", err)
 		return

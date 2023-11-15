@@ -173,10 +173,27 @@ func TestConfig_OnUpdate(t *testing.T) {
 	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
 
 	t.Run("should ignore nil pod object", func(t *testing.T) {
-		m.OnUpdate(nil, p)
+		m.OnUpdate(nil, nil)
 	})
-	t.Run("should ignore nil pod object", func(t *testing.T) {
-		m.OnUpdate(p, nil)
+
+	var statement in_toto.CycloneDXStatement
+	file, err := os.ReadFile("testdata/sbom.json")
+	assert.NoError(t, err)
+	err = json.Unmarshal(file, &statement)
+	assert.NoError(t, err)
+
+	t.Run("should not update projects if exists", func(t *testing.T) {
+		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(&client.Project{
+			Classifier:          "APPLICATION",
+			Group:               "team",
+			Name:                cluster + ":team1:pod1",
+			Publisher:           "Team",
+			Tags:                []client.Tag{{Name: "test:team1"}, {Name: "pod1"}},
+			Version:             "latest",
+			LastBomImportFormat: "CycloneDX 1.4",
+		}, nil)
+
+		m.OnUpdate(nil, p)
 	})
 }
 

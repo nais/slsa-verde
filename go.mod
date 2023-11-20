@@ -16,8 +16,8 @@ require (
 	github.com/vektra/mockery/v2 v2.36.1
 	golang.org/x/vuln v1.0.1
 	honnef.co/go/tools v0.4.6
-	k8s.io/api v0.28.3
-	k8s.io/apimachinery v0.28.3
+	k8s.io/api v0.28.4
+	k8s.io/apimachinery v0.28.4
 	k8s.io/client-go v0.28.3
 	mvdan.cc/gofumpt v0.5.0
 )

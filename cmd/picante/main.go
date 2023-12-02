@@ -65,16 +65,6 @@ func main() {
 				"metadata.namespace!=cnrm-system"
 		})
 
-	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 0, tweakListOpts)
-	podInformer := factory.Core().V1().Pods().Informer()
-	err = podInformer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
-	if err != nil {
-		mainLogger.Errorf("error setting watch error handler: %v", err)
-		return
-	}
-
-	defer runtime.HandleCrash()
-
 	verifyCmd := &verify.VerifyAttestationCommand{
 		RekorURL:   cfg.Cosign.RekorURL,
 		LocalImage: cfg.Cosign.LocalImage,
@@ -91,41 +81,24 @@ func main() {
 		mainLogger.WithError(err).Fatal("failed to setup verify attestation opts")
 	}
 
-	mainLogger.Info("setting up storage client")
+	mainLogger.Info("setting up dtrack client")
 	s := client.New(cfg.Storage.Api, cfg.Storage.Username, cfg.Storage.Password, client.WithApiKeySource(cfg.Storage.Team))
 	if err != nil {
 		mainLogger.WithError(err).Fatal("failed to get teams")
 	}
 
-	picante := "nais-system" + ":" + "picante"
-	if err := s.DeleteProjects(ctx, picante); err != nil {
-		mainLogger.Errorf("clean up projects: %v", err)
-		return
+	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 0, tweakListOpts)
+	if err = setupInformers(
+		ctx,
+		mainLogger,
+		monitor.NewMonitor(ctx, s, opts, cfg.Cluster),
+		factory.Apps().V1().ReplicaSets().Informer(),
+		factory.Batch().V1().Jobs().Informer(),
+	); err != nil {
+		mainLogger.WithError(err).Fatal("failed to setup informers")
 	}
 
-	mainLogger.Infof("clean up project %s", picante)
-
-	mainLogger.Info("setting up monitor")
-	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
-
-	mainLogger.Info("setting up informer event handler")
-	event, err := podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    m.OnAdd,
-		UpdateFunc: m.OnUpdate,
-		DeleteFunc: m.OnDelete,
-	})
-	if err != nil {
-		mainLogger.Errorf("error setting event handler: %v", err)
-		return
-	}
-
-	go podInformer.Run(ctx.Done())
-	if !cache.WaitForCacheSync(ctx.Done(), podInformer.HasSynced) {
-		runtime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
-		return
-	}
-
-	mainLogger.Infof("informer cache synced: %v", event.HasSynced())
+	defer runtime.HandleCrash()
 
 	<-ctx.Done()
 	mainLogger.Info("shutting down")
@@ -149,6 +122,35 @@ func setupKubeConfig() *rest.Config {
 		log.Infof("starting with in-cluster config: %s", kubeConfig.Host)
 	}
 	return kubeConfig
+}
+
+func setupInformers(ctx context.Context, log *log.Entry, monitor *monitor.Config, informers ...cache.SharedIndexInformer) error {
+	for _, informer := range informers {
+		log.Infof("setting up informer")
+		err := informer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
+		if err != nil {
+			return fmt.Errorf("set watch error handler: %w", err)
+		}
+
+		log.Info("setting up monitor, event handler")
+		event, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    monitor.OnAdd,
+			UpdateFunc: monitor.OnUpdate,
+			DeleteFunc: monitor.OnDelete,
+		})
+		if err != nil {
+			return fmt.Errorf("add event handler: %w", err)
+		}
+
+		go informer.Run(ctx.Done())
+		if !cache.WaitForCacheSync(ctx.Done(), informer.HasSynced) {
+			runtime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
+			return fmt.Errorf("timed out waiting for caches to sync")
+		}
+
+		log.Infof("replica informer cache synced: %v", event.HasSynced())
+	}
+	return nil
 }
 
 func setupConfig() (*config.Config, error) {

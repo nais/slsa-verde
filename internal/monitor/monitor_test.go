@@ -22,7 +22,7 @@ func TestConfig_OnAdd(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
-	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
+	w := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -53,16 +53,16 @@ func TestConfig_OnAdd(t *testing.T) {
 
 		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", mock.Anything).Return(nil, nil)
 
-		m.OnAdd(p)
+		m.OnAdd(w)
 	})
 
 	t.Run("should not create project if no metadata is found", func(t *testing.T) {
 		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{}, nil)
 
-		m.OnAdd(p)
+		m.OnAdd(w)
 	})
 
-	t.Run("should ignore nil pod object", func(t *testing.T) {
+	t.Run("should ignore nil workload object", func(t *testing.T) {
 		m.OnAdd(nil)
 	})
 }
@@ -72,7 +72,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
 		m := NewMonitor(context.Background(), c, v, cluster)
-		p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
+		p := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
 		file, err := os.ReadFile("testdata/sbom.json")
@@ -97,7 +97,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
 		m := NewMonitor(context.Background(), c, v, cluster)
-		p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
+		p := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
 		file, err := os.ReadFile("testdata/sbom.json")
@@ -145,7 +145,7 @@ func TestConfig_OnDelete(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
-	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
+	p := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
 
 	t.Run("should delete project", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test:team1:pod1", "latest").Return(&client.Project{
@@ -161,7 +161,7 @@ func TestConfig_OnDelete(t *testing.T) {
 
 		m.OnDelete(p)
 	})
-	t.Run("should ignore nil pod object", func(t *testing.T) {
+	t.Run("should ignore nil workload object", func(t *testing.T) {
 		m.OnDelete(nil)
 	})
 }
@@ -170,9 +170,9 @@ func TestConfig_OnUpdate(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
-	p := test.CreatePod("team1", "pod1", nil, "nginx:latest")
+	p := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
 
-	t.Run("should ignore nil pod object", func(t *testing.T) {
+	t.Run("should ignore nil workload object", func(t *testing.T) {
 		m.OnUpdate(nil, nil)
 	})
 

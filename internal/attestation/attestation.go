@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"picante/internal/workload"
+
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
@@ -23,7 +25,6 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/signature"
 	log "github.com/sirupsen/logrus"
 	"picante/internal/github"
-	"picante/internal/pod"
 )
 
 type ImageMetadata struct {
@@ -34,7 +35,7 @@ type ImageMetadata struct {
 }
 
 type Verifier interface {
-	Verify(ctx context.Context, container pod.Container) (*ImageMetadata, error)
+	Verify(ctx context.Context, container workload.Container) (*ImageMetadata, error)
 }
 
 var _ Verifier = &VerifyAttestationOpts{}
@@ -57,8 +58,6 @@ func NewVerifyAttestationOpts(
 	gCertId := github.NewCertificateIdentity(organizations)
 	ids := BuildCertificateIdentities(gCertId, identities)
 	opts, err := CosignOptions(context.Background(), keyRef, ids)
-	// use the kubernetes keychain available to cosign
-	// verifyCmd.KubernetesKeychain = true
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +149,7 @@ func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign
 	return co, nil
 }
 
-func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container pod.Container) (*ImageMetadata, error) {
+func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload.Container) (*ImageMetadata, error) {
 	ref, err := name.ParseReference(container.Image)
 
 	opts := vao.CheckOpts

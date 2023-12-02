@@ -12,7 +12,7 @@ import (
 
 	"picante/internal/config"
 	"picante/internal/github"
-	"picante/internal/pod"
+	"picante/internal/workload"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 
@@ -24,18 +24,18 @@ func TestCosignOptions(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, tc := range []struct {
-		desc      string
-		keyRef    string
-		tLog      bool
-		ignoreSCT bool
-		podInfo   *pod.Info
+		desc             string
+		keyRef           string
+		tLog             bool
+		ignoreSCT        bool
+		workloadMetaData workload.Workload
 	}{
 		{
 			desc:   "key ref cosign options should match",
 			keyRef: "testdata/cosign.pub",
 			tLog:   true,
-			podInfo: &pod.Info{
-				Verifier: &pod.Verifier{
+			workloadMetaData: &workload.ReplicaSet{
+				Verifier: &workload.Verifier{
 					KeyRef: "true",
 				},
 			},
@@ -43,8 +43,8 @@ func TestCosignOptions(t *testing.T) {
 		{
 			desc:   "keyless cosign options should match",
 			keyRef: "",
-			podInfo: &pod.Info{
-				Verifier: &pod.Verifier{
+			workloadMetaData: &workload.ReplicaSet{
+				Verifier: &workload.Verifier{
 					KeyRef: "",
 				},
 			},
@@ -53,8 +53,8 @@ func TestCosignOptions(t *testing.T) {
 		{
 			desc:   "configured with tlog",
 			keyRef: "",
-			podInfo: &pod.Info{
-				Verifier: &pod.Verifier{
+			workloadMetaData: &workload.ReplicaSet{
+				Verifier: &workload.Verifier{
 					KeyRef:     "",
 					IgnoreTLog: "false",
 				},
@@ -157,16 +157,6 @@ func TestBuildCertificateIdentities(t *testing.T) {
 		})
 	}
 }
-
-//func TestVerifyAttestationOpts_Verify(t *testing.T) {
-//	opts := NewVerifyAttestationOpts()
-//	p := test.CreatePod("team1", "myapp", nil, "image1", "image2")
-//	pInfo := pod.GetInfo(p)
-//
-//	metadata, err := opts.Verify(context.Background(), pInfo)
-//	assert.NoError(t, err)
-//	assert.Equal(t, 1, len(metadata))
-//}
 
 func TestParsePayload(t *testing.T) {
 	attPath := "testdata/cyclonedx-dsse.json"

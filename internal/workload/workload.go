@@ -22,11 +22,19 @@ type Workload interface {
 	GetName() string
 	GetNamespace() string
 	GetTeam() string
-	Ready() bool
+	Active() bool
 	GetLabels() map[string]string
 	GetKind() string
 	GetContainers() []Container
 	GetVerifier() *Verifier
+}
+
+type metadata struct {
+	Name      string
+	Namespace string
+	Team      string
+	Kind      string
+	Labels    map[string]string
 }
 
 type Container struct {
@@ -52,10 +60,14 @@ func GetMetadata(obj any, log *logrus.Entry) Workload {
 
 	var w Workload
 	switch v := obj.(type) {
+	case *appv1.StatefulSet:
+		w = NewStatefulSet(v, log)
 	case *v1.Job:
 		w = NewJob(v, log)
 	case *appv1.ReplicaSet:
 		w = NewReplicaSet(v, log)
+	default:
+		log.Debugf("unknown workload type: %T", v)
 	}
 	return w
 }
@@ -68,7 +80,7 @@ func ProjectName(w Workload, cluster, containerName string) string {
 	return projectName + ":" + containerName
 }
 
-func Name(labels map[string]string) string {
+func setName(labels map[string]string) string {
 	appName := labels[AppK8sIoNameLabelKey]
 	if appName == "" {
 		appName = labels[AppLabelKey]
@@ -112,4 +124,13 @@ func KeylessVerification(w Workload) bool {
 		return false
 	}
 	return true
+}
+
+func setVerifier(labels map[string]string) *Verifier {
+	return &Verifier{
+		PredicateType:   labels[SalsaPredicateLabelKey],
+		KeyRef:          labels[SalsaKeyRefLabelKey],
+		KeylessProvider: labels[SalsaKeylessProviderLabelKey],
+		IgnoreTLog:      labels[IgnoreTransparencyLogLabelKey],
+	}
 }

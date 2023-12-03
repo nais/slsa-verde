@@ -5,16 +5,16 @@ import (
 	appv1 "k8s.io/api/apps/v1"
 )
 
-type ReplicaSet struct {
+type StatefulSet struct {
 	*metadata
 	Labels     map[string]string
 	Containers []Container
-	Status     *appv1.ReplicaSetStatus
+	Status     *appv1.StatefulSetStatus
 	Log        *log.Entry
 	Verifier   *Verifier
 }
 
-func NewReplicaSet(r *appv1.ReplicaSet, log *log.Entry) Workload {
+func NewStatefulSet(r *appv1.StatefulSet, log *log.Entry) Workload {
 	labels := r.GetLabels()
 	var c []Container
 	for _, container := range r.Spec.Template.Spec.Containers {
@@ -30,11 +30,11 @@ func NewReplicaSet(r *appv1.ReplicaSet, log *log.Entry) Workload {
 			Name:  container.Name,
 		})
 	}
-	return &ReplicaSet{
+	return &StatefulSet{
 		metadata: &metadata{
 			Name:      setName(labels),
 			Namespace: r.Namespace,
-			Kind:      "ReplicaSet",
+			Kind:      "StatefulSet",
 			Labels:    r.Labels,
 		},
 		Containers: c,
@@ -44,34 +44,34 @@ func NewReplicaSet(r *appv1.ReplicaSet, log *log.Entry) Workload {
 	}
 }
 
-func (r *ReplicaSet) GetName() string {
+func (r *StatefulSet) GetName() string {
 	return r.Name
 }
 
-func (r *ReplicaSet) GetTeam() string {
+func (r *StatefulSet) GetTeam() string {
 	return r.Labels[TeamLabelKey]
 }
 
-func (r *ReplicaSet) GetNamespace() string {
+func (r *StatefulSet) GetNamespace() string {
 	return r.Namespace
 }
 
-func (r *ReplicaSet) GetKind() string {
+func (r *StatefulSet) GetKind() string {
 	return r.Kind
 }
 
-func (r *ReplicaSet) Active() bool {
+func (r *StatefulSet) Active() bool {
 	return r.Status.ReadyReplicas > 0 && r.Status.AvailableReplicas > 0 && r.Status.Replicas > 0
 }
 
-func (r *ReplicaSet) GetLabels() map[string]string {
+func (r *StatefulSet) GetLabels() map[string]string {
 	return r.Labels
 }
 
-func (r *ReplicaSet) GetContainers() []Container {
+func (r *StatefulSet) GetContainers() []Container {
 	return r.Containers
 }
 
-func (r *ReplicaSet) GetVerifier() *Verifier {
+func (r *StatefulSet) GetVerifier() *Verifier {
 	return r.Verifier
 }

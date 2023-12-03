@@ -55,7 +55,6 @@ func TestGetMetadata(t *testing.T) {
 			assert.Equal(t, tt.wantKeyless, KeylessVerification(workload), "keyRef should match")
 			assert.Equal(t, tt.wantTlog, IgnoreTLog(workload), "tlog should match")
 			assert.Equal(t, "pod1", workload.GetName(), "workload name should match")
-			// assert.Equal(t, "team1", workload., "team name should match")
 			assert.Equal(t, "team1", workload.GetNamespace(), "namespace should match")
 			assert.Equal(t, "nginx:latest", workload.GetContainers()[0].Image, "image should match")
 			assert.Equal(t, "pod1", workload.GetContainers()[0].Name, "name should match")

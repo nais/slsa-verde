@@ -94,6 +94,7 @@ func main() {
 		monitor.NewMonitor(ctx, s, opts, cfg.Cluster),
 		factory.Apps().V1().ReplicaSets().Informer(),
 		factory.Batch().V1().Jobs().Informer(),
+		factory.Apps().V1().StatefulSets().Informer(),
 	); err != nil {
 		mainLogger.WithError(err).Fatal("failed to setup informers")
 	}
@@ -148,7 +149,7 @@ func setupInformers(ctx context.Context, log *log.Entry, monitor *monitor.Config
 			return fmt.Errorf("timed out waiting for caches to sync")
 		}
 
-		log.Infof("replica informer cache synced: %v", event.HasSynced())
+		log.Infof("informer cache synced: %v", event.HasSynced())
 	}
 	return nil
 }

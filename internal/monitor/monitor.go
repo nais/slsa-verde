@@ -44,7 +44,7 @@ func (c *Config) OnDelete(obj any) {
 		return
 	}
 
-	if !w.Ready() {
+	if !w.Active() {
 		c.logger.Debugf("delete event, but %s is not the active one, skipping", w.GetKind())
 		return
 	}
@@ -92,8 +92,8 @@ func (c *Config) OnUpdate(old any, new any) {
 		return
 	}
 
-	if !w.Ready() {
-		c.logger.Debugf("Update event, but %s is not ready, skipping", w.GetKind())
+	if !w.Active() {
+		c.logger.Debugf("Update event, but %s is not active, skipping", w.GetKind())
 		return
 	}
 
@@ -122,8 +122,8 @@ func (c *Config) OnAdd(obj any) {
 		return
 	}
 
-	if !w.Ready() {
-		c.logger.Debugf("add event, but %s is not ready, skipping", w.GetKind())
+	if !w.Active() {
+		c.logger.Debugf("add event, but %s is not active, skipping", w.GetKind())
 		return
 	}
 

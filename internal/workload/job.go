@@ -6,11 +6,7 @@ import (
 )
 
 type Job struct {
-	Name       string
-	Namespace  string
-	Team       string
-	Kind       string
-	Labels     map[string]string
+	*metadata
 	Containers []Container
 	Status     *v1.JobStatus
 	Log        *logrus.Entry
@@ -34,19 +30,16 @@ func NewJob(job *v1.Job, log *logrus.Entry) Workload {
 		})
 	}
 	return &Job{
-		Name:       Name(labels),
-		Namespace:  job.Namespace,
-		Kind:       "Job",
-		Labels:     job.Labels,
+		metadata: &metadata{
+			Name:      setName(labels),
+			Namespace: job.Namespace,
+			Kind:      "Job",
+			Labels:    job.Labels,
+		},
 		Containers: c,
 		Status:     &job.Status,
 		Log:        log,
-		Verifier: &Verifier{
-			PredicateType:   labels[SalsaPredicateLabelKey],
-			KeyRef:          labels[SalsaKeyRefLabelKey],
-			KeylessProvider: labels[SalsaKeylessProviderLabelKey],
-			IgnoreTLog:      labels[IgnoreTransparencyLogLabelKey],
-		},
+		Verifier:   setVerifier(labels),
 	}
 }
 
@@ -66,7 +59,7 @@ func (j *Job) GetKind() string {
 	return j.Kind
 }
 
-func (j *Job) Ready() bool {
+func (j *Job) Active() bool {
 	return j.Status.Succeeded > 0
 }
 

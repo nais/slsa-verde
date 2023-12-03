@@ -7,11 +7,12 @@ import (
 
 type StatefulSet struct {
 	*metadata
-	Labels     map[string]string
-	Containers []Container
-	Status     *appv1.StatefulSetStatus
-	Log        *log.Entry
+	labels     map[string]string
+	containers []Container
+	status     *appv1.StatefulSetStatus
+	log        *log.Entry
 	Verifier   *Verifier
+	identifier string
 }
 
 func NewStatefulSet(r *appv1.StatefulSet, log *log.Entry) Workload {
@@ -37,9 +38,10 @@ func NewStatefulSet(r *appv1.StatefulSet, log *log.Entry) Workload {
 			Kind:      "StatefulSet",
 			Labels:    r.Labels,
 		},
-		Containers: c,
-		Status:     &r.Status,
-		Log:        log,
+		identifier: r.Name,
+		containers: c,
+		status:     &r.Status,
+		log:        log,
 		Verifier:   setVerifier(labels),
 	}
 }
@@ -49,7 +51,7 @@ func (r *StatefulSet) GetName() string {
 }
 
 func (r *StatefulSet) GetTeam() string {
-	return r.Labels[TeamLabelKey]
+	return r.labels[TeamLabelKey]
 }
 
 func (r *StatefulSet) GetNamespace() string {
@@ -61,17 +63,21 @@ func (r *StatefulSet) GetKind() string {
 }
 
 func (r *StatefulSet) Active() bool {
-	return r.Status.ReadyReplicas > 0 && r.Status.AvailableReplicas > 0 && r.Status.Replicas > 0
+	return r.status.ReadyReplicas > 0 && r.status.AvailableReplicas > 0 && r.status.Replicas > 0
 }
 
 func (r *StatefulSet) GetLabels() map[string]string {
-	return r.Labels
+	return r.labels
 }
 
 func (r *StatefulSet) GetContainers() []Container {
-	return r.Containers
+	return r.containers
 }
 
 func (r *StatefulSet) GetVerifier() *Verifier {
 	return r.Verifier
+}
+
+func (r *StatefulSet) GetIdentifier() string {
+	return r.identifier
 }

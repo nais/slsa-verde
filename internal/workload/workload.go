@@ -27,6 +27,7 @@ type Workload interface {
 	GetKind() string
 	GetContainers() []Container
 	GetVerifier() *Verifier
+	GetIdentifier() string
 }
 
 type metadata struct {

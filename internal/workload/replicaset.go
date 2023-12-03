@@ -7,10 +7,11 @@ import (
 
 type ReplicaSet struct {
 	*metadata
-	Labels     map[string]string
-	Containers []Container
-	Status     *appv1.ReplicaSetStatus
-	Log        *log.Entry
+	labels     map[string]string
+	containers []Container
+	status     *appv1.ReplicaSetStatus
+	log        *log.Entry
+	identifier string
 	Verifier   *Verifier
 }
 
@@ -37,9 +38,10 @@ func NewReplicaSet(r *appv1.ReplicaSet, log *log.Entry) Workload {
 			Kind:      "ReplicaSet",
 			Labels:    r.Labels,
 		},
-		Containers: c,
-		Status:     &r.Status,
-		Log:        log,
+		identifier: r.Name,
+		containers: c,
+		status:     &r.Status,
+		log:        log,
 		Verifier:   setVerifier(labels),
 	}
 }
@@ -49,7 +51,7 @@ func (r *ReplicaSet) GetName() string {
 }
 
 func (r *ReplicaSet) GetTeam() string {
-	return r.Labels[TeamLabelKey]
+	return r.labels[TeamLabelKey]
 }
 
 func (r *ReplicaSet) GetNamespace() string {
@@ -61,17 +63,21 @@ func (r *ReplicaSet) GetKind() string {
 }
 
 func (r *ReplicaSet) Active() bool {
-	return r.Status.ReadyReplicas > 0 && r.Status.AvailableReplicas > 0 && r.Status.Replicas > 0
+	return r.status.ReadyReplicas > 0 && r.status.AvailableReplicas > 0 && r.status.Replicas > 0
 }
 
 func (r *ReplicaSet) GetLabels() map[string]string {
-	return r.Labels
+	return r.labels
 }
 
 func (r *ReplicaSet) GetContainers() []Container {
-	return r.Containers
+	return r.containers
 }
 
 func (r *ReplicaSet) GetVerifier() *Verifier {
 	return r.Verifier
+}
+
+func (r *ReplicaSet) GetIdentifier() string {
+	return r.identifier
 }

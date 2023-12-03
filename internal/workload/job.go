@@ -7,9 +7,10 @@ import (
 
 type Job struct {
 	*metadata
-	Containers []Container
-	Status     *v1.JobStatus
-	Log        *logrus.Entry
+	containers []Container
+	status     *v1.JobStatus
+	log        *logrus.Entry
+	identifier string
 	Verifier   *Verifier
 }
 
@@ -36,9 +37,10 @@ func NewJob(job *v1.Job, log *logrus.Entry) Workload {
 			Kind:      "Job",
 			Labels:    job.Labels,
 		},
-		Containers: c,
-		Status:     &job.Status,
-		Log:        log,
+		identifier: job.Name,
+		containers: c,
+		status:     &job.Status,
+		log:        log,
 		Verifier:   setVerifier(labels),
 	}
 }
@@ -60,7 +62,7 @@ func (j *Job) GetKind() string {
 }
 
 func (j *Job) Active() bool {
-	return j.Status.Succeeded > 0
+	return j.status.Succeeded > 0
 }
 
 func (j *Job) GetLabels() map[string]string {
@@ -68,9 +70,13 @@ func (j *Job) GetLabels() map[string]string {
 }
 
 func (j *Job) GetContainers() []Container {
-	return j.Containers
+	return j.containers
 }
 
 func (j *Job) GetVerifier() *Verifier {
 	return j.Verifier
+}
+
+func (j *Job) GetIdentifier() string {
+	return j.identifier
 }

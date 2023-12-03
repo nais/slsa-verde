@@ -45,12 +45,12 @@ func (c *Config) OnDelete(obj any) {
 	}
 
 	if !w.Active() {
-		c.logger.Debugf("delete event, but %s is not the active one, skipping", w.GetKind())
+		c.logger.Debugf("delete event, but %s:%s:%s is not active, skipping", w.GetKind(), w.GetName(), w.GetIdentifier())
 		return
 	}
 
 	if w.GetName() == "" {
-		c.logger.Debug("workload deleted event, but no app name found")
+		c.logger.Warn("workload deleted event, but no app name found", w.GetKind())
 		return
 	}
 
@@ -79,7 +79,6 @@ func (c *Config) OnDelete(obj any) {
 
 func (c *Config) OnUpdate(old any, new any) {
 	c.logger.WithFields(log.Fields{"event": "update"})
-	c.logger.Debug("workload updated event")
 
 	if new == nil {
 		c.logger.Debug("updated event, but no object found")
@@ -93,7 +92,7 @@ func (c *Config) OnUpdate(old any, new any) {
 	}
 
 	if !w.Active() {
-		c.logger.Debugf("Update event, but %s is not active, skipping", w.GetKind())
+		c.logger.Debugf("Update event, but %s:%s:%s is not active, skipping", w.GetKind(), w.GetName(), w.GetIdentifier())
 		return
 	}
 
@@ -109,7 +108,6 @@ func (c *Config) OnUpdate(old any, new any) {
 
 func (c *Config) OnAdd(obj any) {
 	c.logger.WithFields(log.Fields{"event": "add"})
-	c.logger.Debug("new workload event")
 
 	if obj == nil {
 		c.logger.Debug("workload added event, but no object found")
@@ -123,12 +121,12 @@ func (c *Config) OnAdd(obj any) {
 	}
 
 	if !w.Active() {
-		c.logger.Debugf("add event, but %s is not active, skipping", w.GetKind())
+		c.logger.Debugf("add event, but %s:%s:%s is not active, skipping", w.GetKind(), w.GetName(), w.GetIdentifier())
 		return
 	}
 
 	if w.GetName() == "" {
-		c.logger.Debug("add event, but no app name found: ", w.GetKind())
+		c.logger.Warn("add event, but no app name found: ", w.GetKind())
 		return
 	}
 

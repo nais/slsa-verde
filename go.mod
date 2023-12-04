@@ -3,7 +3,7 @@ module picante
 go 1.21
 
 require (
-	github.com/google/go-containerregistry v0.16.1
+	github.com/google/go-containerregistry v0.17.0
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/nais/dependencytrack v0.0.0-20231031134328-2094fb77f8f7

@@ -6,28 +6,22 @@ import (
 )
 
 type DaemonSet struct {
-	*metadata
-	containers []Container
-	status     *v1.DaemonSetStatus
-	log        *logrus.Entry
-	identifier string
-	Verifier   *Verifier
+	*Metadata
+	status *v1.DaemonSetStatus
 }
 
 func NewDaemonSet(d *v1.DaemonSet, log *logrus.Entry) Workload {
-	labels := d.GetLabels()
 	return &DaemonSet{
-		metadata: &metadata{
-			Name:      setName(labels),
-			Namespace: d.Namespace,
-			Kind:      "DaemonSet",
-			Labels:    d.Labels,
-		},
-		identifier: d.Name,
-		containers: SetContainers(d.Spec.Template.Spec.Containers, d.Spec.Template.Spec.InitContainers),
-		status:     &d.Status,
-		log:        log,
-		Verifier:   setVerifier(labels),
+		Metadata: SetMetadata(
+			d.GetLabels(),
+			d.Name,
+			d.Namespace,
+			"DaemonSet",
+			log,
+			d.Spec.Template.Spec.Containers,
+			d.Spec.Template.Spec.InitContainers,
+		),
+		status: &d.Status,
 	}
 }
 

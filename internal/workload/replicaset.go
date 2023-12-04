@@ -6,29 +6,22 @@ import (
 )
 
 type ReplicaSet struct {
-	*metadata
-	labels     map[string]string
-	containers []Container
-	status     *appv1.ReplicaSetStatus
-	log        *log.Entry
-	identifier string
-	Verifier   *Verifier
+	*Metadata
+	status *appv1.ReplicaSetStatus
 }
 
 func NewReplicaSet(r *appv1.ReplicaSet, log *log.Entry) Workload {
-	labels := r.GetLabels()
 	return &ReplicaSet{
-		metadata: &metadata{
-			Name:      setName(labels),
-			Namespace: r.Namespace,
-			Kind:      "ReplicaSet",
-			Labels:    r.Labels,
-		},
-		identifier: r.Name,
-		containers: SetContainers(r.Spec.Template.Spec.Containers, r.Spec.Template.Spec.InitContainers),
-		status:     &r.Status,
-		log:        log,
-		Verifier:   setVerifier(labels),
+		Metadata: SetMetadata(
+			r.GetLabels(),
+			r.Name,
+			r.Namespace,
+			"ReplicaSet",
+			log,
+			r.Spec.Template.Spec.Containers,
+			r.Spec.Template.Spec.InitContainers,
+		),
+		status: &r.Status,
 	}
 }
 
@@ -37,7 +30,7 @@ func (r *ReplicaSet) GetName() string {
 }
 
 func (r *ReplicaSet) GetTeam() string {
-	return r.labels[TeamLabelKey]
+	return r.Labels[TeamLabelKey]
 }
 
 func (r *ReplicaSet) GetNamespace() string {
@@ -53,7 +46,7 @@ func (r *ReplicaSet) Active() bool {
 }
 
 func (r *ReplicaSet) GetLabels() map[string]string {
-	return r.labels
+	return r.Labels
 }
 
 func (r *ReplicaSet) GetContainers() []Container {

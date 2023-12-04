@@ -6,28 +6,22 @@ import (
 )
 
 type Job struct {
-	*metadata
-	containers []Container
-	status     *v1.JobStatus
-	log        *logrus.Entry
-	identifier string
-	Verifier   *Verifier
+	*Metadata
+	status *v1.JobStatus
 }
 
-func NewJob(job *v1.Job, log *logrus.Entry) Workload {
-	labels := job.GetLabels()
+func NewJob(j *v1.Job, log *logrus.Entry) Workload {
 	return &Job{
-		metadata: &metadata{
-			Name:      setName(labels),
-			Namespace: job.Namespace,
-			Kind:      "Job",
-			Labels:    job.Labels,
-		},
-		identifier: job.Name,
-		containers: SetContainers(job.Spec.Template.Spec.Containers, job.Spec.Template.Spec.InitContainers),
-		status:     &job.Status,
-		log:        log,
-		Verifier:   setVerifier(labels),
+		Metadata: SetMetadata(
+			j.GetLabels(),
+			j.Name,
+			j.Namespace,
+			"Job",
+			log,
+			j.Spec.Template.Spec.Containers,
+			j.Spec.Template.Spec.InitContainers,
+		),
+		status: &j.Status,
 	}
 }
 

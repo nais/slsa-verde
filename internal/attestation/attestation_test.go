@@ -35,8 +35,10 @@ func TestCosignOptions(t *testing.T) {
 			keyRef: "testdata/cosign.pub",
 			tLog:   true,
 			workloadMetaData: &workload.ReplicaSet{
-				Verifier: &workload.Verifier{
-					KeyRef: "true",
+				Metadata: &workload.Metadata{
+					Verifier: &workload.Verifier{
+						KeyRef: "true",
+					},
 				},
 			},
 		},
@@ -44,8 +46,10 @@ func TestCosignOptions(t *testing.T) {
 			desc:   "keyless cosign options should match",
 			keyRef: "",
 			workloadMetaData: &workload.ReplicaSet{
-				Verifier: &workload.Verifier{
-					KeyRef: "",
+				Metadata: &workload.Metadata{
+					Verifier: &workload.Verifier{
+						KeyRef: "",
+					},
 				},
 			},
 		},
@@ -54,9 +58,11 @@ func TestCosignOptions(t *testing.T) {
 			desc:   "configured with tlog",
 			keyRef: "",
 			workloadMetaData: &workload.ReplicaSet{
-				Verifier: &workload.Verifier{
-					KeyRef:     "",
-					IgnoreTLog: "false",
+				Metadata: &workload.Metadata{
+					Verifier: &workload.Verifier{
+						KeyRef:     "",
+						IgnoreTLog: "false",
+					},
 				},
 			},
 		},

@@ -6,29 +6,22 @@ import (
 )
 
 type StatefulSet struct {
-	*metadata
-	labels     map[string]string
-	containers []Container
-	status     *appv1.StatefulSetStatus
-	log        *log.Entry
-	Verifier   *Verifier
-	identifier string
+	*Metadata
+	status *appv1.StatefulSetStatus
 }
 
-func NewStatefulSet(r *appv1.StatefulSet, log *log.Entry) Workload {
-	labels := r.GetLabels()
+func NewStatefulSet(s *appv1.StatefulSet, log *log.Entry) Workload {
 	return &StatefulSet{
-		metadata: &metadata{
-			Name:      setName(labels),
-			Namespace: r.Namespace,
-			Kind:      "StatefulSet",
-			Labels:    r.Labels,
-		},
-		identifier: r.Name,
-		containers: SetContainers(r.Spec.Template.Spec.Containers, r.Spec.Template.Spec.InitContainers),
-		status:     &r.Status,
-		log:        log,
-		Verifier:   setVerifier(labels),
+		Metadata: SetMetadata(
+			s.GetLabels(),
+			s.Name,
+			s.Namespace,
+			"StatefulSet",
+			log,
+			s.Spec.Template.Spec.Containers,
+			s.Spec.Template.Spec.InitContainers,
+		),
+		status: &s.Status,
 	}
 }
 
@@ -37,7 +30,7 @@ func (s *StatefulSet) GetName() string {
 }
 
 func (s *StatefulSet) GetTeam() string {
-	return s.labels[TeamLabelKey]
+	return s.Labels[TeamLabelKey]
 }
 
 func (s *StatefulSet) GetNamespace() string {
@@ -53,7 +46,7 @@ func (s *StatefulSet) Active() bool {
 }
 
 func (s *StatefulSet) GetLabels() map[string]string {
-	return s.labels
+	return s.Labels
 }
 
 func (s *StatefulSet) GetContainers() []Container {

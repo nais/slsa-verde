@@ -31,12 +31,16 @@ type Workload interface {
 	GetIdentifier() string
 }
 
-type metadata struct {
-	Name      string
-	Namespace string
-	Team      string
-	Kind      string
-	Labels    map[string]string
+type Metadata struct {
+	Name       string
+	Namespace  string
+	Team       string
+	Kind       string
+	Labels     map[string]string
+	containers []Container
+	log        *logrus.Entry
+	identifier string
+	Verifier   *Verifier
 }
 
 type Container struct {
@@ -137,7 +141,7 @@ func setVerifier(labels map[string]string) *Verifier {
 	}
 }
 
-func SetContainers(containers ...[]v1.Container) []Container {
+func setContainers(containers ...[]v1.Container) []Container {
 	var c []Container
 	for _, co := range containers {
 		for _, con := range co {
@@ -148,4 +152,17 @@ func SetContainers(containers ...[]v1.Container) []Container {
 		}
 	}
 	return c
+}
+
+func SetMetadata(labels map[string]string, name, namespace, kind string, log *logrus.Entry, containers ...[]v1.Container) *Metadata {
+	return &Metadata{
+		Name:       setName(labels),
+		Namespace:  namespace,
+		Kind:       kind,
+		Labels:     labels,
+		identifier: name,
+		containers: setContainers(containers...),
+		log:        log,
+		Verifier:   setVerifier(labels),
+	}
 }

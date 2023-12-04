@@ -1,8 +1,9 @@
 package workload
 
 import (
-	v1 "k8s.io/api/core/v1"
 	"testing"
+
+	v1 "k8s.io/api/core/v1"
 
 	"picante/internal/test"
 
@@ -97,7 +98,7 @@ func TestSetContainers(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := SetContainers(tt.containers, tt.initContainers)
+			got := setContainers(tt.containers, tt.initContainers)
 			assert.Equal(t, tt.want, got, "containers should match")
 		})
 	}

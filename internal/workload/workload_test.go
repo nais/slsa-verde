@@ -60,6 +60,9 @@ func TestGetMetadata(t *testing.T) {
 			assert.Equal(t, "team1", workload.GetNamespace(), "namespace should match")
 			assert.Equal(t, "nginx:latest", workload.GetContainers()[0].Image, "image should match")
 			assert.Equal(t, "pod1", workload.GetContainers()[0].Name, "name should match")
+			assert.Equal(t, "team1", workload.GetTeam(), "team should match")
+			assert.Equal(t, "ReplicaSet", workload.GetKind(), "kind should match")
+			assert.Equal(t, "pod1", workload.GetIdentifier(), "identifier should match")
 		})
 	}
 }

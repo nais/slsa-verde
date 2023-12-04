@@ -33,24 +33,12 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 func (c *Config) OnDelete(obj any) {
 	c.logger.WithFields(log.Fields{"event": "OnDelete"})
 
-	if obj == nil {
-		c.logger.Debug("workload deleted event, but no object found")
-		return
-	}
-
 	w := workload.GetMetadata(obj, c.logger)
 	if w == nil {
-		c.logger.Debug("workload deleted event")
 		return
 	}
 
-	if !w.Active() {
-		c.logger.Debugf("delete event, but %s:%s:%s is not active, skipping", w.GetKind(), w.GetName(), w.GetIdentifier())
-		return
-	}
-
-	if w.GetName() == "" {
-		c.logger.Warn("workload deleted event, but no app name found", w.GetKind())
+	if !c.validWorkload("delete", w) {
 		return
 	}
 
@@ -64,7 +52,7 @@ func (c *Config) OnDelete(obj any) {
 		}
 
 		if pr == nil {
-			c.logger.Infof("trying to delete project %s, but project not found", project)
+			c.logger.Infof("trying to delete project %s, project not found", project)
 			continue
 		}
 
@@ -80,24 +68,12 @@ func (c *Config) OnDelete(obj any) {
 func (c *Config) OnUpdate(old any, new any) {
 	c.logger.WithFields(log.Fields{"event": "update"})
 
-	if new == nil {
-		c.logger.Debug("updated event, but no object found")
-		return
-	}
-
 	w := workload.GetMetadata(new, c.logger)
 	if w == nil {
-		c.logger.Debug("updated event: ", w.GetKind())
 		return
 	}
 
-	if !w.Active() {
-		c.logger.Debugf("Update event, but %s:%s:%s is not active, skipping", w.GetKind(), w.GetName(), w.GetIdentifier())
-		return
-	}
-
-	if w.GetName() == "" {
-		c.logger.Debug("updated event, but no app name found, ", w.GetKind())
+	if !c.validWorkload("update", w) {
 		return
 	}
 
@@ -109,24 +85,12 @@ func (c *Config) OnUpdate(old any, new any) {
 func (c *Config) OnAdd(obj any) {
 	c.logger.WithFields(log.Fields{"event": "add"})
 
-	if obj == nil {
-		c.logger.Debug("workload added event, but no object found")
-		return
-	}
-
 	w := workload.GetMetadata(obj, c.logger)
 	if w == nil {
-		c.logger.Debug("add event: ", w.GetKind())
 		return
 	}
 
-	if !w.Active() {
-		c.logger.Debugf("add event, but %s:%s:%s is not active, skipping", w.GetKind(), w.GetName(), w.GetIdentifier())
-		return
-	}
-
-	if w.GetName() == "" {
-		c.logger.Warn("add event, but no app name found: ", w.GetKind())
+	if !c.validWorkload("add", w) {
 		return
 	}
 
@@ -210,6 +174,21 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 		}
 	}
 	return nil
+}
+
+func (c *Config) validWorkload(event string, w workload.Workload) bool {
+	if w == nil {
+		return false
+	}
+	if w.GetName() == "" {
+		c.logger.Warnf("%s event, no app name found: %s ", event, w.GetKind())
+		return false
+	}
+	if !w.Active() {
+		c.logger.Debugf("%s event, %s:%s:%s is not active, skipping", event, w.GetKind(), w.GetName(), w.GetIdentifier())
+		return false
+	}
+	return true
 }
 
 func version(image string) string {

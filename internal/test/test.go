@@ -95,6 +95,7 @@ func CreateWorkload(namespace, name string, labels map[string]string, images ...
 				},
 			},
 		},
+		// Default replica set status
 		Status: app.ReplicaSetStatus{
 			Replicas:          1,
 			ReadyReplicas:     1,

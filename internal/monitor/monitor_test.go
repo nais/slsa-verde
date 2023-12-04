@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 
+	v1 "k8s.io/api/apps/v1"
+
 	"picante/internal/test"
 
 	"github.com/nais/dependencytrack/pkg/client"
@@ -65,6 +67,15 @@ func TestConfig_OnAdd(t *testing.T) {
 	t.Run("should ignore nil workload object", func(t *testing.T) {
 		m.OnAdd(nil)
 	})
+
+	t.Run("should not create if a !active workload", func(t *testing.T) {
+		w.Status = v1.ReplicaSetStatus{
+			Replicas:          1,
+			ReadyReplicas:     0,
+			AvailableReplicas: 1,
+		}
+		m.OnAdd(w)
+	})
 }
 
 func TestConfig_OnAdd_Exists(t *testing.T) {
@@ -72,7 +83,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
 		m := NewMonitor(context.Background(), c, v, cluster)
-		p := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
+		w := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
 		file, err := os.ReadFile("testdata/sbom.json")
@@ -90,7 +101,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
 
-		m.OnAdd(p)
+		m.OnAdd(w)
 	})
 
 	t.Run("should update project if a project with same name already exists", func(t *testing.T) {
@@ -164,13 +175,22 @@ func TestConfig_OnDelete(t *testing.T) {
 	t.Run("should ignore nil workload object", func(t *testing.T) {
 		m.OnDelete(nil)
 	})
+
+	t.Run("should not delete if a !active workload", func(t *testing.T) {
+		p.Status = v1.ReplicaSetStatus{
+			Replicas:          1,
+			ReadyReplicas:     0,
+			AvailableReplicas: 1,
+		}
+		m.OnDelete(p)
+	})
 }
 
 func TestConfig_OnUpdate(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
-	p := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
+	w := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
 
 	t.Run("should ignore nil workload object", func(t *testing.T) {
 		m.OnUpdate(nil, nil)
@@ -193,7 +213,20 @@ func TestConfig_OnUpdate(t *testing.T) {
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
 
-		m.OnUpdate(nil, p)
+		m.OnUpdate(nil, w)
+	})
+
+	t.Run("should ignore nil workload object", func(t *testing.T) {
+		m.OnUpdate(nil, nil)
+	})
+
+	t.Run("should not update if !active", func(t *testing.T) {
+		w.Status = v1.ReplicaSetStatus{
+			Replicas:          1,
+			ReadyReplicas:     1,
+			AvailableReplicas: 0,
+		}
+		m.OnUpdate(nil, w)
 	})
 }
 

@@ -1,6 +1,7 @@
 package workload
 
 import (
+	v1 "k8s.io/api/core/v1"
 	"testing"
 
 	"picante/internal/test"
@@ -58,6 +59,46 @@ func TestGetMetadata(t *testing.T) {
 			assert.Equal(t, "team1", workload.GetNamespace(), "namespace should match")
 			assert.Equal(t, "nginx:latest", workload.GetContainers()[0].Image, "image should match")
 			assert.Equal(t, "pod1", workload.GetContainers()[0].Name, "name should match")
+		})
+	}
+}
+
+func TestSetContainers(t *testing.T) {
+	for _, tt := range []struct {
+		name           string
+		containers     []v1.Container
+		initContainers []v1.Container
+		want           []Container
+	}{
+		{
+			name: "Set containers",
+			containers: []v1.Container{
+				{
+					Name:  "nginx",
+					Image: "nginx:latest",
+				},
+			},
+			initContainers: []v1.Container{
+				{
+					Name:  "nginx-init",
+					Image: "nginx:latest",
+				},
+			},
+			want: []Container{
+				{
+					Name:  "nginx",
+					Image: "nginx:latest",
+				},
+				{
+					Name:  "nginx-init",
+					Image: "nginx:latest",
+				},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SetContainers(tt.containers, tt.initContainers)
+			assert.Equal(t, tt.want, got, "containers should match")
 		})
 	}
 }

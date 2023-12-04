@@ -3,7 +3,8 @@ package workload
 import (
 	"github.com/sirupsen/logrus"
 	appv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/batch/v1"
+	batch "k8s.io/api/batch/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -54,16 +55,16 @@ func GetMetadata(obj any, log *logrus.Entry) Workload {
 	if obj == nil {
 		return nil
 	}
-
 	if log == nil {
 		log = logrus.WithFields(logrus.Fields{"package": "workload"})
 	}
-
 	var w Workload
 	switch v := obj.(type) {
+	case *appv1.DaemonSet:
+		w = NewDaemonSet(v, log)
 	case *appv1.StatefulSet:
 		w = NewStatefulSet(v, log)
-	case *v1.Job:
+	case *batch.Job:
 		w = NewJob(v, log)
 	case *appv1.ReplicaSet:
 		w = NewReplicaSet(v, log)
@@ -134,4 +135,17 @@ func setVerifier(labels map[string]string) *Verifier {
 		KeylessProvider: labels[SalsaKeylessProviderLabelKey],
 		IgnoreTLog:      labels[IgnoreTransparencyLogLabelKey],
 	}
+}
+
+func SetContainers(containers ...[]v1.Container) []Container {
+	var c []Container
+	for _, co := range containers {
+		for _, con := range co {
+			c = append(c, Container{
+				Image: con.Image,
+				Name:  con.Name,
+			})
+		}
+	}
+	return c
 }

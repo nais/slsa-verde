@@ -17,20 +17,6 @@ type ReplicaSet struct {
 
 func NewReplicaSet(r *appv1.ReplicaSet, log *log.Entry) Workload {
 	labels := r.GetLabels()
-	var c []Container
-	for _, container := range r.Spec.Template.Spec.Containers {
-		c = append(c, Container{
-			Image: container.Image,
-			Name:  container.Name,
-		})
-	}
-
-	for _, container := range r.Spec.Template.Spec.InitContainers {
-		c = append(c, Container{
-			Image: container.Image,
-			Name:  container.Name,
-		})
-	}
 	return &ReplicaSet{
 		metadata: &metadata{
 			Name:      setName(labels),
@@ -39,7 +25,7 @@ func NewReplicaSet(r *appv1.ReplicaSet, log *log.Entry) Workload {
 			Labels:    r.Labels,
 		},
 		identifier: r.Name,
-		containers: c,
+		containers: SetContainers(r.Spec.Template.Spec.Containers, r.Spec.Template.Spec.InitContainers),
 		status:     &r.Status,
 		log:        log,
 		Verifier:   setVerifier(labels),

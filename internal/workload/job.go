@@ -16,20 +16,6 @@ type Job struct {
 
 func NewJob(job *v1.Job, log *logrus.Entry) Workload {
 	labels := job.GetLabels()
-	var c []Container
-	for _, container := range job.Spec.Template.Spec.Containers {
-		c = append(c, Container{
-			Image: container.Image,
-			Name:  container.Name,
-		})
-	}
-
-	for _, container := range job.Spec.Template.Spec.InitContainers {
-		c = append(c, Container{
-			Image: container.Image,
-			Name:  container.Name,
-		})
-	}
 	return &Job{
 		metadata: &metadata{
 			Name:      setName(labels),
@@ -38,7 +24,7 @@ func NewJob(job *v1.Job, log *logrus.Entry) Workload {
 			Labels:    job.Labels,
 		},
 		identifier: job.Name,
-		containers: c,
+		containers: SetContainers(job.Spec.Template.Spec.Containers, job.Spec.Template.Spec.InitContainers),
 		status:     &job.Status,
 		log:        log,
 		Verifier:   setVerifier(labels),

@@ -95,6 +95,7 @@ func main() {
 		factory.Apps().V1().ReplicaSets().Informer(),
 		factory.Batch().V1().Jobs().Informer(),
 		factory.Apps().V1().StatefulSets().Informer(),
+		factory.Apps().V1().DaemonSets().Informer(),
 	); err != nil {
 		mainLogger.WithError(err).Fatal("failed to setup informers")
 	}

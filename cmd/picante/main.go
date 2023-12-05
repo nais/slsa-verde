@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,6 +21,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	_ "net/http/pprof"
 	"picante/internal/attestation"
 	"picante/internal/config"
 	"picante/internal/monitor"
@@ -99,6 +101,11 @@ func main() {
 	); err != nil {
 		mainLogger.WithError(err).Fatal("failed to setup informers")
 	}
+
+	// Server for pprof
+	go func() {
+		fmt.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	defer runtime.HandleCrash()
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/nais/dependencytrack/pkg/client"
 	log "github.com/sirupsen/logrus"
-	"picante/internal/pod"
+	"picante/internal/workload"
 
 	"picante/internal/attestation"
 )
@@ -31,22 +31,19 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 }
 
 func (c *Config) OnDelete(obj any) {
-	c.logger.WithFields(log.Fields{"event": "delete"})
+	c.logger.WithFields(log.Fields{"event": "OnDelete"})
 
-	p := pod.GetInfo(obj)
-	if p == nil {
-		c.logger.Debug("pod deleted event, but pod is nil")
+	w := workload.GetMetadata(obj, c.logger)
+	if w == nil {
 		return
 	}
 
-	appName := pod.AppName(p.Labels)
-	if appName == "" {
-		c.logger.Debug("pod deleted event, but no app name found")
+	if !c.validWorkload("delete", w) {
 		return
 	}
 
-	for _, container := range p.ContainerImages {
-		project := c.projectName(p.Namespace, appName, container.Name)
+	for _, container := range w.GetContainers() {
+		project := workload.ProjectName(w, c.Cluster, container.Name)
 		projectVersion := version(container.Image)
 		pr, err := c.Client.GetProject(c.ctx, project, projectVersion)
 		if err != nil {
@@ -55,7 +52,7 @@ func (c *Config) OnDelete(obj any) {
 		}
 
 		if pr == nil {
-			c.logger.Infof("trying to delete project %s, but project not found", project)
+			c.logger.Infof("trying to delete project %s, project not found", project)
 			continue
 		}
 
@@ -70,50 +67,42 @@ func (c *Config) OnDelete(obj any) {
 
 func (c *Config) OnUpdate(old any, new any) {
 	c.logger.WithFields(log.Fields{"event": "update"})
-	c.logger.Debug("pod updated event, check if image needs to be attested")
 
-	newPod := pod.GetInfo(new)
-	if newPod == nil {
-		c.logger.Debug("pod updated event, but pod is nil")
+	w := workload.GetMetadata(new, c.logger)
+	if w == nil {
 		return
 	}
 
-	name := pod.AppName(newPod.Labels)
-	if name == "" {
-		c.logger.Debug("pod updated event, but no app name found")
+	if !c.validWorkload("update", w) {
 		return
 	}
 
-	if err := c.verifyContainers(c.ctx, newPod); err != nil {
+	if err := c.verifyContainers(c.ctx, w); err != nil {
 		c.logger.Warnf("verify attestation: %v", err)
 	}
 }
 
 func (c *Config) OnAdd(obj any) {
 	c.logger.WithFields(log.Fields{"event": "add"})
-	c.logger.Debug("new pod event, check if image needs to be attested")
 
-	p := pod.GetInfo(obj)
-	if p == nil {
-		c.logger.Debug("pod added event, but pod is nil")
+	w := workload.GetMetadata(obj, c.logger)
+	if w == nil {
 		return
 	}
 
-	name := pod.AppName(p.Labels)
-	if name == "" {
-		c.logger.Debug("pod added event, but no app name found")
+	if !c.validWorkload("add", w) {
 		return
 	}
 
-	if err := c.verifyContainers(c.ctx, p); err != nil {
+	if err := c.verifyContainers(c.ctx, w); err != nil {
 		c.logger.Warnf("verify attestation: %v", err)
 	}
 }
 
-func (c *Config) verifyContainers(ctx context.Context, p *pod.Info) error {
-	for _, container := range p.ContainerImages {
-		appName := pod.AppName(p.Labels)
-		project := c.projectName(p.Namespace, appName, container.Name)
+func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) error {
+	for _, container := range w.GetContainers() {
+		appName := w.GetName()
+		project := workload.ProjectName(w, c.Cluster, container.Name)
 		projectVersion := version(container.Image)
 		pp, err := c.Client.GetProject(ctx, project, projectVersion)
 		if err != nil {
@@ -122,75 +111,84 @@ func (c *Config) verifyContainers(ctx context.Context, p *pod.Info) error {
 
 		if pp != nil && pp.LastBomImportFormat != "" {
 			c.logger.WithFields(log.Fields{
+				"project":        project,
 				"projectVersion": projectVersion,
-				"pod":            p.Name,
+				"workload":       w.GetName(),
 				"container":      container.Name,
-			}).Info("project exist and has bom, skipping")
-			continue
-		}
-
-		metadata, err := c.verifier.Verify(c.ctx, container)
-		if err != nil {
-			c.logger.Warnf("verify attestation: %v", err)
-			continue
-		}
-
-		projects, err := c.Client.GetProjectsByTag(ctx, project)
-		if err != nil {
-			return err
-		}
-		tags := []string{
-			project,
-			p.Namespace,
-			appName,
-			metadata.ContainerName,
-			metadata.Image,
-			c.Cluster,
-		}
-
-		if len(projects) > 0 {
-			c.logger.WithFields(log.Fields{
-				"projectVersion": projectVersion,
-				"pod":            p.Name,
-				"container":      metadata.ContainerName,
-			}).Info("project exist update version")
-
-			_, err = c.Client.UpdateProject(ctx, projects[0].Uuid, project, projectVersion, p.Namespace, tags)
-			if err != nil {
-				return err
-			}
-
+			}).Debug("project exist and has bom, skipping")
 		} else {
-			c.logger.WithFields(log.Fields{
-				"projectVersion": projectVersion,
-				"pod":            p.Name,
-				"container":      metadata.ContainerName,
-			}).Info("project does not exist, creating")
 
-			_, err = c.Client.CreateProject(ctx, project, projectVersion, p.Namespace, tags)
+			projects, err := c.Client.GetProjectsByTag(ctx, project)
 			if err != nil {
 				return err
 			}
-		}
 
-		b, err := json.Marshal(metadata.Statement.Predicate)
-		if err != nil {
-			return err
-		}
+			metadata, err := c.verifier.Verify(c.ctx, container)
+			if err != nil {
+				c.logger.Warnf("verify attestation: %v", err)
+				continue
+			}
 
-		if err = c.Client.UploadProject(ctx, project, projectVersion, b); err != nil {
-			return err
+			tags := []string{
+				project,
+				w.GetNamespace(),
+				appName,
+				metadata.ContainerName,
+				metadata.Image,
+				c.Cluster,
+			}
+
+			if len(projects) > 0 {
+				c.logger.WithFields(log.Fields{
+					"projectVersion": projectVersion,
+					"workload":       w.GetName(),
+					"container":      metadata.ContainerName,
+				}).Info("project exist update version")
+
+				_, err = c.Client.UpdateProject(ctx, projects[0].Uuid, project, projectVersion, w.GetNamespace(), tags)
+				if err != nil {
+					return err
+				}
+
+			} else {
+				c.logger.WithFields(log.Fields{
+					"projectVersion": projectVersion,
+					"workload":       w.GetName(),
+					"container":      metadata.ContainerName,
+				}).Info("project does not exist, creating")
+
+				_, err = c.Client.CreateProject(ctx, project, projectVersion, w.GetNamespace(), tags)
+				if err != nil {
+					return err
+				}
+			}
+
+			b, err := json.Marshal(metadata.Statement.Predicate)
+			if err != nil {
+				return err
+			}
+
+			if err = c.Client.UploadProject(ctx, project, projectVersion, b); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-func (c *Config) projectName(namespace, appName, containerName string) string {
-	projectName := c.Cluster + ":" + namespace + ":" + appName
-	if appName == containerName {
-		return projectName
+func (c *Config) validWorkload(event string, w workload.Workload) bool {
+	if w == nil {
+		return false
 	}
-	return projectName + ":" + containerName
+	if w.GetName() == "" {
+		c.logger.Warnf("%s event, no app name found: %s ", event, w.GetKind())
+		return false
+	}
+	if !w.Active() {
+		c.logger.Debugf("%s event, %s:%s:%s is not active, skipping", event, w.GetKind(), w.GetName(), w.GetIdentifier())
+		return false
+	}
+	return true
 }
 
 func version(image string) string {

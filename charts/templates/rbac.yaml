@@ -8,7 +8,10 @@ rules:
   - apiGroups:
       - '*'
     resources:
-      - pods
+      - replicasets
+      - daemonsets
+      - jobs
+      - statefulsets
     verbs:
       - list
       - get

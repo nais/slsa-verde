@@ -11,8 +11,8 @@ webproxy: false
 
 resources:
   requests:
-    cpu: 50m
-    memory: 2Gi
+    cpu: 30m
+    memory: 512Mi
 
 dockerconfigjson:
 

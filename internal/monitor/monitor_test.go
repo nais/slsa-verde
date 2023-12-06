@@ -43,7 +43,7 @@ func TestConfig_OnAdd(t *testing.T) {
 			ContainerName:  "pod1",
 		}, nil)
 
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("nginx:latest")).Return([]*client.Project{}, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(cluster+":team1:pod1")).Return([]*client.Project{}, nil)
 
 		c.On("CreateProject", mock.Anything, cluster+":team1:pod1", "latest", "team1", []string{
 			cluster + ":team1:pod1",
@@ -127,7 +127,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			ContainerName:  "pod1",
 		}, nil)
 
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("nginx:latest")).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(cluster+":team1:pod1")).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "team",

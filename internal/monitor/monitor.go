@@ -45,41 +45,26 @@ func (c *Config) OnDelete(obj any) {
 	}
 
 	for _, container := range w.GetContainers() {
-		project := workload.ProjectName(w, c.Cluster, container.Name)
-		projectVersion := version(container.Image)
-		pr, err := c.Client.GetProject(c.ctx, project, projectVersion)
-		if err != nil {
-			c.logger.Infof("delete: get project: %v", err)
+		if err := c.deleteProject(w, container); err != nil {
+			c.logger.Errorf("delete project: %v", err)
 			continue
 		}
-
-		if pr == nil {
-			c.logger.Infof("trying to delete project %s, project not found", project)
-			continue
-		}
-
-		if err = c.Client.DeleteProject(c.ctx, pr.Uuid); err != nil {
-			c.logger.Errorf("delete project:%s: %v", project, err)
-			continue
-		}
-
-		c.logger.Infof("deleted project %s", project)
 	}
 }
 
 func (c *Config) OnUpdate(old any, new any) {
 	c.logger.WithFields(log.Fields{"event": "update"})
 
-	w := workload.GetMetadata(new, c.logger)
-	if w == nil {
+	wNew := workload.GetMetadata(new, c.logger)
+	if wNew == nil {
 		return
 	}
 
-	if !c.validWorkload("update", w) {
+	if !c.validWorkload("update", wNew) {
 		return
 	}
 
-	if err := c.verifyContainers(c.ctx, w); err != nil {
+	if err := c.verifyContainers(c.ctx, wNew); err != nil {
 		c.logger.Warnf("verify attestation: %v", err)
 	}
 }
@@ -129,7 +114,7 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 				continue
 			}
 
-			p, err := c.retrieveProject(ctx, metadata.Image, c.Cluster, w.GetNamespace(), appName)
+			p, err := c.retrieveProject(ctx, project, c.Cluster, w.GetNamespace(), appName)
 			if err != nil {
 				return err
 			}
@@ -182,8 +167,28 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 	return nil
 }
 
-func (c *Config) retrieveProject(ctx context.Context, image, env, team, app string) (*client.Project, error) {
-	tag := url.QueryEscape(image)
+func (c *Config) deleteProject(w workload.Workload, container workload.Container) error {
+	project := workload.ProjectName(w, c.Cluster, container.Name)
+	projectVersion := version(container.Image)
+	pr, err := c.Client.GetProject(c.ctx, project, projectVersion)
+	if err != nil {
+		return fmt.Errorf("delete: get project: %v", err)
+	}
+
+	if pr == nil {
+		return fmt.Errorf("trying to delete project:%s, project not found", project)
+	}
+
+	if err = c.Client.DeleteProject(c.ctx, pr.Uuid); err != nil {
+		return fmt.Errorf("delete project:%s: %v", project, err)
+	}
+
+	c.logger.Infof("%s:deleted project:%s", w.GetKind(), project)
+	return nil
+}
+
+func (c *Config) retrieveProject(ctx context.Context, project, env, team, app string) (*client.Project, error) {
+	tag := url.QueryEscape(project)
 	projects, err := c.Client.GetProjectsByTag(ctx, tag)
 	if err != nil {
 		return nil, fmt.Errorf("getting projects from DependencyTrack: %w", err)
@@ -207,11 +212,11 @@ func (c *Config) validWorkload(event string, w workload.Workload) bool {
 		return false
 	}
 	if w.GetName() == "" {
-		c.logger.Warnf("%s: no app name found: %s ", event, w.GetKind())
+		c.logger.Warnf("%s:no app name found: %s ", event, w.GetKind())
 		return false
 	}
 	if !w.Active() {
-		c.logger.Debugf("%s: %s:%s:%s is not active, skipping", event, w.GetKind(), w.GetName(), w.GetIdentifier())
+		c.logger.Debugf("%s:%s:%s:%s is not active, skipping", event, w.GetKind(), w.GetName(), w.GetIdentifier())
 		return false
 	}
 	return true

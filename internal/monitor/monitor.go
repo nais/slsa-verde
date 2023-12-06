@@ -3,6 +3,8 @@ package monitor
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/nais/dependencytrack/pkg/client"
@@ -37,8 +39,8 @@ func (c *Config) OnDelete(obj any) {
 	if w == nil {
 		return
 	}
-
-	if !c.validWorkload("delete", w) {
+	if w.GetName() == "" {
+		c.logger.Warnf("%s: no app name found: %s ", "delete", w.GetKind())
 		return
 	}
 
@@ -47,7 +49,7 @@ func (c *Config) OnDelete(obj any) {
 		projectVersion := version(container.Image)
 		pr, err := c.Client.GetProject(c.ctx, project, projectVersion)
 		if err != nil {
-			c.logger.Infof("get project: %v", err)
+			c.logger.Infof("delete: get project: %v", err)
 			continue
 		}
 
@@ -109,6 +111,9 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 			return err
 		}
 
+		// This if, checks if the project exists and if the project has a sbom.
+		// it can produce a 409 conflict if the project exists with the version, but does not have a sbom
+		// This is ok, because we want to update the project with if the sbom does not exist
 		if pp != nil && pp.LastBomImportFormat != "" {
 			c.logger.WithFields(log.Fields{
 				"project":        project,
@@ -118,15 +123,15 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 			}).Debug("project exist and has bom, skipping")
 		} else {
 
-			projects, err := c.Client.GetProjectsByTag(ctx, project)
-			if err != nil {
-				return err
-			}
-
 			metadata, err := c.verifier.Verify(c.ctx, container)
 			if err != nil {
 				c.logger.Warnf("verify attestation: %v", err)
 				continue
+			}
+
+			p, err := c.retrieveProject(ctx, metadata.Image, c.Cluster, w.GetNamespace(), appName)
+			if err != nil {
+				return err
 			}
 
 			tags := []string{
@@ -136,16 +141,17 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 				metadata.ContainerName,
 				metadata.Image,
 				c.Cluster,
+				projectVersion,
 			}
 
-			if len(projects) > 0 {
+			if p != nil {
 				c.logger.WithFields(log.Fields{
 					"projectVersion": projectVersion,
 					"workload":       w.GetName(),
 					"container":      metadata.ContainerName,
 				}).Info("project exist update version")
 
-				_, err = c.Client.UpdateProject(ctx, projects[0].Uuid, project, projectVersion, w.GetNamespace(), tags)
+				_, err = c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
 				if err != nil {
 					return err
 				}
@@ -176,16 +182,36 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 	return nil
 }
 
+func (c *Config) retrieveProject(ctx context.Context, image, env, team, app string) (*client.Project, error) {
+	tag := url.QueryEscape(image)
+	projects, err := c.Client.GetProjectsByTag(ctx, tag)
+	if err != nil {
+		return nil, fmt.Errorf("getting projects from DependencyTrack: %w", err)
+	}
+
+	if len(projects) == 0 {
+		return nil, nil
+	}
+	var p *client.Project
+	for _, project := range projects {
+		if containsAllTags(project.Tags, env, team, app) {
+			p = project
+			break
+		}
+	}
+	return p, nil
+}
+
 func (c *Config) validWorkload(event string, w workload.Workload) bool {
 	if w == nil {
 		return false
 	}
 	if w.GetName() == "" {
-		c.logger.Warnf("%s event, no app name found: %s ", event, w.GetKind())
+		c.logger.Warnf("%s: no app name found: %s ", event, w.GetKind())
 		return false
 	}
 	if !w.Active() {
-		c.logger.Debugf("%s event, %s:%s:%s is not active, skipping", event, w.GetKind(), w.GetName(), w.GetIdentifier())
+		c.logger.Debugf("%s: %s:%s:%s is not active, skipping", event, w.GetKind(), w.GetName(), w.GetIdentifier())
 		return false
 	}
 	return true
@@ -209,4 +235,17 @@ func handleImageDigest(image string) string {
 		return imageArray[0][i+1:] + "@" + imageArray[1]
 	}
 	return imageArray[1]
+}
+
+func containsAllTags(tags []client.Tag, s ...string) bool {
+	found := 0
+	for _, t := range s {
+		for _, tag := range tags {
+			if tag.Name == t {
+				found += 1
+				break
+			}
+		}
+	}
+	return found == len(s)
 }

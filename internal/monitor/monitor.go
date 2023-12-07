@@ -106,17 +106,19 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 				"workload":       w.GetName(),
 				"container":      container.Name,
 			}).Debug("project exist and has bom, skipping")
+			continue
 		} else {
 
 			metadata, err := c.verifier.Verify(c.ctx, container)
 			if err != nil {
-				c.logger.Warnf("verify attestation: %v", err)
+				c.logger.Warnf("verify attestation, skipping: %v", err)
 				continue
 			}
 
 			p, err := c.retrieveProject(ctx, project, c.Cluster, w.GetNamespace(), appName)
 			if err != nil {
-				return err
+				c.logger.Warnf("retrieve project, skipping %v", err)
+				continue
 			}
 
 			tags := []string{
@@ -134,7 +136,7 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 					"projectVersion": projectVersion,
 					"workload":       w.GetName(),
 					"container":      metadata.ContainerName,
-				}).Info("project exist update version")
+				}).Info("project exist update version:", p.Version, " to: ", projectVersion)
 
 				_, err = c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
 				if err != nil {
@@ -159,7 +161,7 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 				return err
 			}
 
-			if err = c.Client.UploadProject(ctx, project, projectVersion, b); err != nil {
+			if err = c.Client.UploadProject(ctx, project, projectVersion, false, b); err != nil {
 				return err
 			}
 		}
@@ -187,8 +189,8 @@ func (c *Config) deleteProject(w workload.Workload, container workload.Container
 	return nil
 }
 
-func (c *Config) retrieveProject(ctx context.Context, project, env, team, app string) (*client.Project, error) {
-	tag := url.QueryEscape(project)
+func (c *Config) retrieveProject(ctx context.Context, projectName, env, team, app string) (*client.Project, error) {
+	tag := url.QueryEscape(projectName)
 	projects, err := c.Client.GetProjectsByTag(ctx, tag)
 	if err != nil {
 		return nil, fmt.Errorf("getting projects from DependencyTrack: %w", err)
@@ -199,7 +201,7 @@ func (c *Config) retrieveProject(ctx context.Context, project, env, team, app st
 	}
 	var p *client.Project
 	for _, project := range projects {
-		if containsAllTags(project.Tags, env, team, app) {
+		if containsAllTags(project.Tags, env, team, app) && project.Classifier == "APPLICATION" {
 			p = project
 			break
 		}

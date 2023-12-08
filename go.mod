@@ -6,12 +6,12 @@ require (
 	github.com/google/go-containerregistry v0.17.0
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nais/dependencytrack v0.0.0-20231207111023-45905f408cca
+	github.com/nais/dependencytrack v0.0.0-20231208135750-e2eaf24be3e1
 	github.com/secure-systems-lab/go-securesystemslib v0.7.0
 	github.com/sigstore/cosign/v2 v2.2.2
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.18.0
+	github.com/spf13/viper v1.18.1
 	github.com/stretchr/testify v1.8.4
 	github.com/vektra/mockery/v2 v2.38.0
 	golang.org/x/vuln v1.0.1

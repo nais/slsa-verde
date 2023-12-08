@@ -765,17 +765,17 @@ func (_m *MockClient) UpdateProjectInfo(ctx context.Context, uuid string, versio
 	return r0
 }
 
-// UploadProject provides a mock function with given fields: ctx, name, version, autoCreate, bom
-func (_m *MockClient) UploadProject(ctx context.Context, name string, version string, autoCreate bool, bom []byte) error {
-	ret := _m.Called(ctx, name, version, autoCreate, bom)
+// UploadProject provides a mock function with given fields: ctx, name, version, parentUuid, autoCreate, bom
+func (_m *MockClient) UploadProject(ctx context.Context, name string, version string, parentUuid string, autoCreate bool, bom []byte) error {
+	ret := _m.Called(ctx, name, version, parentUuid, autoCreate, bom)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UploadProject")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool, []byte) error); ok {
-		r0 = rf(ctx, name, version, autoCreate, bom)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, bool, []byte) error); ok {
+		r0 = rf(ctx, name, version, parentUuid, autoCreate, bom)
 	} else {
 		r0 = ret.Error(0)
 	}

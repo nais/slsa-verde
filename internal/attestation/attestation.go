@@ -32,6 +32,7 @@ type ImageMetadata struct {
 	Image          string                      `json:"image"`
 	ContainerName  string                      `json:"containerName"`
 	Statement      *in_toto.CycloneDXStatement `json:"statement"`
+	Digest         string                      `json:"digest"`
 }
 
 type Verifier interface {
@@ -194,6 +195,11 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload
 		return nil, fmt.Errorf("parse payload: %v", err)
 	}
 
+	digest, err := att.Digest()
+	if err != nil {
+		return nil, fmt.Errorf("get digest: %v", err)
+	}
+
 	vao.Logger.WithFields(log.Fields{
 		"predicate-type": statement.PredicateType,
 		"statement-type": statement.Type,
@@ -205,6 +211,7 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload
 		Image:          ref.String(),
 		BundleVerified: bVerified,
 		ContainerName:  container.Name,
+		Digest:         digest.String(),
 	}, nil
 }
 

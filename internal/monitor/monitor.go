@@ -129,21 +129,34 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 				metadata.Image,
 				c.Cluster,
 				projectVersion,
+				"digest:" + metadata.Digest,
 			}
 
 			if p != nil {
+
+				//if !c.digestHasChanged(metadata, p) {
+				//	c.logger.WithFields(log.Fields{
+				//		"projectVersion": projectVersion,
+				//		"workload":       w.GetName(),
+				//		"container":      metadata.ContainerName,
+				//		"digest":         metadata.Digest,
+				//	}).Info("project exist and has same digest, skipping")
+				//	continue
+				//}
+
 				c.logger.WithFields(log.Fields{
 					"projectVersion": projectVersion,
 					"workload":       w.GetName(),
 					"container":      metadata.ContainerName,
+					"digest":         metadata.Digest,
 				}).Info("project exist update version:", p.Version, " to: ", projectVersion)
 
-				_, err = c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
+				updatedP, err := c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
 				if err != nil {
 					return err
 				}
 
-				if err = c.uploadSBOMToProject(ctx, metadata, project, projectVersion); err != nil {
+				if err = c.uploadSBOMToProject(ctx, metadata, project, updatedP.Uuid, projectVersion); err != nil {
 					return err
 				}
 
@@ -152,14 +165,15 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 					"projectVersion": projectVersion,
 					"workload":       w.GetName(),
 					"container":      metadata.ContainerName,
+					"digest":         metadata.Digest,
 				}).Info("project does not exist, creating:", project, ":version::", projectVersion)
 
-				_, err = c.Client.CreateProject(ctx, project, projectVersion, w.GetNamespace(), tags)
+				createdP, err := c.Client.CreateProject(ctx, project, projectVersion, w.GetNamespace(), tags)
 				if err != nil {
 					return err
 				}
 
-				if err = c.uploadSBOMToProject(ctx, metadata, project, projectVersion); err != nil {
+				if err = c.uploadSBOMToProject(ctx, metadata, project, createdP.Uuid, projectVersion); err != nil {
 					return err
 				}
 			}
@@ -168,13 +182,26 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 	return nil
 }
 
-func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.ImageMetadata, project, projectVersion string) error {
+// TODO
+//func (c *Config) digestHasChanged(metadata *attestation.ImageMetadata, p *client.Project) bool {
+//	for _, tag := range p.Tags {
+//		if strings.Contains(tag.Name, "digest:") {
+//			d := strings.Split(tag.Name, ":")[1]
+//			if d == metadata.Digest {
+//				return false
+//			}
+//		}
+//	}
+//	return true
+//}
+
+func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.ImageMetadata, project, parentUuid, projectVersion string) error {
 	b, err := json.Marshal(metadata.Statement.Predicate)
 	if err != nil {
 		return err
 	}
 
-	if err = c.Client.UploadProject(ctx, project, projectVersion, false, b); err != nil {
+	if err = c.Client.UploadProject(ctx, project, projectVersion, parentUuid, false, b); err != nil {
 		return err
 	}
 	return nil

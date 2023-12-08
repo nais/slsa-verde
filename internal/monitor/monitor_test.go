@@ -53,9 +53,12 @@ func TestConfig_OnAdd(t *testing.T) {
 			"nginx:latest",
 			cluster,
 			"latest",
-		}).Return(nil, nil)
+			"digest:",
+		}).Return(&client.Project{
+			Uuid: "uuid1",
+		}, nil)
 
-		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", false, mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
 
 		m.OnAdd(w)
 	})
@@ -147,9 +150,12 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			"nginx:latest",
 			cluster,
 			"latest",
-		}).Return(nil, nil)
+			"digest:",
+		}).Return(&client.Project{
+			Uuid: "uuid1",
+		}, nil)
 
-		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", false, mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
 
 		m.OnAdd(p)
 	})

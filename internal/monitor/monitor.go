@@ -143,28 +143,39 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 					return err
 				}
 
+				if err = c.uploadSBOMToProject(ctx, metadata, project, projectVersion); err != nil {
+					return err
+				}
+
 			} else {
 				c.logger.WithFields(log.Fields{
 					"projectVersion": projectVersion,
 					"workload":       w.GetName(),
 					"container":      metadata.ContainerName,
-				}).Info("project does not exist, creating")
+				}).Info("project does not exist, creating:", project, ":version::", projectVersion)
 
 				_, err = c.Client.CreateProject(ctx, project, projectVersion, w.GetNamespace(), tags)
 				if err != nil {
 					return err
 				}
-			}
 
-			b, err := json.Marshal(metadata.Statement.Predicate)
-			if err != nil {
-				return err
-			}
-
-			if err = c.Client.UploadProject(ctx, project, projectVersion, false, b); err != nil {
-				return err
+				if err = c.uploadSBOMToProject(ctx, metadata, project, projectVersion); err != nil {
+					return err
+				}
 			}
 		}
+	}
+	return nil
+}
+
+func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.ImageMetadata, project, projectVersion string) error {
+	b, err := json.Marshal(metadata.Statement.Predicate)
+	if err != nil {
+		return err
+	}
+
+	if err = c.Client.UploadProject(ctx, project, projectVersion, false, b); err != nil {
+		return err
 	}
 	return nil
 }

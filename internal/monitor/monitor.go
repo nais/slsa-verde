@@ -151,12 +151,12 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 					"digest":         metadata.Digest,
 				}).Info("project exist update version:", p.Version, " to: ", projectVersion)
 
-				updatedP, err := c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
+				_, err := c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
 				if err != nil {
 					return err
 				}
 
-				if err = c.uploadSBOMToProject(ctx, metadata, project, updatedP.Uuid, projectVersion); err != nil {
+				if err = c.uploadSBOMToProject(ctx, metadata, project, p.Uuid, projectVersion); err != nil {
 					return err
 				}
 

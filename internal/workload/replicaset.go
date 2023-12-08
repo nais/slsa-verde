@@ -1,6 +1,8 @@
 package workload
 
 import (
+	"fmt"
+
 	log "github.com/sirupsen/logrus"
 	appv1 "k8s.io/api/apps/v1"
 )
@@ -42,7 +44,11 @@ func (r *ReplicaSet) GetKind() string {
 }
 
 func (r *ReplicaSet) Active() bool {
-	return r.status.ReadyReplicas > 0 && r.status.AvailableReplicas > 0 && r.status.Replicas > 0
+	fmt.Println(r.status.ReadyReplicas)
+	fmt.Println(r.status.AvailableReplicas)
+	fmt.Println(r.status.Replicas)
+	return r.status.Replicas > 0 && r.status.Replicas == r.status.AvailableReplicas &&
+		r.status.Replicas == r.status.ReadyReplicas
 }
 
 func (r *ReplicaSet) GetLabels() map[string]string {

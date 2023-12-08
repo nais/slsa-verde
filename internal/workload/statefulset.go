@@ -42,7 +42,8 @@ func (s *StatefulSet) GetKind() string {
 }
 
 func (s *StatefulSet) Active() bool {
-	return s.status.ReadyReplicas > 0 && s.status.AvailableReplicas > 0 && s.status.Replicas > 0
+	return s.status.Replicas > 0 && s.status.Replicas == s.status.AvailableReplicas &&
+		s.status.Replicas == s.status.ReadyReplicas
 }
 
 func (s *StatefulSet) GetLabels() map[string]string {

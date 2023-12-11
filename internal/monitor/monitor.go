@@ -46,7 +46,7 @@ func (c *Config) OnDelete(obj any) {
 
 	for _, container := range w.GetContainers() {
 		if err := c.deleteProject(w, container); err != nil {
-			c.logger.Errorf("delete project: %v", err)
+			c.logger.Errorf("delete: %v", err)
 			continue
 		}
 	}
@@ -65,7 +65,7 @@ func (c *Config) OnUpdate(old any, new any) {
 	}
 
 	if err := c.verifyContainers(c.ctx, wNew); err != nil {
-		c.logger.Warnf("verify attestation: %v", err)
+		c.logger.Warnf("update: verify attestation: %v", err)
 	}
 }
 
@@ -82,7 +82,7 @@ func (c *Config) OnAdd(obj any) {
 	}
 
 	if err := c.verifyContainers(c.ctx, w); err != nil {
-		c.logger.Warnf("verify attestation: %v", err)
+		c.logger.Warnf("add: verify attestation: %v", err)
 	}
 }
 
@@ -216,14 +216,15 @@ func (c *Config) deleteProject(w workload.Workload, container workload.Container
 	}
 
 	if pr == nil {
-		return fmt.Errorf("trying to delete project:%s, project not found", project)
+		c.logger.Debugf("%s:trying to delete project:%s:%s, project not found", w.GetKind(), project, projectVersion)
+		return nil
 	}
 
 	if err = c.Client.DeleteProject(c.ctx, pr.Uuid); err != nil {
 		return fmt.Errorf("delete project:%s: %v", project, err)
 	}
 
-	c.logger.Infof("%s:deleted project:%s", w.GetKind(), project)
+	c.logger.Infof("%s:deleted project:%s:%s", w.GetKind(), project, projectVersion)
 	return nil
 }
 

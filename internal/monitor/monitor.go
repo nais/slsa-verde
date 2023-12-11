@@ -64,9 +64,10 @@ func (c *Config) OnUpdate(old any, new any) {
 		return
 	}
 
-	if err := c.verifyContainers(c.ctx, wNew); err != nil {
-		c.logger.Warnf("update: verify attestation: %v", err)
-	}
+	// TODO: what to do on update?
+	//if err := c.verifyContainers(c.ctx, wNew); err != nil {
+	//	c.logger.Warnf("update: verify attestation: %v", err)
+	//}make test
 }
 
 func (c *Config) OnAdd(obj any) {

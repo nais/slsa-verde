@@ -170,7 +170,7 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload
 	vao.Logger.WithFields(log.Fields{
 		"image":          container.Image,
 		"container-name": container.Name,
-	}).Infof("verifying image attestations")
+	}).Debug("verifying image attestations")
 
 	if vao.LocalImage {
 		verified, bVerified, err = cosign.VerifyLocalImageAttestations(ctx, container.Image, opts)

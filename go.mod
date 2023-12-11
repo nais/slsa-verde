@@ -6,7 +6,7 @@ require (
 	github.com/google/go-containerregistry v0.17.0
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nais/dependencytrack v0.0.0-20231208135750-e2eaf24be3e1
+	github.com/nais/dependencytrack v0.0.0-20231211083030-56bfe8d7c0b1
 	github.com/secure-systems-lab/go-securesystemslib v0.7.0
 	github.com/sigstore/cosign/v2 v2.2.2
 	github.com/sirupsen/logrus v1.9.3
@@ -55,6 +55,7 @@ require (
 	github.com/alibabacloud-go/tea-xml v1.1.3 // indirect
 	github.com/aliyun/credentials-go v1.3.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
+	github.com/avast/retry-go/v4 v4.5.1 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.23.5 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.25.11 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.16.9 // indirect

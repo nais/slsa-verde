@@ -42,7 +42,6 @@ func (r *ReplicaSet) GetKind() string {
 }
 
 func (r *ReplicaSet) Active() bool {
-	r.log.Infof("ReplicaSet %s/%s: %d/%d/%d", r.Namespace, r.Name, r.status.Replicas, r.status.AvailableReplicas, r.status.ReadyReplicas)
 	return r.status.Replicas > 0 && r.status.Replicas == r.status.AvailableReplicas &&
 		r.status.Replicas == r.status.ReadyReplicas
 }

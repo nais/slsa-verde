@@ -119,8 +119,6 @@ github.com/arbovm/levenshtein v0.0.0-20160628152529-48b4e1c0c4d0/go.mod h1:t2tdK
 github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
-github.com/avast/retry-go/v4 v4.5.1 h1:AxIx0HGi4VZ3I02jr78j5lZ3M6x1E0Ivxa6b0pUUh7o=
-github.com/avast/retry-go/v4 v4.5.1/go.mod h1:/sipNsvNB3RRuT5iNcb6h73nw3IBmXJ/H3XrCQYSOpc=
 github.com/aws/aws-sdk-go v1.48.11 h1:9YbiSbaF/jWi+qLRl+J5dEhr2mcbDYHmKg2V7RBcD5M=
 github.com/aws/aws-sdk-go v1.48.11/go.mod h1:LF8svs817+Nz+DmiMQKTO3ubZ/6IaTpq3TjupRn3Eqk=
 github.com/aws/aws-sdk-go-v2 v1.21.2/go.mod h1:ErQhvNuEMhJjweavOYhxVkn2RUx7kQXVATHrjKtxIpM=
@@ -560,12 +558,8 @@ github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de h1:D5x39vF5KCwKQaw+OC9
 github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de/go.mod h1:kJun4WP5gFuHZgRjZUWWuH1DTxCtxbHDOIJsudS8jzY=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/nais/dependencytrack v0.0.0-20230608082404-d08d7554dab4 h1:DbPtOOS/RxJifamj0CHefJ1jyICHpSlX0UtM5kj+bpU=
-github.com/nais/dependencytrack v0.0.0-20230608082404-d08d7554dab4/go.mod h1:xDrl0kOf6mjyAIvo4SFW0PCTh+KPt4R40eKZ3lWLNlg=
-github.com/nais/dependencytrack v0.0.0-20231208135750-e2eaf24be3e1 h1:tn30Xk2WWhSFdIHVXniQPho7oSgLv95nVA8o1ymmH6Q=
-github.com/nais/dependencytrack v0.0.0-20231208135750-e2eaf24be3e1/go.mod h1:vBVyEegf6EGvaik05FzvRKJeL039Sy1tfaIl4eCI99Q=
-github.com/nais/dependencytrack v0.0.0-20231211083030-56bfe8d7c0b1 h1:shYH8Qhnw22SH0XYeETz4QvxZBR84njFHxSemfpN410=
-github.com/nais/dependencytrack v0.0.0-20231211083030-56bfe8d7c0b1/go.mod h1:C49lcK1VFeAE/c0+4ikEXH2pwmO7UYcx0OEiRYagz14=
+github.com/nais/dependencytrack v0.0.0-20231211105331-5ab24fb186e6 h1:X0hDLxBVTx4kerBOoVmnL/hpeLqu6VqcgQwNBvVsNRk=
+github.com/nais/dependencytrack v0.0.0-20231211105331-5ab24fb186e6/go.mod h1:vBVyEegf6EGvaik05FzvRKJeL039Sy1tfaIl4eCI99Q=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 h1:Up6+btDp321ZG5/zdSLo48H9Iaq0UQGthrhWC6pCxzE=
 github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481/go.mod h1:yKZQO8QE2bHlgozqWDiRVqTFlLQSj30K/6SAK8EeYFw=

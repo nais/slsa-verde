@@ -36,11 +36,16 @@ func (c *Config) OnDelete(obj any) {
 	c.logger.WithFields(log.Fields{"event": "OnDelete"})
 
 	w := workload.GetMetadata(obj, c.logger)
+
 	if w == nil {
 		return
 	}
 	if w.GetName() == "" {
-		c.logger.Warnf("%s: no app name found: %s ", "delete", w.GetKind())
+		c.logger.Warnf("%s:no app name found: %s ", "delete", w.GetKind())
+		return
+	}
+	if w.Active() {
+		c.logger.Debugf("%s:%s:%s:%s is active, skipping", "delete", w.GetKind(), w.GetName(), w.GetIdentifier())
 		return
 	}
 

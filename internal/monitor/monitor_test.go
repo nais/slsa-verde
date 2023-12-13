@@ -185,12 +185,22 @@ func TestConfig_OnDelete(t *testing.T) {
 		m.OnDelete(nil)
 	})
 
-	t.Run("should not delete if a !active workload", func(t *testing.T) {
+	t.Run("should not delete if a active workload", func(t *testing.T) {
+		p.Status = v1.ReplicaSetStatus{
+			Replicas:          1,
+			ReadyReplicas:     1,
+			AvailableReplicas: 1,
+		}
+		m.OnDelete(p)
+	})
+
+	t.Run("should delete if a !active workload", func(t *testing.T) {
 		p.Status = v1.ReplicaSetStatus{
 			Replicas:          1,
 			ReadyReplicas:     0,
 			AvailableReplicas: 1,
 		}
+		c.On("DeleteProject", mock.Anything, "1").Return(nil)
 		m.OnDelete(p)
 	})
 }

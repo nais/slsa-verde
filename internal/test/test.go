@@ -48,7 +48,7 @@ func merge(map1, map2 map[string]string) map[string]string {
 	return mergedMap
 }
 
-func CreateWorkload(namespace, name string, labels map[string]string, images ...string) *app.ReplicaSet {
+func CreateWorkload(namespace, name string, labels map[string]string, annotations map[string]string, images ...string) *app.ReplicaSet {
 	c := make([]v1.Container, 0)
 	initc := make([]v1.Container, 0)
 	for _, image := range images {
@@ -77,6 +77,9 @@ func CreateWorkload(namespace, name string, labels map[string]string, images ...
 			Name:      name,
 			Namespace: namespace,
 			Labels:    l,
+			Annotations: merge(map[string]string{
+				"deployment.kubernetes.io/desired-replicas": "1",
+			}, annotations),
 		},
 		Spec: app.ReplicaSetSpec{
 			Replicas: &replicas,

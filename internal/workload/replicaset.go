@@ -1,6 +1,8 @@
 package workload
 
 import (
+	"strconv"
+
 	log "github.com/sirupsen/logrus"
 	appv1 "k8s.io/api/apps/v1"
 )
@@ -14,6 +16,7 @@ func NewReplicaSet(r *appv1.ReplicaSet, log *log.Entry) Workload {
 	return &ReplicaSet{
 		Metadata: SetMetadata(
 			r.GetLabels(),
+			r.GetAnnotations(),
 			r.Name,
 			r.Namespace,
 			"ReplicaSet",
@@ -42,7 +45,14 @@ func (r *ReplicaSet) GetKind() string {
 }
 
 func (r *ReplicaSet) Active() bool {
-	return r.status.Replicas > 0 && r.status.Replicas == r.status.AvailableReplicas &&
+	desired, err := strconv.ParseInt(r.Annotations["deployment.kubernetes.io/desired-replicas"], 10, 32)
+	if err != nil {
+		r.log.Warnf("%s:unable to parse desired replicas annotation", r.identifier)
+		return false
+	}
+	return r.status.Replicas > 0 &&
+		int32(desired) == r.status.Replicas &&
+		r.status.Replicas == r.status.AvailableReplicas &&
 		r.status.Replicas == r.status.ReadyReplicas
 }
 

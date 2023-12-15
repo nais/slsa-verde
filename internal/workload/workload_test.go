@@ -50,7 +50,7 @@ func TestGetMetadata(t *testing.T) {
 			l[SalsaPredicateLabelKey] = tt.predicateType
 			l[SalsaKeyRefLabelKey] = tt.keyRef
 			l[IgnoreTransparencyLogLabelKey] = tt.tlog
-			w := test.CreateWorkload("team1", "pod1", l, "nginx:latest")
+			w := test.CreateWorkload("team1", "pod1", l, nil, "nginx:latest")
 
 			workload := GetMetadata(w, nil)
 			assert.Equal(t, tt.wantPredicateType, GetPredicateType(workload), "predicate type should match")

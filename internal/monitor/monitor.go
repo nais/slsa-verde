@@ -40,12 +40,9 @@ func (c *Config) OnDelete(obj any) {
 	if w == nil {
 		return
 	}
+
 	if w.GetName() == "" {
 		c.logger.Warnf("%s:no app name found: %s ", "delete", w.GetKind())
-		return
-	}
-	if w.Active() {
-		c.logger.Debugf("%s:%s:%s:%s is active, skipping", "delete", w.GetKind(), w.GetName(), w.GetIdentifier())
 		return
 	}
 
@@ -61,16 +58,21 @@ func (c *Config) OnUpdate(old any, new any) {
 	c.logger.WithFields(log.Fields{"event": "update"})
 
 	wNew := workload.GetMetadata(new, c.logger)
-	if wNew == nil {
+	wOld := workload.GetMetadata(old, c.logger)
+
+	if wNew == nil || wOld == nil {
 		return
 	}
 
-	if !c.validWorkload("update", wNew) {
+	if wNew.GetName() == "" || wOld.GetName() == "" {
+		c.logger.Debugf("%s:no app name found: %s ", "update", wNew.GetKind())
 		return
 	}
 
-	if err := c.verifyContainers(c.ctx, wNew); err != nil {
-		c.logger.Warnf("update: verify attestation: %v", err)
+	if wNew.Active() && !wOld.Active() {
+		if err := c.verifyContainers(c.ctx, wNew); err != nil {
+			c.logger.Warnf("update: verify attestation: %v", err)
+		}
 	}
 }
 
@@ -81,8 +83,12 @@ func (c *Config) OnAdd(obj any) {
 	if w == nil {
 		return
 	}
-
-	if !c.validWorkload("add", w) {
+	if w.GetName() == "" {
+		c.logger.Debugf("%s:no app name found: %s ", "add", w.GetKind())
+		return
+	}
+	if !w.Active() {
+		c.logger.Debugf("%s:%s:%s:%s is not active, skipping", "add", w.GetKind(), w.GetName(), w.GetIdentifier())
 		return
 	}
 
@@ -116,7 +122,7 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 
 			metadata, err := c.verifier.Verify(c.ctx, container)
 			if err != nil {
-				c.logger.Warnf("verify attestation, skipping: %v", err)
+				c.logger.Debugf("verify attestation, skipping: %v", err)
 				continue
 			}
 
@@ -251,21 +257,6 @@ func (c *Config) retrieveProject(ctx context.Context, projectName, env, team, ap
 		}
 	}
 	return p, nil
-}
-
-func (c *Config) validWorkload(event string, w workload.Workload) bool {
-	if w == nil {
-		return false
-	}
-	if w.GetName() == "" {
-		c.logger.Warnf("%s:no app name found: %s ", event, w.GetKind())
-		return false
-	}
-	if !w.Active() {
-		c.logger.Debugf("%s:%s:%s:%s is not active, skipping", event, w.GetKind(), w.GetName(), w.GetIdentifier())
-		return false
-	}
-	return true
 }
 
 func version(image string) string {

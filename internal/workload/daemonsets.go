@@ -14,6 +14,7 @@ func NewDaemonSet(d *v1.DaemonSet, log *logrus.Entry) Workload {
 	return &DaemonSet{
 		Metadata: SetMetadata(
 			d.GetLabels(),
+			d.GetAnnotations(),
 			d.Name,
 			d.Namespace,
 			"DaemonSet",

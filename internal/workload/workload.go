@@ -32,15 +32,16 @@ type Workload interface {
 }
 
 type Metadata struct {
-	Name       string
-	Namespace  string
-	Team       string
-	Kind       string
-	Labels     map[string]string
-	containers []Container
-	log        *logrus.Entry
-	identifier string
-	Verifier   *Verifier
+	Name        string
+	Namespace   string
+	Team        string
+	Kind        string
+	Labels      map[string]string
+	Annotations map[string]string
+	containers  []Container
+	log         *logrus.Entry
+	identifier  string
+	Verifier    *Verifier
 }
 
 type Container struct {
@@ -154,15 +155,16 @@ func setContainers(containers ...[]v1.Container) []Container {
 	return c
 }
 
-func SetMetadata(labels map[string]string, name, namespace, kind string, log *logrus.Entry, containers ...[]v1.Container) *Metadata {
+func SetMetadata(labels map[string]string, annotations map[string]string, name, namespace, kind string, log *logrus.Entry, containers ...[]v1.Container) *Metadata {
 	return &Metadata{
-		Name:       setName(labels),
-		Namespace:  namespace,
-		Kind:       kind,
-		Labels:     labels,
-		identifier: name,
-		containers: setContainers(containers...),
-		log:        log,
-		Verifier:   setVerifier(labels),
+		Name:        setName(labels),
+		Annotations: annotations,
+		Namespace:   namespace,
+		Kind:        kind,
+		Labels:      labels,
+		identifier:  name,
+		containers:  setContainers(containers...),
+		log:         log,
+		Verifier:    setVerifier(labels),
 	}
 }

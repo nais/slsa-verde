@@ -14,6 +14,7 @@ func NewStatefulSet(s *appv1.StatefulSet, log *log.Entry) Workload {
 	return &StatefulSet{
 		Metadata: SetMetadata(
 			s.GetLabels(),
+			s.GetAnnotations(),
 			s.Name,
 			s.Namespace,
 			"StatefulSet",

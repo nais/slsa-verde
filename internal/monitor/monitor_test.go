@@ -25,7 +25,7 @@ func TestConfig_OnAdd(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
-	w := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
+	w := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -88,7 +88,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
 		m := NewMonitor(context.Background(), c, v, cluster)
-		w := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
+		w := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
 		file, err := os.ReadFile("testdata/sbom.json")
@@ -113,7 +113,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
 		m := NewMonitor(context.Background(), c, v, cluster)
-		p := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
+		p := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
 		file, err := os.ReadFile("testdata/sbom.json")
@@ -165,7 +165,7 @@ func TestConfig_OnDelete(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
-	p := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
+	p := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
 
 	t.Run("should delete project", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test:team1:pod1", "latest").Return(&client.Project{
@@ -209,11 +209,8 @@ func TestConfig_OnUpdate(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
-	w := test.CreateWorkload("team1", "pod1", nil, "nginx:latest")
-
-	t.Run("should ignore nil workload object", func(t *testing.T) {
-		m.OnUpdate(nil, nil)
-	})
+	w := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
+	o := test.CreateWorkload("team1", "pod2", nil, nil, "nginx:old")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -221,7 +218,35 @@ func TestConfig_OnUpdate(t *testing.T) {
 	err = json.Unmarshal(file, &statement)
 	assert.NoError(t, err)
 
-	t.Run("should not update projects if exists", func(t *testing.T) {
+	t.Run("should ignore nil workload object", func(t *testing.T) {
+		m.OnUpdate(nil, nil)
+	})
+
+	t.Run("should not update if both old and new have the same state", func(t *testing.T) {
+		m.OnUpdate(o, w)
+	})
+
+	t.Run("should not update if new is not active on update", func(t *testing.T) {
+		w.Status = v1.ReplicaSetStatus{
+			Replicas:          1,
+			ReadyReplicas:     1,
+			AvailableReplicas: 0,
+		}
+		m.OnUpdate(o, w)
+	})
+
+	t.Run("should try to update if new is active on update but old is not", func(t *testing.T) {
+		w.Status = v1.ReplicaSetStatus{
+			Replicas:          1,
+			ReadyReplicas:     1,
+			AvailableReplicas: 1,
+		}
+		o.Status = v1.ReplicaSetStatus{
+			Replicas:          1,
+			ReadyReplicas:     1,
+			AvailableReplicas: 0,
+		}
+
 		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(&client.Project{
 			Classifier:          "APPLICATION",
 			Group:               "team",
@@ -232,20 +257,7 @@ func TestConfig_OnUpdate(t *testing.T) {
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
 
-		m.OnUpdate(nil, w)
-	})
-
-	t.Run("should ignore nil workload object", func(t *testing.T) {
-		m.OnUpdate(nil, nil)
-	})
-
-	t.Run("should not update if !active", func(t *testing.T) {
-		w.Status = v1.ReplicaSetStatus{
-			Replicas:          1,
-			ReadyReplicas:     1,
-			AvailableReplicas: 0,
-		}
-		m.OnUpdate(nil, w)
+		m.OnUpdate(o, w)
 	})
 }
 

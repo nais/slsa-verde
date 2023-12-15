@@ -14,6 +14,7 @@ func NewJob(j *v1.Job, log *logrus.Entry) Workload {
 	return &Job{
 		Metadata: SetMetadata(
 			j.GetLabels(),
+			j.GetAnnotations(),
 			j.Name,
 			j.Namespace,
 			"Job",

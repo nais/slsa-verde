@@ -19,7 +19,7 @@ require (
 	k8s.io/api v0.29.1
 	k8s.io/apimachinery v0.29.1
 	k8s.io/client-go v0.29.1
-	mvdan.cc/gofumpt v0.5.0
+	mvdan.cc/gofumpt v0.6.0
 )
 
 require (

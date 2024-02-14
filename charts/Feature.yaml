@@ -28,7 +28,7 @@ values:
           - "{{.Tenant.Name}}"
         {{ end }}
     config:
-      type: string
+      type: string_array
   config.identities:
     displayName: Preconfigured signature sa Identities
     computed:

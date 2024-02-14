@@ -4,6 +4,10 @@ environmentKinds:
   - legacy
   - onprem
 values:
+  logLevel:
+    displayName: Log level
+    config:
+      type: string
   webproxy:
     displayName: Enable webproxy
     computed:
@@ -21,8 +25,8 @@ values:
     displayName: GitHub organization(s)
     computed:
       template: |
-        {{ if or (eq .Tenant.Name "nav") (eq .Tenant.Name "dev-nais") }}
           - nais
+        {{ if or (eq .Tenant.Name "nav") (eq .Tenant.Name "dev-nais") }}
           - navikt
         {{ else }}
           - "{{.Tenant.Name}}"

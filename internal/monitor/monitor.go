@@ -122,7 +122,7 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 
 			metadata, err := c.verifier.Verify(c.ctx, container)
 			if err != nil {
-				c.logger.Debugf("verify attestation, skipping: %v", err)
+				c.logger.Warnf("verify attestation, skipping: %v", err)
 				continue
 			}
 

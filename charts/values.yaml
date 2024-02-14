@@ -5,6 +5,8 @@ image:
   name: picante
   tag: 20230414-090558-6aaa3f2
 
+logLevel: info
+
 team: nais
 
 webproxy: false
@@ -14,7 +16,7 @@ resources:
     cpu: 30m
     memory: 512Mi
 
-dockerconfigjson:
+dockerconfigjson: '{"auths":{}}'
 
 google:
   serviceAccountEmail:

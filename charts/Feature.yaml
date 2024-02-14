@@ -25,10 +25,11 @@ values:
     displayName: GitHub organization(s)
     computed:
       template: |
-          - nais
         {{ if or (eq .Tenant.Name "nav") (eq .Tenant.Name "dev-nais") }}
           - navikt
+          - nais
         {{ else }}
+          - nais
           - "{{.Tenant.Name}}"
         {{ end }}
     config:

@@ -180,6 +180,9 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload
 	} else {
 		verified, bVerified, err = cosign.VerifyImageAttestations(ctx, ref, opts)
 		if err != nil {
+			vao.Logger.Logger.WithFields(log.Fields{
+				"ref": ref.String(),
+			}).Warn("verifying image attestations")
 			return nil, err
 		}
 	}

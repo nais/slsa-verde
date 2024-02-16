@@ -7,6 +7,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
+
 	v1 "k8s.io/api/apps/v1"
 
 	"picante/internal/test"
@@ -20,6 +22,36 @@ import (
 )
 
 var cluster = "test"
+
+func Test_DigestHasChanged(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v, cluster)
+
+	metadata := &attestation.ImageMetadata{
+		Digest: "digest1",
+	}
+
+	p := &client.Project{
+		Name:    "test:app",
+		Tags:    []client.Tag{{Name: "digest:digest1"}, {Name: "test:app"}},
+		Uuid:    uuid.New().String(),
+		Version: "2021-01-01",
+	}
+
+	// We test the case where the digest has not changed
+	hasChanged := m.digestHasChanged(metadata, p)
+	if hasChanged {
+		t.Errorf("Expected false, got %v", hasChanged)
+	}
+
+	// We test the case where the digest has changed
+	metadata.Digest = "digest2"
+	hasChanged = m.digestHasChanged(metadata, p)
+	if !hasChanged {
+		t.Errorf("Expected true, got %v", hasChanged)
+	}
+}
 
 func TestConfig_OnAdd(t *testing.T) {
 	c := NewMockClient(t)

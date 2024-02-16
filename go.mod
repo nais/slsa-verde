@@ -6,19 +6,19 @@ require (
 	github.com/google/go-containerregistry v0.19.0
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nais/dependencytrack v0.0.0-20231219142427-2db450c279e4
+	github.com/nais/dependencytrack v0.0.0-20240212172056-36278c92e780
 	github.com/secure-systems-lab/go-securesystemslib v0.8.0
 	github.com/sigstore/cosign/v2 v2.2.3
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
-	github.com/vektra/mockery/v2 v2.40.3
+	github.com/vektra/mockery/v2 v2.41.0
 	golang.org/x/vuln v1.0.4
 	honnef.co/go/tools v0.4.6
-	k8s.io/api v0.29.1
-	k8s.io/apimachinery v0.29.1
-	k8s.io/client-go v0.29.1
+	k8s.io/api v0.29.2
+	k8s.io/apimachinery v0.29.2
+	k8s.io/client-go v0.29.2
 	mvdan.cc/gofumpt v0.6.0
 )
 
@@ -78,7 +78,7 @@ require (
 	github.com/buildkite/go-pipeline v0.3.2 // indirect
 	github.com/buildkite/interpolate v0.0.0-20200526001904-07f35b4ae251 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/chigopher/pathlib v1.0.0 // indirect
+	github.com/chigopher/pathlib v0.19.1 // indirect
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589 // indirect
 	github.com/clbanning/mxj/v2 v2.7.0 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect

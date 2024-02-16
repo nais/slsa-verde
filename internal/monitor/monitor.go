@@ -107,16 +107,14 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 			return err
 		}
 
-		// This if, checks if the project exists and if the project has a sbom.
-		// it can produce a 409 conflict if the project exists with the version, but does not have a sbom
-		// This is ok, because we want to update the project with if the sbom does not exist
-		if pp != nil && pp.LastBomImportFormat != "" {
+		// If the sbom does not exist, that's acceptable, due to it's a user error
+		if pp != nil {
 			c.logger.WithFields(log.Fields{
-				"project":        project,
-				"projectVersion": projectVersion,
-				"workload":       w.GetName(),
-				"container":      container.Name,
-			}).Debug("project exist and has bom, skipping")
+				"project":         project,
+				"project-version": projectVersion,
+				"workload":        w.GetName(),
+				"container":       container.Name,
+			}).Debug("project exist, skipping")
 			continue
 		} else {
 
@@ -144,23 +142,23 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 			}
 
 			if p != nil {
-
-				//if !c.digestHasChanged(metadata, p) {
-				//	c.logger.WithFields(log.Fields{
-				//		"projectVersion": projectVersion,
-				//		"workload":       w.GetName(),
-				//		"container":      metadata.ContainerName,
-				//		"digest":         metadata.Digest,
-				//	}).Info("project exist and has same digest, skipping")
-				//	continue
-				//}
+				if !c.digestHasChanged(metadata, p) {
+					c.logger.WithFields(log.Fields{
+						"project-version": projectVersion,
+						"workload":        w.GetName(),
+						"container":       metadata.ContainerName,
+						"digest":          metadata.Digest,
+					}).Info("project exist and has same digest, skipping")
+					continue
+				}
 
 				c.logger.WithFields(log.Fields{
-					"projectVersion": projectVersion,
-					"workload":       w.GetName(),
-					"container":      metadata.ContainerName,
-					"digest":         metadata.Digest,
-				}).Info("project exist update version:", p.Version, " to: ", projectVersion)
+					"current-version": p.Version,
+					"new-version":     projectVersion,
+					"workload":        w.GetName(),
+					"container":       metadata.ContainerName,
+					"digest":          metadata.Digest,
+				}).Info("project exist update project with a new version and upload sbom...")
 
 				_, err := c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
 				if err != nil {
@@ -173,11 +171,12 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 
 			} else {
 				c.logger.WithFields(log.Fields{
-					"projectVersion": projectVersion,
-					"workload":       w.GetName(),
-					"container":      metadata.ContainerName,
-					"digest":         metadata.Digest,
-				}).Info("project does not exist, creating:", project, ":version::", projectVersion)
+					"project-version": projectVersion,
+					"project":         project,
+					"workload":        w.GetName(),
+					"container":       metadata.ContainerName,
+					"digest":          metadata.Digest,
+				}).Info("project does not exist, creating...")
 
 				createdP, err := c.Client.CreateProject(ctx, project, projectVersion, w.GetNamespace(), tags)
 				if err != nil {
@@ -193,18 +192,17 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 	return nil
 }
 
-// TODO
-//func (c *Config) digestHasChanged(metadata *attestation.ImageMetadata, p *client.Project) bool {
-//	for _, tag := range p.Tags {
-//		if strings.Contains(tag.Name, "digest:") {
-//			d := strings.Split(tag.Name, ":")[1]
-//			if d == metadata.Digest {
-//				return false
-//			}
-//		}
-//	}
-//	return true
-//}
+func (c *Config) digestHasChanged(metadata *attestation.ImageMetadata, p *client.Project) bool {
+	for _, tag := range p.Tags {
+		if strings.Contains(tag.Name, "digest:") {
+			d := strings.Split(tag.Name, ":")[1]
+			if d == metadata.Digest {
+				return false
+			}
+		}
+	}
+	return true
+}
 
 func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.ImageMetadata, project, parentUuid, projectVersion string) error {
 	b, err := json.Marshal(metadata.Statement.Predicate)

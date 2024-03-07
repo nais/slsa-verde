@@ -10,7 +10,6 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	log "github.com/sirupsen/logrus"
 
-	"picante/internal/config"
 	"picante/internal/github"
 	"picante/internal/workload"
 
@@ -106,37 +105,13 @@ func TestBuildCertificateIdentities(t *testing.T) {
 			team:          "github-yolo",
 			wantIssuerUrl: "https://token.actions.githubusercontent.com",
 		},
-		{
-			desc:          "static key is enabled, no certificate identity",
-			keyRef:        "testdata/cosign.pub",
-			tLog:          false,
-			team:          "static-team-yolo",
-			wantIssuerUrl: "https://static-provider-yolo.com",
-		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			var g *github.CertificateIdentity
-			var static []cosign.Identity
-
-			if tc.team == "github-yolo" {
-				g = github.NewCertificateIdentity([]string{"yolo"})
-			}
-
-			if tc.team == "static-team-yolo" {
-				cfg := config.Config{
-					PreConfiguredSaIdentities: []config.Identity{
-						{
-							Issuer:  tc.wantIssuerUrl,
-							Subject: "static-team-yolo",
-						},
-					},
-				}
-				static = cfg.GetPreConfiguredIdentities()
-			}
+			g := github.NewCertificateIdentity([]string{"yolo"})
 
 			co := &VerifyAttestationOpts{
 				StaticKeyRef: tc.keyRef,
-				Identities:   static,
+				Identities:   g.GetIdentities(),
 				Logger: log.WithFields(log.Fields{
 					"test-app": "picante",
 				}),
@@ -147,18 +122,12 @@ func TestBuildCertificateIdentities(t *testing.T) {
 				},
 			}
 
-			ids := BuildCertificateIdentities(g, static)
-			assert.NotEmpty(t, ids)
+			assert.NotEmpty(t, co.Identities)
 			assert.Equal(t, tc.tLog, co.IgnoreTlog)
 			assert.Equal(t, tc.keyRef, co.StaticKeyRef)
-			for _, id := range ids {
-				if tc.team == "github-yolo" {
-					assert.Equal(t, tc.wantIssuerUrl, id.Issuer)
-					assert.NotEmpty(t, id.SubjectRegExp)
-				} else {
-					assert.Equal(t, tc.wantIssuerUrl, id.Issuer)
-					assert.NotEmpty(t, id.Subject)
-				}
+			for _, id := range co.Identities {
+				assert.Equal(t, tc.wantIssuerUrl, id.Issuer)
+				assert.NotEmpty(t, id.SubjectRegExp)
 			}
 		})
 	}

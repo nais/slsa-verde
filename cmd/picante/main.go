@@ -6,8 +6,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/joho/godotenv"
+	flag "github.com/spf13/pflag"
 
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
@@ -23,16 +27,69 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	_ "net/http/pprof"
 	"picante/internal/attestation"
-	"picante/internal/config"
 	"picante/internal/monitor"
 )
 
-const (
-	KUBECONFIG = "KUBECONFIG"
-)
+type Cosign struct {
+	IgnoreTLog bool   `json:"ignore-tlog"`
+	KeyRef     string `json:"key-ref"`
+	LocalImage bool   `json:"local-image"`
+	RekorURL   string `json:"rekor-url"`
+}
+
+type GitHub struct {
+	Organizations []string `json:"organizations"`
+}
+
+type DependencyTrack struct {
+	Api      string `json:"api"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Team     string `json:"team"`
+}
+
+type Config struct {
+	Cluster            string          `json:"cluster"`
+	Cosign             Cosign          `json:"cosign"`
+	DevelopmentMode    bool            `json:"development-mode"`
+	GitHub             GitHub          `json:"github"`
+	LogLevel           string          `json:"log-level"`
+	MetricsBindAddress string          `json:"metrics-address"`
+	DependencyTrack    DependencyTrack `json:"dependencytrack"`
+}
+
+var cfg = &Config{
+	LogLevel: "debug",
+}
+
+func init() {
+	viper.SetEnvPrefix("PICANTE")
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
+
+	// Read configuration file from working directory and/or /etc.
+	// File formats supported include JSON, TOML, YAML, HCL, envfile and Java properties config files
+	viper.SetConfigName("picante")
+	viper.AddConfigPath(".")
+	viper.AddConfigPath("/etc/picante")
+
+	flag.StringVar(&cfg.Cluster, "cluster", "", "Cluster name, e.g. dev")
+	flag.BoolVar(&cfg.Cosign.IgnoreTLog, "cosign-ignore-tlog", false, "Ignore transparency log")
+	flag.BoolVar(&cfg.Cosign.LocalImage, "cosign-local-image", false, "Use local image")
+	flag.BoolVar(&cfg.DevelopmentMode, "development-mode", false, "Toggle for development mode")
+	flag.StringVar(&cfg.Cosign.KeyRef, "cosign-key-ref", "", "The key reference, empty for keyless attestation")
+	flag.StringVar(&cfg.Cosign.RekorURL, "cosign-rekor-url", "https://rekor.sigstore.dev", "Rekor URL")
+	flag.StringVar(&cfg.LogLevel, "log-level", "info", "Log level")
+	flag.StringVar(&cfg.MetricsBindAddress, "metrics-address", ":8080", "Bind address")
+	flag.StringVar(&cfg.DependencyTrack.Api, "dependencytrack-api", "", "Salsa storage API endpoint")
+	flag.StringVar(&cfg.DependencyTrack.Password, "dependencytrack-password", "", "Salsa storage password")
+	flag.StringVar(&cfg.DependencyTrack.Team, "dependencytrack-team", "", "Salsa storage team")
+	flag.StringVar(&cfg.DependencyTrack.Username, "dependencytrack-username", "", "Salsa storage username")
+	flag.StringSliceVar(&cfg.GitHub.Organizations, "github-organizations", []string{}, "List of GitHub organizations to filter on")
+}
 
 func main() {
-	cfg, err := setupConfig()
+	err := setupConfig()
 	if err != nil {
 		log.WithError(err).Fatal("failed to setup config")
 	}
@@ -59,9 +116,6 @@ func main() {
 	mainLogger.Info("setting up informer")
 	tweakListOpts := informers.WithTweakListOptions(
 		func(options *v1.ListOptions) {
-			if cfg.Features.LabelSelectors != nil && len(cfg.Features.LabelSelectors) > 0 {
-				options.LabelSelector = cfg.GetLabelSelectors()
-			}
 			options.FieldSelector = "metadata.namespace!=kube-system," +
 				"metadata.namespace!=kube-public," +
 				"metadata.namespace!=cnrm-system"
@@ -76,7 +130,6 @@ func main() {
 	opts, err := attestation.NewVerifyAttestationOpts(
 		verifyCmd,
 		cfg.GitHub.Organizations,
-		cfg.GetPreConfiguredIdentities(),
 		cfg.Cosign.KeyRef,
 	)
 	if err != nil {
@@ -84,7 +137,7 @@ func main() {
 	}
 
 	mainLogger.Info("setting up dtrack client")
-	s := client.New(cfg.Storage.Api, cfg.Storage.Username, cfg.Storage.Password, client.WithApiKeySource(cfg.Storage.Team))
+	s := client.New(cfg.DependencyTrack.Api, cfg.DependencyTrack.Username, cfg.DependencyTrack.Password, client.WithApiKeySource(cfg.DependencyTrack.Team))
 	if err != nil {
 		mainLogger.WithError(err).Fatal("failed to get teams")
 	}
@@ -118,7 +171,7 @@ func setupKubeConfig() *rest.Config {
 	var kubeConfig *rest.Config
 	var err error
 
-	if envConfig := os.Getenv(KUBECONFIG); envConfig != "" {
+	if envConfig := os.Getenv("KUBECONFIG"); envConfig != "" {
 		kubeConfig, err = clientcmd.BuildConfigFromFlags("", envConfig)
 		if err != nil {
 			panic(err.Error())
@@ -163,35 +216,18 @@ func setupInformers(ctx context.Context, log *log.Entry, monitor *monitor.Config
 	return nil
 }
 
-func setupConfig() (*config.Config, error) {
+func setupConfig() error {
 	log.Info("-------- setting up configuration -----------")
-	cfg, err := config.Load()
+	err := Load()
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("loading configuration: %w", err)
 	}
-
-	if err := config.Validate([]string{
-		config.MetricsAddress,
-		config.StorageApi,
-		config.StorageUsername,
-		config.StoragePassword,
-		config.CosignLocalImage,
-		config.Identities,
-	}); err != nil {
-		return cfg, err
-	}
-
-	config.Print([]string{
-		config.StoragePassword,
-		config.StorageUsername,
-	})
-
 	log.Info("-------- configuration loaded ----------")
-	return cfg, nil
+	return nil
 }
 
 func setupLogger() error {
-	if viper.GetBool(config.DevelopmentMode) {
+	if cfg.DevelopmentMode {
 		log.SetLevel(log.DebugLevel)
 		formatter := &log.TextFormatter{
 			ForceColors:            true,
@@ -213,9 +249,73 @@ func setupLogger() error {
 }
 
 func logLevel() log.Level {
-	l, err := log.ParseLevel(viper.GetString(config.LogLevel))
+	l, err := log.ParseLevel(viper.GetString(cfg.LogLevel))
 	if err != nil {
 		l = log.InfoLevel
 	}
 	return l
+}
+
+func Load() error {
+	var err error
+	err = godotenv.Load()
+	if err != nil {
+		return fmt.Errorf("loading .env file: %w", err)
+	}
+
+	requiredFlags := map[string]bool{
+		"cluster":                  false,
+		"dependencytrack-api":      false,
+		"dependencytrack-username": false,
+		"dependencytrack-password": false,
+		"dependencytrack-team":     false,
+		"github-organizations":     false,
+	}
+
+	redacted := []string{
+		"dependencytrack-username",
+		"dependencytrack-password",
+		"cosign-key-ref",
+	}
+
+	flag.VisitAll(func(f *flag.Flag) {
+		name := strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
+		if value, ok := os.LookupEnv(name); ok {
+			err = flag.Set(f.Name, value)
+			if err != nil {
+				log.Fatalf("setting flag %v", f.Name)
+			}
+
+			// all flags in requiredFlags must be set, mark them as seen
+			if _, ok := requiredFlags[f.Name]; ok {
+				requiredFlags[f.Name] = true
+			}
+
+			// if the flag is redacted, log it as such
+			if contains(redacted, f.Name) {
+				log.Infof("setting flag %v: ***REDACTED***", f.Name)
+			} else {
+				log.Infof("setting flag %v: %v", f.Name, value)
+			}
+		}
+	})
+
+	// check if all required flags are set
+	for k, v := range requiredFlags {
+		if !v {
+			log.Fatalf("required flag %v is not set", k)
+		}
+	}
+
+	flag.Parse()
+	return nil
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

@@ -30,7 +30,7 @@ spec:
           env:
             - name: DOCKER_CONFIG
               value: /etc/docker-credentials
-          {{- if .Values.webproxy }}
+            {{- if .Values.webproxy }}
             - name: HTTP_PROXY
               value: http://webproxy.nais:8088
             - name: http_proxy
@@ -43,7 +43,33 @@ spec:
               value: localhost,127.0.0.1,10.254.0.1,.local,.adeo.no,.nav.no,.aetat.no,.devillo.no,.oera.no,.nais.io,.aivencloud.com,.intern.dev.nav.no
             - name: no_proxy
               value: localhost,127.0.0.1,10.254.0.1,.local,.adeo.no,.nav.no,.aetat.no,.devillo.no,.oera.no,.nais.io,.aivencloud.com,.intern.dev.nav.no
-          {{- end }}
+              {{- end }}
+            - name: CLUSTER
+              value: {{ .Values.config.cluster }}
+            - name: LOG_LEVEL
+              value: {{ .Values.config.logLevel }}
+            - name: GITHUB_ORGANIZATIONS
+              value: {{ .Values.config.github.organizations }}
+            - name: DEPENDENCYTRACK_TEAM
+              value: {{ .Values.config.dependencytrack.team }}
+            - name: DEPENDENCYTRACK_API
+              value: {{ .Values.config.dependencytrack.api }}
+            - name: DEPENDENCYTRACK_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "picante.fullname" . }}
+                  key: dependencytrack_username
+            - name: DEPENDENCYTRACK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "picante.fullname" . }}
+                  key: dependencytrack_password
+            - name: COSIGN_KEY_REF
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "picante.fullname" . }}
+                  key: cosign_key_ref
+
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -70,7 +96,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: writable-tmp
-          emptyDir: {}
+          emptyDir: { }
         - name: config-volume
           configMap:
             name: {{ include "picante.fullname" . }}

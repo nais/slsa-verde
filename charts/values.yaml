@@ -5,8 +5,6 @@ image:
   name: picante
   tag: 20230414-090558-6aaa3f2
 
-logLevel: info
-
 team: nais
 
 webproxy: false
@@ -27,23 +25,15 @@ fqdns:
   - europe-north1-docker.pkg.dev
 
 config:
-  features:
-    enabled: false
-    labelSelectors:
-      name: nais.io/salsa-verify-attestation
-      value: "true"
+  logLevel: info
   cluster: test
   cosign:
     keyRef:
-  storage:
+  dependencytrack:
     api: http://dependencytrack-backend:8080
     username: picante
     password:
     team: Administrators
-  identities: [ ]
-  teamIdentity:
-    issuer:
-    domain:
   github:
     organizations: [ ]
 

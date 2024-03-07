@@ -53,11 +53,9 @@ type VerifyAttestationOpts struct {
 func NewVerifyAttestationOpts(
 	verifyCmd *verify.VerifyAttestationCommand,
 	organizations []string,
-	identities []cosign.Identity,
 	keyRef string,
 ) (*VerifyAttestationOpts, error) {
-	gCertId := github.NewCertificateIdentity(organizations)
-	ids := BuildCertificateIdentities(gCertId, identities)
+	ids := github.NewCertificateIdentity(organizations).GetIdentities()
 	opts, err := CosignOptions(context.Background(), keyRef, ids)
 	if err != nil {
 		return nil, err
@@ -71,24 +69,6 @@ func NewVerifyAttestationOpts(
 		Logger:                   log.WithFields(log.Fields{"package": "attestation"}),
 		VerifyAttestationCommand: verifyCmd,
 	}, nil
-}
-
-func certificateIdentityPreConfiguredEnabled(identities []cosign.Identity) bool {
-	return len(identities) > 0
-}
-
-func BuildCertificateIdentities(gCertId *github.CertificateIdentity, identities []cosign.Identity) []cosign.Identity {
-	var result []cosign.Identity
-	if certificateIdentityPreConfiguredEnabled(identities) {
-		result = append(result, identities...)
-	}
-
-	if gCertId != nil {
-		id := gCertId.GetIdentities()
-		result = append(result, id...)
-	}
-
-	return result
 }
 
 func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign.Identity) (*cosign.CheckOpts, error) {

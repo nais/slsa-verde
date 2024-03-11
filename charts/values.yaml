@@ -35,7 +35,7 @@ config:
     password:
     team: Administrators
   github:
-    organizations: [ ]
+    organizations:
 
 kms:
   pubKey: |

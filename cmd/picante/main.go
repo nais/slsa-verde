@@ -63,16 +63,6 @@ var cfg = &Config{
 }
 
 func init() {
-	viper.SetEnvPrefix("PICANTE")
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
-
-	// Read configuration file from working directory and/or /etc.
-	// File formats supported include JSON, TOML, YAML, HCL, envfile and Java properties config files
-	viper.SetConfigName("picante")
-	viper.AddConfigPath(".")
-	viper.AddConfigPath("/etc/picante")
-
 	flag.StringVar(&cfg.Cluster, "cluster", "", "Cluster name, e.g. dev")
 	flag.BoolVar(&cfg.Cosign.IgnoreTLog, "cosign-ignore-tlog", false, "Ignore transparency log")
 	flag.BoolVar(&cfg.Cosign.LocalImage, "cosign-local-image", false, "Use local image")

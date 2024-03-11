@@ -3,6 +3,7 @@ picante:
 	go build -o bin/picante cmd/picante/*.go
 
 test: check fmt vet
+	go version
 	go test ./... -coverprofile cover.out -short
 fmt:
 	go run mvdan.cc/gofumpt -w ./

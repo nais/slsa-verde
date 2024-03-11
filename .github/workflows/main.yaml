@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ">=1.22.1"
-          cache-dependency-path: ./go.sum
+          check-latest: true
       - run: make test
 
   build_and_push:

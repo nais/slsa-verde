@@ -28,7 +28,7 @@ values:
         {{ if or (eq .Tenant.Name "nav") (eq .Tenant.Name "dev-nais") }}
           "nais,navikt"
         {{ else }}
-          - "nais,{{.Tenant.Name}}"
+          "nais,{{.Tenant.Name}}"
         {{ end }}
     config:
       type: string_array

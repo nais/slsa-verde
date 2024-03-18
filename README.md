@@ -21,3 +21,12 @@ wait for dp to be ready and run;
 ```bash
 make local
 ```
+
+Navigate to the cluster you are interested to work with, Picante will now start to fetch data from the cluster.
+And fill the local database with the data.
+
+You can now access the instance of Dependant Track by navigating to `http://localhost:9010` in your browser.
+If it is fresh start, you will need to create a user to be able to login. Navigate to `http://localhost:9010`
+Login with admin user and password `admin` and create a new password matching the password in your `.env` file.
+Navigate to Administration -> Access Management -> Teams -> Administrators and click the plus sign to add api_key to the team.
+Picante will now be able to fetch data from the cluster.

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"picante/internal/workload"
 
@@ -33,6 +34,7 @@ type ImageMetadata struct {
 	ContainerName  string                      `json:"containerName"`
 	Statement      *in_toto.CycloneDXStatement `json:"statement"`
 	Digest         string                      `json:"digest"`
+	RekorLogIndex  string                      `json:"rekorLogIndex"`
 }
 
 type Verifier interface {
@@ -189,12 +191,18 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload
 		"ref":            container.Image,
 	}).Info("attestation verified and parsed statement")
 
+	rekorBundle, err := att.Bundle()
+	if err != nil {
+		log.Errorf("get bundle: %v", err)
+	}
+
 	return &ImageMetadata{
 		Statement:      statement,
 		Image:          ref.String(),
 		BundleVerified: bVerified,
 		ContainerName:  container.Name,
 		Digest:         digest.String(),
+		RekorLogIndex:  strconv.FormatInt(rekorBundle.Payload.LogIndex, 10),
 	}, nil
 }
 

@@ -139,6 +139,7 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 				c.Cluster,
 				projectVersion,
 				"digest:" + metadata.Digest,
+				"rekor:" + metadata.RekorLogIndex,
 			}
 
 			if p != nil {

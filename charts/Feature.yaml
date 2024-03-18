@@ -31,7 +31,7 @@ values:
           "nais,{{.Tenant.Name}}"
         {{ end }}
     config:
-      type: string_array
+      type: string
   config.dependencytrack.password:
     displayName: dependencytrack API password
     computed:

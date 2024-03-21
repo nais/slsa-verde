@@ -4,7 +4,7 @@ environmentKinds:
   - legacy
   - onprem
 values:
-  logLevel:
+  config.logLevel:
     displayName: Log level
     config:
       type: string

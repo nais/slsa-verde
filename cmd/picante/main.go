@@ -250,7 +250,7 @@ func Load() error {
 	var err error
 	err = godotenv.Load()
 	if err != nil {
-		return fmt.Errorf("loading .env file: %w", err)
+		log.Debug("not loading from .env file")
 	}
 
 	requiredFlags := map[string]bool{

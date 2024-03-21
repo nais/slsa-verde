@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"picante/internal/workload"
 
@@ -33,6 +34,7 @@ type ImageMetadata struct {
 	ContainerName  string                      `json:"containerName"`
 	Statement      *in_toto.CycloneDXStatement `json:"statement"`
 	Digest         string                      `json:"digest"`
+	RekorLogIndex  string                      `json:"rekorLogIndex"`
 }
 
 type Verifier interface {
@@ -53,11 +55,9 @@ type VerifyAttestationOpts struct {
 func NewVerifyAttestationOpts(
 	verifyCmd *verify.VerifyAttestationCommand,
 	organizations []string,
-	identities []cosign.Identity,
 	keyRef string,
 ) (*VerifyAttestationOpts, error) {
-	gCertId := github.NewCertificateIdentity(organizations)
-	ids := BuildCertificateIdentities(gCertId, identities)
+	ids := github.NewCertificateIdentity(organizations).GetIdentities()
 	opts, err := CosignOptions(context.Background(), keyRef, ids)
 	if err != nil {
 		return nil, err
@@ -71,24 +71,6 @@ func NewVerifyAttestationOpts(
 		Logger:                   log.WithFields(log.Fields{"package": "attestation"}),
 		VerifyAttestationCommand: verifyCmd,
 	}, nil
-}
-
-func certificateIdentityPreConfiguredEnabled(identities []cosign.Identity) bool {
-	return len(identities) > 0
-}
-
-func BuildCertificateIdentities(gCertId *github.CertificateIdentity, identities []cosign.Identity) []cosign.Identity {
-	var result []cosign.Identity
-	if certificateIdentityPreConfiguredEnabled(identities) {
-		result = append(result, identities...)
-	}
-
-	if gCertId != nil {
-		id := gCertId.GetIdentities()
-		result = append(result, id...)
-	}
-
-	return result
 }
 
 func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign.Identity) (*cosign.CheckOpts, error) {
@@ -209,12 +191,18 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload
 		"ref":            container.Image,
 	}).Info("attestation verified and parsed statement")
 
+	rekorBundle, err := att.Bundle()
+	if err != nil {
+		log.Errorf("get bundle: %v", err)
+	}
+
 	return &ImageMetadata{
 		Statement:      statement,
 		Image:          ref.String(),
 		BundleVerified: bVerified,
 		ContainerName:  container.Name,
 		Digest:         digest.String(),
+		RekorLogIndex:  strconv.FormatInt(rekorBundle.Payload.LogIndex, 10),
 	}, nil
 }
 

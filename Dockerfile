@@ -17,4 +17,3 @@ COPY --from=builder /bin/picante /app/picante
 RUN apk add --no-cache git
 
 ENTRYPOINT ["/app/picante"]
-

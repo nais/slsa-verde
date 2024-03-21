@@ -2,6 +2,6 @@ apiVersion: v2
 name: picante
 sources:
   - https://github.com/nais/picante/tree/main/charts
-description: Informer to update salsa storage with attestation data
+description: Informer to update salsa storage (dependency-track) with attestation metadata (sbom)
 type: application
 version: 0.2.5

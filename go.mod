@@ -6,8 +6,8 @@ require (
 	github.com/google/go-containerregistry v0.19.1
 	github.com/google/uuid v1.6.0
 	github.com/in-toto/in-toto-golang v0.9.0
-	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nais/dependencytrack v0.0.0-20240212172056-36278c92e780
+	github.com/joho/godotenv v1.5.1
+	github.com/nais/dependencytrack v0.0.0-20240311090058-0c82d51ebb18
 	github.com/secure-systems-lab/go-securesystemslib v0.8.0
 	github.com/sigstore/cosign/v2 v2.2.3
 	github.com/sirupsen/logrus v1.9.3
@@ -162,6 +162,7 @@ require (
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mozillazg/docker-credential-acr-helper v0.3.0 // indirect

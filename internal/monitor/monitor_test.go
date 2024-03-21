@@ -86,6 +86,7 @@ func TestConfig_OnAdd(t *testing.T) {
 			cluster,
 			"latest",
 			"digest:",
+			"rekor:",
 		}).Return(&client.Project{
 			Uuid: "uuid1",
 		}, nil)
@@ -183,6 +184,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			cluster,
 			"latest",
 			"digest:",
+			"rekor:",
 		}).Return(&client.Project{
 			Uuid: "uuid1",
 		}, nil)

@@ -191,9 +191,14 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload
 		"ref":            container.Image,
 	}).Info("attestation verified and parsed statement")
 
+	rekorIndex := "0"
 	rekorBundle, err := att.Bundle()
 	if err != nil {
 		log.Errorf("get bundle: %v", err)
+	}
+
+	if rekorBundle != nil {
+		rekorIndex = strconv.FormatInt(rekorBundle.Payload.LogIndex, 10)
 	}
 
 	return &ImageMetadata{
@@ -202,7 +207,7 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload
 		BundleVerified: bVerified,
 		ContainerName:  container.Name,
 		Digest:         digest.String(),
-		RekorLogIndex:  strconv.FormatInt(rekorBundle.Payload.LogIndex, 10),
+		RekorLogIndex:  rekorIndex,
 	}, nil
 }
 

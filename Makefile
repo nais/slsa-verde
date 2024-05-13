@@ -21,6 +21,9 @@ dtrack-up:
 dtrack-down:
 	docker compose -f hack/docker-compse-dtrack.yaml down
 
+dtrack-down-v:
+	docker compose -f hack/docker-compse-dtrack.yaml down -v
+
 local:
 	export KUBECONFIG="${HOME}/.kube/config" && go build -o bin/picante cmd/picante/*.go && go run cmd/picante/main.go
 

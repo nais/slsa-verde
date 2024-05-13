@@ -5,6 +5,7 @@ import (
 	appv1 "k8s.io/api/apps/v1"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	"strings"
 )
 
 const (
@@ -80,11 +81,15 @@ func GetMetadata(obj any, log *logrus.Entry) Workload {
 }
 
 func ProjectName(w Workload, cluster, containerName string) string {
-	projectName := cluster + ":" + w.GetNamespace() + ":" + w.GetName()
+	projectName := strings.ToLower(w.GetNamespace() + ":" + w.GetName())
+	if cluster != "" {
+		return cluster + ":" + projectName
+	}
+
 	if w.GetName() == containerName {
 		return projectName
 	}
-	return projectName + ":" + containerName
+	return strings.ToLower(projectName + ":" + containerName)
 }
 
 func setName(labels map[string]string) string {

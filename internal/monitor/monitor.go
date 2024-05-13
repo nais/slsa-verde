@@ -7,9 +7,11 @@ import (
 	"net/url"
 	"strings"
 
+	"picante/internal/workload"
+
 	"github.com/nais/dependencytrack/pkg/client"
 	log "github.com/sirupsen/logrus"
-	"picante/internal/workload"
+	v1 "k8s.io/api/apps/v1"
 
 	"picante/internal/attestation"
 )
@@ -27,82 +29,202 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 		Client:   client,
 		Cluster:  cluster,
 		verifier: verifier,
-		logger:   log.WithFields(log.Fields{"package": "monitor"}),
+		logger:   log.WithField("package", "monitor"),
 		ctx:      ctx,
 	}
 }
 
 func (c *Config) OnDelete(obj any) {
-	c.logger.WithFields(log.Fields{"event": "OnDelete"})
+	//log := c.logger.WithField("event", "OnDelete")
 
-	w := workload.GetMetadata(obj, c.logger)
+	d := getDeployment(obj)
 
-	if w == nil {
+	project, err := c.retrieveProject(c.ctx, "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name)
+	if err != nil {
+		log.Warnf("delete: retrieve project: %v", err)
 		return
 	}
 
-	if w.GetName() == "" {
-		c.logger.Warnf("%s:no app name found: %s ", "delete", w.GetKind())
+	if project == nil {
+		log.Debugf("delete: project not found")
 		return
 	}
 
-	for _, container := range w.GetContainers() {
-		if err := c.deleteProject(w, container); err != nil {
-			c.logger.Errorf("delete: %v", err)
-			continue
+	instanceTags := []string{}
+	for _, tag := range project.Tags {
+		if strings.Contains(tag.Name, "instance:") {
+			instanceTags = append(instanceTags, tag.Name)
 		}
 	}
+
+	if len(instanceTags) == 1 {
+		if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
+			log.Warnf("delete project: %v", err)
+			return
+		}
+	} else {
+		newTags := []string{}
+		for _, tag := range project.Tags {
+			if tag.Name != "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name {
+				newTags = append(newTags, tag.Name)
+			}
+		}
+
+		_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, newTags)
+		if err != nil {
+			log.Warnf("remove tags project: %v", err)
+			return
+		}
+	}
+
+	/*for _, container := range d.GetContainers() {
+		if err := c.deleteProject(d, container); err != nil {
+			log.WithField("event", "OnDelete").Errorf("delete: %v", err)
+			continue
+		}
+	}*/
 }
 
 func (c *Config) OnUpdate(old any, new any) {
-	c.logger.WithFields(log.Fields{"event": "update"})
+	log := c.logger.WithField("event", "update")
 
-	wNew := workload.GetMetadata(new, c.logger)
-	wOld := workload.GetMetadata(old, c.logger)
+	dNew := getDeployment(new)
+	dOld := getDeployment(old)
 
-	if wNew == nil || wOld == nil {
+	if dNew == nil || dOld == nil {
 		return
 	}
 
-	if wNew.GetName() == "" || wOld.GetName() == "" {
-		c.logger.Debugf("%s:no app name found: %s ", "update", wNew.GetKind())
-		return
-	}
-
-	if wNew.Active() && !wOld.Active() {
-		if err := c.verifyContainers(c.ctx, wNew); err != nil {
-			c.logger.Warnf("update: verify attestation: %v", err)
-		}
+	if err := c.verifyDeploymentContainers(c.ctx, dNew); err != nil {
+		log.Warnf("verify attestation: %v", err)
 	}
 }
 
 func (c *Config) OnAdd(obj any) {
-	c.logger.WithFields(log.Fields{"event": "add"})
+	log := c.logger.WithField("event", "add")
 
-	w := workload.GetMetadata(obj, c.logger)
-	if w == nil {
-		return
-	}
-	if w.GetName() == "" {
-		c.logger.Debugf("%s:no app name found: %s ", "add", w.GetKind())
-		return
-	}
-	if !w.Active() {
-		c.logger.Debugf("%s:%s:%s:%s is not active, skipping", "add", w.GetKind(), w.GetName(), w.GetIdentifier())
+	deployment := getDeployment(obj)
+
+	err := c.verifyDeploymentContainers(c.ctx, deployment)
+	if err != nil {
+		log.Warnf("add: verify attestation: %v", err)
 		return
 	}
 
-	if err := c.verifyContainers(c.ctx, w); err != nil {
-		c.logger.Warnf("add: verify attestation: %v", err)
-	}
 }
 
-func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) error {
-	for _, container := range w.GetContainers() {
-		appName := w.GetName()
-		project := workload.ProjectName(w, c.Cluster, container.Name)
+func getDeployment(obj any) *v1.Deployment {
+	if d, ok := obj.(*v1.Deployment); ok {
+		return d
+	}
+	return nil
+}
+
+/*
+	func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) error {
+		for _, container := range w.GetContainers() {
+			appName := w.GetName()
+			project := workload.ProjectName(w, c.Cluster, container.Name)
+			projectVersion := version(container.Image)
+			pp, err := c.Client.GetProject(ctx, project, projectVersion)
+			if err != nil {
+				return err
+			}
+
+			// If the sbom does not exist, that's acceptable, due to it's a user error
+			if pp != nil {
+				c.logger.WithFields(log.Fields{
+					"project":         project,
+					"project-version": projectVersion,
+					"workload":        w.GetName(),
+					"container":       container.Name,
+				}).Debug("project exist, skipping")
+				continue
+			} else {
+
+				metadata, err := c.verifier.Verify(c.ctx, container)
+				if err != nil {
+					c.logger.Warnf("verify attestation, skipping: %v", err)
+					continue
+				}
+
+				p, err := c.retrieveProject(ctx, project, c.Cluster, w.GetNamespace(), appName)
+				if err != nil {
+					c.logger.Warnf("retrieve project, skipping %v", err)
+					continue
+				}
+
+				tags := []string{
+					project,
+					w.GetNamespace(),
+					appName,
+					metadata.ContainerName,
+					metadata.Image,
+					c.Cluster,
+					projectVersion,
+					"digest:" + metadata.Digest,
+					"rekor:" + metadata.RekorLogIndex,
+				}
+
+				if p != nil {
+					if !c.digestHasChanged(metadata, p) {
+						c.logger.WithFields(log.Fields{
+							"project-version": projectVersion,
+							"workload":        w.GetName(),
+							"container":       metadata.ContainerName,
+							"digest":          metadata.Digest,
+						}).Info("project exist and has same digest, skipping")
+						continue
+					}
+
+					c.logger.WithFields(log.Fields{
+						"current-version": p.Version,
+						"new-version":     projectVersion,
+						"workload":        w.GetName(),
+						"container":       metadata.ContainerName,
+						"digest":          metadata.Digest,
+					}).Info("project exist update project with a new version and upload sbom...")
+
+					_, err := c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
+					if err != nil {
+						return err
+					}
+
+					if err = c.uploadSBOMToProject(ctx, metadata, project, p.Uuid, projectVersion); err != nil {
+						return err
+					}
+
+				} else {
+					c.logger.WithFields(log.Fields{
+						"project-version": projectVersion,
+						"project":         project,
+						"workload":        w.GetName(),
+						"container":       metadata.ContainerName,
+						"digest":          metadata.Digest,
+					}).Info("project does not exist, creating...")
+
+					createdP, err := c.Client.CreateProject(ctx, project, projectVersion, w.GetNamespace(), tags)
+					if err != nil {
+						return err
+					}
+
+					if err = c.uploadSBOMToProject(ctx, metadata, project, createdP.Uuid, projectVersion); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	}
+*/
+func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deployment) error {
+	for _, container := range d.Spec.Template.Spec.Containers {
+		projectName, err := workload.ProjectNameForDeployment(d)
+		if err != nil {
+			return err
+		}
 		projectVersion := version(container.Image)
-		pp, err := c.Client.GetProject(ctx, project, projectVersion)
+		pp, err := c.Client.GetProject(ctx, projectName, projectVersion)
 		if err != nil {
 			return err
 		}
@@ -110,43 +232,61 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 		// If the sbom does not exist, that's acceptable, due to it's a user error
 		if pp != nil {
 			c.logger.WithFields(log.Fields{
-				"project":         project,
+				"project":         projectName,
 				"project-version": projectVersion,
-				"workload":        w.GetName(),
+				"workload":        d.GetName(),
 				"container":       container.Name,
 			}).Debug("project exist, skipping")
+
+			for _, tag := range pp.Tags {
+				if strings.Contains(tag.Name, "instance:") {
+					if tag.Name == "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name {
+						return nil
+					}
+				}
+			}
+
+			tags := []string{}
+
+			for _, tag := range pp.Tags {
+				tags = append(tags, tag.Name)
+			}
+
+			tags = append(tags, "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name)
+
+			_, err := c.Client.UpdateProject(ctx, pp.Uuid, projectName, projectVersion, d.GetNamespace(), tags)
+			if err != nil {
+				return err
+			}
+
 			continue
 		} else {
-
 			metadata, err := c.verifier.Verify(c.ctx, container)
 			if err != nil {
 				c.logger.Warnf("verify attestation, skipping: %v", err)
 				continue
 			}
 
-			p, err := c.retrieveProject(ctx, project, c.Cluster, w.GetNamespace(), appName)
+			p, err := c.retrieveProject(ctx, "project:"+projectName)
 			if err != nil {
 				c.logger.Warnf("retrieve project, skipping %v", err)
 				continue
 			}
 
 			tags := []string{
-				project,
-				w.GetNamespace(),
-				appName,
-				metadata.ContainerName,
-				metadata.Image,
-				c.Cluster,
-				projectVersion,
+				"project:" + projectName,
+				"image:" + metadata.Image,
+				"version" + projectVersion,
 				"digest:" + metadata.Digest,
 				"rekor:" + metadata.RekorLogIndex,
+				"instance:" + c.Cluster + "-" + d.Namespace + "-" + d.Name,
 			}
 
 			if p != nil {
 				if !c.digestHasChanged(metadata, p) {
 					c.logger.WithFields(log.Fields{
 						"project-version": projectVersion,
-						"workload":        w.GetName(),
+						"workload":        d.GetName(),
 						"container":       metadata.ContainerName,
 						"digest":          metadata.Digest,
 					}).Info("project exist and has same digest, skipping")
@@ -156,35 +296,35 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 				c.logger.WithFields(log.Fields{
 					"current-version": p.Version,
 					"new-version":     projectVersion,
-					"workload":        w.GetName(),
+					"workload":        d.GetName(),
 					"container":       metadata.ContainerName,
 					"digest":          metadata.Digest,
 				}).Info("project exist update project with a new version and upload sbom...")
 
-				_, err := c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
+				_, err := c.Client.UpdateProject(ctx, p.Uuid, projectName, projectVersion, d.GetNamespace(), tags)
 				if err != nil {
 					return err
 				}
 
-				if err = c.uploadSBOMToProject(ctx, metadata, project, p.Uuid, projectVersion); err != nil {
+				if err = c.uploadSBOMToProject(ctx, metadata, projectName, p.Uuid, projectVersion); err != nil {
 					return err
 				}
 
 			} else {
 				c.logger.WithFields(log.Fields{
 					"project-version": projectVersion,
-					"project":         project,
-					"workload":        w.GetName(),
+					"project":         projectName,
+					"workload":        d.GetName(),
 					"container":       metadata.ContainerName,
 					"digest":          metadata.Digest,
 				}).Info("project does not exist, creating...")
 
-				createdP, err := c.Client.CreateProject(ctx, project, projectVersion, w.GetNamespace(), tags)
+				createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, d.GetNamespace(), tags)
 				if err != nil {
 					return err
 				}
 
-				if err = c.uploadSBOMToProject(ctx, metadata, project, createdP.Uuid, projectVersion); err != nil {
+				if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
 					return err
 				}
 			}
@@ -238,7 +378,7 @@ func (c *Config) deleteProject(w workload.Workload, container workload.Container
 	return nil
 }
 
-func (c *Config) retrieveProject(ctx context.Context, projectName, env, team, app string) (*client.Project, error) {
+func (c *Config) retrieveProject(ctx context.Context, projectName string) (*client.Project, error) {
 	tag := url.QueryEscape(projectName)
 	projects, err := c.Client.GetProjectsByTag(ctx, tag)
 	if err != nil {
@@ -250,7 +390,7 @@ func (c *Config) retrieveProject(ctx context.Context, projectName, env, team, ap
 	}
 	var p *client.Project
 	for _, project := range projects {
-		if containsAllTags(project.Tags, env, team, app) && project.Classifier == "APPLICATION" {
+		if containsAllTags(project.Tags, projectName) && project.Classifier == "APPLICATION" {
 			p = project
 			break
 		}

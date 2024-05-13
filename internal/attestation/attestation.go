@@ -7,12 +7,13 @@ import (
 	"fmt"
 	"strconv"
 
-	"picante/internal/workload"
-
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/cosign/v2/pkg/oci/remote"
+	v1 "k8s.io/api/core/v1"
+
+	"picante/internal/github"
 
 	gh "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -25,7 +26,6 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/oci"
 	"github.com/sigstore/cosign/v2/pkg/signature"
 	log "github.com/sirupsen/logrus"
-	"picante/internal/github"
 )
 
 type ImageMetadata struct {
@@ -38,7 +38,7 @@ type ImageMetadata struct {
 }
 
 type Verifier interface {
-	Verify(ctx context.Context, container workload.Container) (*ImageMetadata, error)
+	Verify(ctx context.Context, container v1.Container) (*ImageMetadata, error)
 }
 
 var _ Verifier = &VerifyAttestationOpts{}
@@ -132,7 +132,7 @@ func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign
 	return co, nil
 }
 
-func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload.Container) (*ImageMetadata, error) {
+func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container v1.Container) (*ImageMetadata, error) {
 	ref, err := name.ParseReference(container.Image)
 
 	opts := vao.CheckOpts

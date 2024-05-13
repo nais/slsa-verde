@@ -1,6 +1,9 @@
 package workload
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/sirupsen/logrus"
 	appv1 "k8s.io/api/apps/v1"
 	batch "k8s.io/api/batch/v1"
@@ -61,6 +64,7 @@ func GetMetadata(obj any, log *logrus.Entry) Workload {
 		return nil
 	}
 	if log == nil {
+		fmt.Println("NULLLLLL")
 		log = logrus.WithFields(logrus.Fields{"package": "workload"})
 	}
 	var w Workload
@@ -73,6 +77,9 @@ func GetMetadata(obj any, log *logrus.Entry) Workload {
 		w = NewJob(v, log)
 	case *appv1.ReplicaSet:
 		w = NewReplicaSet(v, log)
+	case *appv1.Deployment:
+		fmt.Printf("v: %#v\n", v.Status)
+		w = NewDeployment(v, log)
 	default:
 		log.Debugf("unknown workload type: %T", v)
 	}
@@ -85,6 +92,18 @@ func ProjectName(w Workload, cluster, containerName string) string {
 		return projectName
 	}
 	return projectName + ":" + containerName
+}
+
+func ProjectNameForDeployment(d *appv1.Deployment) (string, error) {
+	for _, container := range d.Spec.Template.Spec.Containers {
+		if container.Name == d.GetName() {
+			if strings.Contains(container.Image, "@") {
+				return strings.Split(container.Image, "@")[0], nil
+			}
+			return strings.Split(container.Image, ":")[0], nil
+		}
+	}
+	return "", fmt.Errorf("container %s not found in deployment %s", d.GetName(), d.Name)
 }
 
 func setName(labels map[string]string) string {

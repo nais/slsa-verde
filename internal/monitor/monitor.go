@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"strings"
 
-	"picante/internal/workload"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/nais/dependencytrack/pkg/client"
 	log "github.com/sirupsen/logrus"
@@ -33,6 +31,18 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 		logger:   log.WithField("package", "monitor"),
 		ctx:      ctx,
 	}
+}
+
+func projectNameForDeployment(d *v1.Deployment) (string, error) {
+	for _, container := range d.Spec.Template.Spec.Containers {
+		if container.Name == d.GetName() {
+			if strings.Contains(container.Image, "@") {
+				return strings.Split(container.Image, "@")[0], nil
+			}
+			return strings.Split(container.Image, ":")[0], nil
+		}
+	}
+	return "", fmt.Errorf("container %s not found in deployment %s", d.GetName(), d.Name)
 }
 
 func (c *Config) OnDelete(obj any) {
@@ -78,13 +88,6 @@ func (c *Config) OnDelete(obj any) {
 			return
 		}
 	}
-
-	/*for _, container := range d.GetContainers() {
-		if err := c.deleteProject(d, container); err != nil {
-			log.WithField("event", "OnDelete").Errorf("delete: %v", err)
-			continue
-		}
-	}*/
 }
 
 func (c *Config) OnUpdate(old any, new any) {
@@ -138,105 +141,8 @@ func getDeployment(obj any) *v1.Deployment {
 	return nil
 }
 
-/*
-	func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) error {
-		for _, container := range w.GetContainers() {
-			appName := w.GetName()
-			project := workload.ProjectName(w, c.Cluster, container.Name)
-			projectVersion := version(container.Image)
-			pp, err := c.Client.GetProject(ctx, project, projectVersion)
-			if err != nil {
-				return err
-			}
-
-			// If the sbom does not exist, that's acceptable, due to it's a user error
-			if pp != nil {
-				c.logger.WithFields(log.Fields{
-					"project":         project,
-					"project-version": projectVersion,
-					"workload":        w.GetName(),
-					"container":       container.Name,
-				}).Debug("project exist, skipping")
-				continue
-			} else {
-
-				metadata, err := c.verifier.Verify(c.ctx, container)
-				if err != nil {
-					c.logger.Warnf("verify attestation, skipping: %v", err)
-					continue
-				}
-
-				p, err := c.retrieveProject(ctx, project, c.Cluster, w.GetNamespace(), appName)
-				if err != nil {
-					c.logger.Warnf("retrieve project, skipping %v", err)
-					continue
-				}
-
-				tags := []string{
-					project,
-					w.GetNamespace(),
-					appName,
-					metadata.ContainerName,
-					metadata.Image,
-					c.Cluster,
-					projectVersion,
-					"digest:" + metadata.Digest,
-					"rekor:" + metadata.RekorLogIndex,
-				}
-
-				if p != nil {
-					if !c.digestHasChanged(metadata, p) {
-						c.logger.WithFields(log.Fields{
-							"project-version": projectVersion,
-							"workload":        w.GetName(),
-							"container":       metadata.ContainerName,
-							"digest":          metadata.Digest,
-						}).Info("project exist and has same digest, skipping")
-						continue
-					}
-
-					c.logger.WithFields(log.Fields{
-						"current-version": p.Version,
-						"new-version":     projectVersion,
-						"workload":        w.GetName(),
-						"container":       metadata.ContainerName,
-						"digest":          metadata.Digest,
-					}).Info("project exist update project with a new version and upload sbom...")
-
-					_, err := c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
-					if err != nil {
-						return err
-					}
-
-					if err = c.uploadSBOMToProject(ctx, metadata, project, p.Uuid, projectVersion); err != nil {
-						return err
-					}
-
-				} else {
-					c.logger.WithFields(log.Fields{
-						"project-version": projectVersion,
-						"project":         project,
-						"workload":        w.GetName(),
-						"container":       metadata.ContainerName,
-						"digest":          metadata.Digest,
-					}).Info("project does not exist, creating...")
-
-					createdP, err := c.Client.CreateProject(ctx, project, projectVersion, w.GetNamespace(), tags)
-					if err != nil {
-						return err
-					}
-
-					if err = c.uploadSBOMToProject(ctx, metadata, project, createdP.Uuid, projectVersion); err != nil {
-						return err
-					}
-				}
-			}
-		}
-		return nil
-	}
-*/
 func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deployment) error {
-	projectName, err := workload.ProjectNameForDeployment(d)
+	projectName, err := projectNameForDeployment(d)
 	if err != nil {
 		return err
 	}
@@ -380,27 +286,6 @@ func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.
 	if err = c.Client.UploadProject(ctx, project, projectVersion, parentUuid, false, b); err != nil {
 		return err
 	}
-	return nil
-}
-
-func (c *Config) deleteProject(w workload.Workload, container workload.Container) error {
-	project := workload.ProjectName(w, c.Cluster, container.Name)
-	projectVersion := version(container.Image)
-	pr, err := c.Client.GetProject(c.ctx, project, projectVersion)
-	if err != nil {
-		return fmt.Errorf("delete: get project: %v", err)
-	}
-
-	if pr == nil {
-		c.logger.Debugf("%s:trying to delete project:%s:%s, project not found", w.GetKind(), project, projectVersion)
-		return nil
-	}
-
-	if err = c.Client.DeleteProject(c.ctx, pr.Uuid); err != nil {
-		return fmt.Errorf("delete project:%s: %v", project, err)
-	}
-
-	c.logger.Infof("%s:deleted project:%s:%s", w.GetKind(), project, projectVersion)
 	return nil
 }
 

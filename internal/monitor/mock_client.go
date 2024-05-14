@@ -543,6 +543,36 @@ func (_m *MockClient) GetProject(ctx context.Context, name string, version strin
 	return r0, r1
 }
 
+// GetProjectById provides a mock function with given fields: ctx, uuid
+func (_m *MockClient) GetProjectById(ctx context.Context, uuid string) (*client.Project, error) {
+	ret := _m.Called(ctx, uuid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetProjectById")
+	}
+
+	var r0 *client.Project
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*client.Project, error)); ok {
+		return rf(ctx, uuid)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *client.Project); ok {
+		r0 = rf(ctx, uuid)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.Project)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, uuid)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetProjectMetricsByDate provides a mock function with given fields: ctx, projectUuid, date
 func (_m *MockClient) GetProjectMetricsByDate(ctx context.Context, projectUuid string, date string) ([]*client.ProjectMetric, error) {
 	ret := _m.Called(ctx, projectUuid, date)

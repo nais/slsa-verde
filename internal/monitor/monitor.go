@@ -9,6 +9,7 @@ import (
 
 	"picante/internal/workload"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/nais/dependencytrack/pkg/client"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/apps/v1"
@@ -36,6 +37,7 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 
 func (c *Config) OnDelete(obj any) {
 	//log := c.logger.WithField("event", "OnDelete")
+	log.Debugf("delete: %v", obj)
 
 	d := getDeployment(obj)
 
@@ -87,21 +89,37 @@ func (c *Config) OnDelete(obj any) {
 
 func (c *Config) OnUpdate(old any, new any) {
 	log := c.logger.WithField("event", "update")
+	log.Debugf("update: %v", new)
 
-	dNew := getDeployment(new)
 	dOld := getDeployment(old)
+	dNew := getDeployment(new)
 
-	if dNew == nil || dOld == nil {
+	if dNew == nil {
 		return
 	}
 
-	if err := c.verifyDeploymentContainers(c.ctx, dNew); err != nil {
-		log.Warnf("verify attestation: %v", err)
+	diff := cmp.Diff(dOld.Status.Conditions, dNew.Status.Conditions)
+	if diff == "" {
+		return
+	}
+
+	if diff != "" {
+		log.Debugf("diff: %v", diff)
+	}
+
+	for _, condition := range dNew.Status.Conditions {
+		fmt.Printf("condition: %v\n", condition)
+		if condition.Type == "Progressing" && condition.Status == "True" && condition.Reason == "NewReplicaSetAvailable" {
+			if err := c.verifyDeploymentContainers(c.ctx, dNew); err != nil {
+				log.Warnf("verify attestation: %v", err)
+			}
+		}
 	}
 }
 
 func (c *Config) OnAdd(obj any) {
 	log := c.logger.WithField("event", "add")
+	log.Debugf("add: %v", obj)
 
 	deployment := getDeployment(obj)
 
@@ -218,12 +236,18 @@ func getDeployment(obj any) *v1.Deployment {
 	}
 */
 func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deployment) error {
+	projectName, err := workload.ProjectNameForDeployment(d)
+	if err != nil {
+		return err
+	}
+
 	for _, container := range d.Spec.Template.Spec.Containers {
-		projectName, err := workload.ProjectNameForDeployment(d)
-		if err != nil {
-			return err
+		if !strings.Contains(container.Image, projectName) {
+			continue
 		}
+
 		projectVersion := version(container.Image)
+
 		pp, err := c.Client.GetProject(ctx, projectName, projectVersion)
 		if err != nil {
 			return err
@@ -236,7 +260,7 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 				"project-version": projectVersion,
 				"workload":        d.GetName(),
 				"container":       container.Name,
-			}).Debug("project exist, skipping")
+			}).Debug("project exist")
 
 			for _, tag := range pp.Tags {
 				if strings.Contains(tag.Name, "instance:") {
@@ -276,41 +300,39 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 			tags := []string{
 				"project:" + projectName,
 				"image:" + metadata.Image,
-				"version" + projectVersion,
+				"version:" + projectVersion,
 				"digest:" + metadata.Digest,
 				"rekor:" + metadata.RekorLogIndex,
 				"instance:" + c.Cluster + "-" + d.Namespace + "-" + d.Name,
 			}
 
 			if p != nil {
-				if !c.digestHasChanged(metadata, p) {
-					c.logger.WithFields(log.Fields{
-						"project-version": projectVersion,
-						"workload":        d.GetName(),
-						"container":       metadata.ContainerName,
-						"digest":          metadata.Digest,
-					}).Info("project exist and has same digest, skipping")
-					continue
+				instanceTags := []string{}
+
+				for _, tag := range p.Tags {
+					if strings.Contains(tag.Name, "instance:") {
+						instanceTags = append(instanceTags, tag.Name)
+					}
 				}
 
-				c.logger.WithFields(log.Fields{
-					"current-version": p.Version,
-					"new-version":     projectVersion,
-					"workload":        d.GetName(),
-					"container":       metadata.ContainerName,
-					"digest":          metadata.Digest,
-				}).Info("project exist update project with a new version and upload sbom...")
+				if len(instanceTags) == 1 {
+					if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
+						log.Warnf("delete project: %v", err)
+					}
+				} else {
+					newTags := []string{}
+					for _, tag := range p.Tags {
+						if tag.Name != "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name {
+							newTags = append(newTags, tag.Name)
+						}
+					}
 
-				_, err := c.Client.UpdateProject(ctx, p.Uuid, projectName, projectVersion, d.GetNamespace(), tags)
-				if err != nil {
-					return err
+					_, err = c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, newTags)
+					if err != nil {
+						log.Warnf("remove tags project: %v", err)
+					}
 				}
 
-				if err = c.uploadSBOMToProject(ctx, metadata, projectName, p.Uuid, projectVersion); err != nil {
-					return err
-				}
-
-			} else {
 				c.logger.WithFields(log.Fields{
 					"project-version": projectVersion,
 					"project":         projectName,
@@ -319,14 +341,14 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 					"digest":          metadata.Digest,
 				}).Info("project does not exist, creating...")
 
-				createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, d.GetNamespace(), tags)
-				if err != nil {
-					return err
-				}
+			}
+			createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, d.GetNamespace(), tags)
+			if err != nil {
+				return err
+			}
 
-				if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
-					return err
-				}
+			if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
+				return err
 			}
 		}
 	}
@@ -334,6 +356,10 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 }
 
 func (c *Config) digestHasChanged(metadata *attestation.ImageMetadata, p *client.Project) bool {
+	if p == nil {
+		return true
+	}
+
 	for _, tag := range p.Tags {
 		if strings.Contains(tag.Name, "digest:") {
 			d := strings.Split(tag.Name, ":")[1]

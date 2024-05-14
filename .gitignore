@@ -7,3 +7,5 @@ cover.out
 etc
 /bin/picante
 /.env
+.vscode
+test.yaml

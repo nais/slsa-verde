@@ -110,8 +110,9 @@ func main() {
 			options.FieldSelector = "metadata.namespace!=kube-system," +
 				"metadata.namespace!=kube-public," +
 				"metadata.namespace!=cnrm-system," +
-				"metadata.namespace!=kyverno," +
-				"metadata.namespace!=linkerd," +
+				"metadata.namespace!=kyverno," + // TODO: remove me
+				"metadata.namespace!=linkerd," + // TODO: remove me
+				"metadata.namespace!=nais-verification," + // TODO: remove me
 				"metadata.namespace!=nais-system" // TODO: remove me
 		})
 

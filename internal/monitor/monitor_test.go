@@ -3,13 +3,12 @@ package monitor
 import (
 	"context"
 	"encoding/json"
+	v1 "k8s.io/api/apps/v1"
 	"net/url"
 	"os"
 	"testing"
 
 	"github.com/google/uuid"
-
-	v1 "k8s.io/api/apps/v1"
 
 	"picante/internal/test"
 
@@ -57,7 +56,7 @@ func TestConfig_OnAdd(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
-	w := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -66,185 +65,52 @@ func TestConfig_OnAdd(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("should attest image and create project", func(t *testing.T) {
-		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(nil, nil)
+		c.On("GetProject", mock.Anything, "nginx", "latest").Return(nil, nil)
 
-		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
+		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0]).Return(&attestation.ImageMetadata{
 			BundleVerified: false,
 			Image:          "nginx:latest",
 			Statement:      &statement,
-			ContainerName:  "pod1",
+			ContainerName:  "nginx",
+			Digest:         "123",
+			RekorLogIndex:  "1234",
 		}, nil)
 
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(cluster+":team1:pod1")).Return([]*client.Project{}, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:"+"nginx")).Return([]*client.Project{}, nil)
 
-		c.On("CreateProject", mock.Anything, cluster+":team1:pod1", "latest", "team1", []string{
-			cluster + ":team1:pod1",
-			"team1",
-			"pod1",
-			"pod1",
-			"nginx:latest",
-			cluster,
-			"latest",
-			"digest:",
-			"rekor:",
+		c.On("CreateProject", mock.Anything, "nginx", "latest", "testns", []string{
+			"project:nginx",
+			"image:nginx:latest",
+			"version:latest",
+			"digest:123",
+			"rekor:1234",
+			"instance:" + cluster + "-" + "testns" + "-" + "testapp",
 		}).Return(&client.Project{
 			Uuid: "uuid1",
 		}, nil)
 
-		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, "nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
 
-		m.OnAdd(w)
+		m.OnAdd(deployment)
 	})
 
 	t.Run("should not create project if no metadata is found", func(t *testing.T) {
-		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{}, nil)
+		c.On("GetProject", mock.Anything, "nginx", "latest").Return(nil, nil)
+		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{}, nil)
 
-		m.OnAdd(w)
+		m.OnAdd(deployment)
 	})
 
 	t.Run("should ignore nil workload object", func(t *testing.T) {
 		m.OnAdd(nil)
 	})
-
-	t.Run("should not create if a !active workload", func(t *testing.T) {
-		w.Status = v1.ReplicaSetStatus{
-			Replicas:          1,
-			ReadyReplicas:     0,
-			AvailableReplicas: 1,
-		}
-		m.OnAdd(w)
-	})
 }
 
 func TestConfig_OnAdd_Exists(t *testing.T) {
-	t.Run("should not create project if already exists", func(t *testing.T) {
-		c := NewMockClient(t)
-		v := attestation.NewMockVerifier(t)
-		m := NewMonitor(context.Background(), c, v, cluster)
-		w := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
-
-		var statement in_toto.CycloneDXStatement
-		file, err := os.ReadFile("testdata/sbom.json")
-		assert.NoError(t, err)
-		err = json.Unmarshal(file, &statement)
-		assert.NoError(t, err)
-
-		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(&client.Project{
-			Classifier:          "APPLICATION",
-			Group:               "team",
-			Name:                cluster + ":team1:pod1",
-			Publisher:           "Team",
-			Tags:                []client.Tag{{Name: "test:team1"}, {Name: "pod1"}},
-			Version:             "latest",
-			LastBomImportFormat: "CycloneDX 1.4",
-		}, nil)
-
-		m.OnAdd(w)
-	})
-
-	t.Run("should update project if a project with same name already exists", func(t *testing.T) {
-		c := NewMockClient(t)
-		v := attestation.NewMockVerifier(t)
-		m := NewMonitor(context.Background(), c, v, cluster)
-		p := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
-
-		var statement in_toto.CycloneDXStatement
-		file, err := os.ReadFile("testdata/sbom.json")
-		assert.NoError(t, err)
-		err = json.Unmarshal(file, &statement)
-		assert.NoError(t, err)
-
-		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(nil, nil)
-
-		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
-			BundleVerified: false,
-			Image:          "nginx:latest",
-			Statement:      &statement,
-			ContainerName:  "pod1",
-		}, nil)
-
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(cluster+":team1:pod1")).Return([]*client.Project{
-			{
-				Classifier: "APPLICATION",
-				Group:      "team",
-				Uuid:       "uuid1",
-				Name:       cluster + ":team1:pod1",
-				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: cluster + ":team1:pod1"}, {Name: "team1"}, {Name: "pod1"}, {Name: "test"}},
-				Version:    "version1",
-			},
-		}, nil)
-
-		c.On("UpdateProject", mock.Anything, "uuid1", cluster+":team1:pod1", "latest", "team1", []string{
-			cluster + ":team1:pod1",
-			"team1",
-			"pod1",
-			"pod1",
-			"nginx:latest",
-			cluster,
-			"latest",
-			"digest:",
-			"rekor:",
-		}).Return(&client.Project{
-			Uuid: "uuid1",
-		}, nil)
-
-		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
-
-		m.OnAdd(p)
-	})
-}
-
-func TestConfig_OnDelete(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "test")
-	p := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
-
-	t.Run("should delete project", func(t *testing.T) {
-		c.On("GetProject", mock.Anything, "test:team1:pod1", "latest").Return(&client.Project{
-			Uuid:       "1",
-			Classifier: "APPLICATION",
-			Group:      "team",
-			Name:       "team1:pod1",
-			Publisher:  "Team",
-			Tags:       []client.Tag{{Name: "test:team1"}, {Name: "pod1"}},
-			Version:    "latest",
-		}, nil)
-		c.On("DeleteProject", mock.Anything, "1").Return(nil)
-
-		m.OnDelete(p)
-	})
-	t.Run("should ignore nil workload object", func(t *testing.T) {
-		m.OnDelete(nil)
-	})
-
-	t.Run("should not delete if a active workload", func(t *testing.T) {
-		p.Status = v1.ReplicaSetStatus{
-			Replicas:          1,
-			ReadyReplicas:     1,
-			AvailableReplicas: 1,
-		}
-		m.OnDelete(p)
-	})
-
-	t.Run("should delete if a !active workload", func(t *testing.T) {
-		p.Status = v1.ReplicaSetStatus{
-			Replicas:          1,
-			ReadyReplicas:     0,
-			AvailableReplicas: 1,
-		}
-		c.On("DeleteProject", mock.Anything, "1").Return(nil)
-		m.OnDelete(p)
-	})
-}
-
-func TestConfig_OnUpdate(t *testing.T) {
-	c := NewMockClient(t)
-	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "test")
-	w := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
-	o := test.CreateWorkload("team1", "pod2", nil, nil, "nginx:old")
+	m := NewMonitor(context.Background(), c, v, cluster)
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -252,47 +118,260 @@ func TestConfig_OnUpdate(t *testing.T) {
 	err = json.Unmarshal(file, &statement)
 	assert.NoError(t, err)
 
-	t.Run("should ignore nil workload object", func(t *testing.T) {
-		m.OnUpdate(nil, nil)
-	})
-
-	t.Run("should not update if both old and new have the same state", func(t *testing.T) {
-		m.OnUpdate(o, w)
-	})
-
-	t.Run("should not update if new is not active on update", func(t *testing.T) {
-		w.Status = v1.ReplicaSetStatus{
-			Replicas:          1,
-			ReadyReplicas:     1,
-			AvailableReplicas: 0,
-		}
-		m.OnUpdate(o, w)
-	})
-
-	t.Run("should try to update if new is active on update but old is not", func(t *testing.T) {
-		w.Status = v1.ReplicaSetStatus{
-			Replicas:          1,
-			ReadyReplicas:     1,
-			AvailableReplicas: 1,
-		}
-		o.Status = v1.ReplicaSetStatus{
-			Replicas:          1,
-			ReadyReplicas:     1,
-			AvailableReplicas: 0,
-		}
-
-		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(&client.Project{
+	t.Run("should not create project if already exists", func(t *testing.T) {
+		c.On("GetProject", mock.Anything, "nginx", "latest").Return(&client.Project{
 			Classifier:          "APPLICATION",
-			Group:               "team",
-			Name:                cluster + ":team1:pod1",
+			Group:               "testns",
+			Name:                "nginx",
 			Publisher:           "Team",
-			Tags:                []client.Tag{{Name: "test:team1"}, {Name: "pod1"}},
+			Tags:                []client.Tag{{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"}},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
 
-		m.OnUpdate(o, w)
+		m.OnAdd(deployment)
 	})
+
+	t.Run("should delete project if this instance (Deployment) is the last instance and create new project", func(t *testing.T) {
+		c := NewMockClient(t)
+		v := attestation.NewMockVerifier(t)
+		m := NewMonitor(context.Background(), c, v, cluster)
+		deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest2")
+
+		var statement in_toto.CycloneDXStatement
+		file, err := os.ReadFile("testdata/sbom.json")
+		assert.NoError(t, err)
+		err = json.Unmarshal(file, &statement)
+		assert.NoError(t, err)
+
+		c.On("GetProject", mock.Anything, "nginx", "latest2").Return(nil, nil)
+
+		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
+			BundleVerified: false,
+			Image:          "nginx:latest2",
+			Statement:      &statement,
+			ContainerName:  "pod1",
+			Digest:         "123",
+			RekorLogIndex:  "1234",
+		}, nil)
+
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:"+"nginx")).Return([]*client.Project{
+			{
+				Classifier: "APPLICATION",
+				Group:      "testns",
+				Uuid:       "uuid1",
+				Name:       "nginx",
+				Publisher:  "Team",
+				Tags:       []client.Tag{{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"}, {Name: "project:nginx"}},
+				Version:    "latest",
+			},
+		}, nil)
+
+		c.On("DeleteProject", mock.Anything, "uuid1").Return(nil)
+
+		c.On("CreateProject", mock.Anything, "nginx", "latest2", "testns", []string{
+			"project:nginx",
+			"image:nginx:latest2",
+			"version:latest2",
+			"digest:123",
+			"rekor:1234",
+			"instance:" + cluster + "-" + "testns" + "-" + "testapp",
+		}).Return(&client.Project{
+			Uuid: "uuid2",
+		}, nil)
+
+		c.On("UploadProject", mock.Anything, "nginx", "latest2", "uuid2", false, mock.Anything).Return(nil, nil)
+
+		m.OnAdd(deployment)
+	})
+
+	t.Run("should update project tags if this instance (Deployment) is a new instance", func(t *testing.T) {
+		c := NewMockClient(t)
+		v := attestation.NewMockVerifier(t)
+		m := NewMonitor(context.Background(), c, v, cluster)
+		deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+
+		var statement in_toto.CycloneDXStatement
+		file, err := os.ReadFile("testdata/sbom.json")
+		assert.NoError(t, err)
+		err = json.Unmarshal(file, &statement)
+		assert.NoError(t, err)
+
+		c.On("GetProject", mock.Anything, "nginx", "latest").Return(nil, nil)
+
+		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
+			BundleVerified: false,
+			Image:          "nginx:latest",
+			Statement:      &statement,
+			ContainerName:  "pod1",
+			Digest:         "123",
+			RekorLogIndex:  "1234",
+		}, nil)
+
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:"+"nginx")).Return([]*client.Project{
+			{
+				Classifier: "APPLICATION",
+				Group:      "testns",
+				Uuid:       "uuid1",
+				Name:       "nginx",
+				Publisher:  "Team",
+				Tags: []client.Tag{
+					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp2"},
+					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"},
+					{Name: "project:nginx"},
+					{Name: "image:nginx:latest2"},
+					{Name: "version:latest2"},
+					{Name: "digest:123"},
+					{Name: "rekor:1234"},
+				},
+				Version: "latest2",
+			},
+		}, nil)
+
+		c.On("UpdateProject", mock.Anything, "uuid1", "nginx", "latest2", "testns", []string{
+			"instance:" + cluster + "-" + "testns" + "-" + "testapp2",
+			"project:nginx",
+			"image:nginx:latest2",
+			"version:latest2",
+			"digest:123",
+			"rekor:1234",
+		}).Return(&client.Project{
+			Uuid: "uuid1",
+		}, nil)
+
+		c.On("CreateProject", mock.Anything, "nginx", "latest", "testns", []string{
+			"project:nginx",
+			"image:nginx:latest",
+			"version:latest",
+			"digest:123",
+			"rekor:1234",
+			"instance:" + cluster + "-" + "testns" + "-" + "testapp",
+		}).Return(&client.Project{
+			Uuid: "uuid2",
+		}, nil)
+
+		c.On("UploadProject", mock.Anything, "nginx", "latest", "uuid2", false, mock.Anything).Return(nil, nil)
+
+		m.OnAdd(deployment)
+	})
+}
+
+func TestConfig_OnDelete(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v, "test")
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+
+	t.Run("should ignore if not a deployment", func(t *testing.T) {
+		m.OnDelete(nil)
+	})
+
+	t.Run("project is nil, should ignore", func(t *testing.T) {
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("instance:"+cluster+"-"+"testns"+"-"+"testapp")).Return(nil, nil)
+		m.OnDelete(deployment)
+
+	})
+
+	t.Run("project exists, with more then 1 tag, remove this tag from project", func(t *testing.T) {
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("instance:"+cluster+"-"+"testns"+"-"+"testapp")).Return([]*client.Project{
+			{
+				Uuid:       "1",
+				Group:      "testns",
+				Name:       "nginx",
+				Publisher:  "Team",
+				Version:    "latest",
+				Classifier: "APPLICATION",
+				Tags: []client.Tag{
+					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"},
+					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp2"},
+					{Name: "project:nginx"},
+					{Name: "image:nginx:latest"},
+					{Name: "version:latest"},
+					{Name: "digest:123"},
+					{Name: "rekor:1234"},
+				},
+			},
+		}, nil)
+
+		c.On("UpdateProject", mock.Anything, "1", "nginx", "latest", "testns", []string{
+			"instance:" + cluster + "-" + "testns" + "-" + "testapp2",
+			"project:nginx",
+			"image:nginx:latest",
+			"version:latest",
+			"digest:123",
+			"rekor:1234",
+		}).Return(nil, nil)
+		m.OnDelete(deployment)
+	})
+
+	t.Run("project with only this instance tag, delete project", func(t *testing.T) {
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("instance:"+cluster+"-"+"testns"+"-"+"testapp")).Return([]*client.Project{
+			{
+				Uuid:       "1",
+				Group:      "testns",
+				Name:       "nginx",
+				Publisher:  "Team",
+				Version:    "latest",
+				Classifier: "APPLICATION",
+				Tags: []client.Tag{
+					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"},
+					{Name: "project:nginx"},
+					{Name: "image:nginx:latest"},
+					{Name: "version:latest"},
+					{Name: "digest:123"},
+					{Name: "rekor:1234"},
+				},
+			},
+		}, nil)
+
+		c.On("DeleteProject", mock.Anything, "1").Return(nil)
+		m.OnDelete(deployment)
+	})
+}
+
+func TestConfig_OnUpdate(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v, "test")
+	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+	oldDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+
+	var statement in_toto.CycloneDXStatement
+	file, err := os.ReadFile("testdata/sbom.json")
+	assert.NoError(t, err)
+	err = json.Unmarshal(file, &statement)
+	assert.NoError(t, err)
+
+	t.Run("should ignore none deployment", func(t *testing.T) {
+		m.OnUpdate(nil, nil)
+	})
+
+	t.Run("should not do anything if conditions not changed", func(t *testing.T) {
+		m.OnUpdate(oldDeployment, newDeployment)
+	})
+
+	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
+		newDeployment.Status.Conditions = []v1.DeploymentCondition{
+			{
+				Type:   v1.DeploymentProgressing,
+				Status: "True",
+				Reason: "NewReplicaSetAvailable",
+			},
+		}
+
+		c.On("GetProject", mock.Anything, "nginx", "latest").Return(&client.Project{
+			Classifier:          "APPLICATION",
+			Group:               "testns",
+			Name:                "nginx",
+			Publisher:           "Team",
+			Tags:                []client.Tag{{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"}},
+			Version:             "latest",
+			LastBomImportFormat: "CycloneDX 1.4",
+		}, nil)
+
+		m.OnUpdate(oldDeployment, newDeployment)
+	})
+
 }
 
 func TestProjectAndVersion(t *testing.T) {

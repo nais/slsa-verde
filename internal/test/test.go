@@ -48,17 +48,12 @@ func merge(map1, map2 map[string]string) map[string]string {
 	return mergedMap
 }
 
-func CreateWorkload(namespace, name string, labels map[string]string, annotations map[string]string, images ...string) *app.ReplicaSet {
+func CreateDeployment(namespace, name string, labels map[string]string, annotations map[string]string, images ...string) *app.Deployment {
 	c := make([]v1.Container, 0)
-	initc := make([]v1.Container, 0)
 	for _, image := range images {
 		c = append(c, v1.Container{
 			Name:  name,
 			Image: image,
-		})
-		initc = append(initc, v1.Container{
-			Image: image,
-			Name:  name,
 		})
 	}
 	l := merge(map[string]string{
@@ -68,41 +63,24 @@ func CreateWorkload(namespace, name string, labels map[string]string, annotation
 	}, labels)
 
 	replicas := int32(1)
-	return &app.ReplicaSet{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ReplicaSet",
-			APIVersion: "apps/v1",
-		},
+
+	return &app.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels:    l,
-			Annotations: merge(map[string]string{
-				"deployment.kubernetes.io/desired-replicas": "1",
-			}, annotations),
+			Name:        name,
+			Namespace:   namespace,
+			Labels:      l,
+			Annotations: annotations,
 		},
-		Spec: app.ReplicaSetSpec{
+		Spec: app.DeploymentSpec{
 			Replicas: &replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: l,
-			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: namespace,
-					Labels:    l,
+					Labels: l,
 				},
 				Spec: v1.PodSpec{
-					Containers:     c,
-					InitContainers: initc,
+					Containers: c,
 				},
 			},
-		},
-		// Default replica set status
-		Status: app.ReplicaSetStatus{
-			Replicas:          1,
-			ReadyReplicas:     1,
-			AvailableReplicas: 1,
 		},
 	}
 }

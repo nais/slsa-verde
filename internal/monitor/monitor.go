@@ -51,6 +51,11 @@ func (c *Config) OnDelete(obj any) {
 
 	d := getDeployment(obj)
 
+	if d == nil {
+		log.Debugf("not a deployment")
+		return
+	}
+
 	project, err := c.retrieveProject(c.ctx, "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name)
 	if err != nil {
 		log.Warnf("delete: retrieve project: %v", err)
@@ -106,13 +111,8 @@ func (c *Config) OnUpdate(old any, new any) {
 		return
 	}
 
-	if diff != "" {
-		log.Debugf("diff: %v", diff)
-	}
-
 	for _, condition := range dNew.Status.Conditions {
-		fmt.Printf("condition: %v\n", condition)
-		if condition.Type == "Progressing" && condition.Status == "True" && condition.Reason == "NewReplicaSetAvailable" {
+		if condition.Type == v1.DeploymentProgressing && condition.Status == "True" && condition.Reason == "NewReplicaSetAvailable" {
 			if err := c.verifyDeploymentContainers(c.ctx, dNew); err != nil {
 				log.Warnf("verify attestation: %v", err)
 			}
@@ -125,6 +125,11 @@ func (c *Config) OnAdd(obj any) {
 	log.Debugf("add: %v", obj)
 
 	deployment := getDeployment(obj)
+
+	if deployment == nil {
+		log.Debugf("not a deployment")
+		return
+	}
 
 	err := c.verifyDeploymentContainers(c.ctx, deployment)
 	if err != nil {
@@ -194,6 +199,11 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 			metadata, err := c.verifier.Verify(c.ctx, container)
 			if err != nil {
 				c.logger.Warnf("verify attestation, skipping: %v", err)
+				continue
+			}
+
+			if metadata.Statement == nil {
+				c.logger.Warnf("metadata is empty, skipping")
 				continue
 			}
 

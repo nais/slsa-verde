@@ -127,44 +127,6 @@ func (c *Config) OnDelete(obj any) {
 	}
 }
 
-func verifyTags(tagTypePrefix, deletedWorkloadTag string, tags []string) []string {
-	checkValue := ""
-	switch tagTypePrefix {
-	case "environment:":
-		checkValue = getEnvironmentFromWorkloadTag(deletedWorkloadTag)
-	case "team:":
-		checkValue = getTeamFromWorkloadTag(deletedWorkloadTag)
-	}
-
-	keep := false
-
-	for _, tag := range tags {
-		if strings.HasPrefix(tag, "workload:") {
-			if tagTypePrefix == "environment:" {
-				if getEnvironmentFromWorkloadTag(tag) == checkValue {
-					keep = true
-					break
-				}
-			} else if tagTypePrefix == "team:" {
-				if getTeamFromWorkloadTag(tag) == checkValue {
-					keep = true
-					break
-				}
-			}
-		}
-	}
-
-	if !keep {
-		for i, tag := range tags {
-			if strings.HasPrefix(tag, tagTypePrefix) && tag == tagTypePrefix+checkValue {
-				tags = append(tags[:i], tags[i+1:]...)
-				break
-			}
-		}
-	}
-	return tags
-}
-
 func (c *Config) OnUpdate(old any, new any) {
 	log := c.logger.WithField("event", "update")
 
@@ -293,23 +255,10 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 			}
 
 			if p != nil {
-				workloadTags := []string{}
-				teamTags := []string{}
-				environmentTags := []string{}
+				customTags := CustomTags{}
+				customTags.AddTags(p.Tags)
 
-				for _, tag := range p.Tags {
-					if strings.Contains(tag.Name, "workload:") {
-						workloadTags = append(workloadTags, tag.Name)
-					}
-					if strings.Contains(tag.Name, "team:") {
-						teamTags = append(teamTags, tag.Name)
-					}
-					if strings.Contains(tag.Name, "environment:") {
-						environmentTags = append(environmentTags, tag.Name)
-					}
-				}
-
-				if len(workloadTags) == 1 {
+				if len(customTags.WorkloadTags) == 1 {
 					if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
 						log.Warnf("delete project: %v", err)
 					}
@@ -414,6 +363,44 @@ func containsAllTags(tags []client.Tag, s ...string) bool {
 		}
 	}
 	return found == len(s)
+}
+
+func verifyTags(tagTypePrefix, deletedWorkloadTag string, tags []string) []string {
+	checkValue := ""
+	switch tagTypePrefix {
+	case "environment:":
+		checkValue = getEnvironmentFromWorkloadTag(deletedWorkloadTag)
+	case "team:":
+		checkValue = getTeamFromWorkloadTag(deletedWorkloadTag)
+	}
+
+	keep := false
+
+	for _, tag := range tags {
+		if strings.HasPrefix(tag, "workload:") {
+			if tagTypePrefix == "environment:" {
+				if getEnvironmentFromWorkloadTag(tag) == checkValue {
+					keep = true
+					break
+				}
+			} else if tagTypePrefix == "team:" {
+				if getTeamFromWorkloadTag(tag) == checkValue {
+					keep = true
+					break
+				}
+			}
+		}
+	}
+
+	if !keep {
+		for i, tag := range tags {
+			if strings.HasPrefix(tag, tagTypePrefix) && tag == tagTypePrefix+checkValue {
+				tags = append(tags[:i], tags[i+1:]...)
+				break
+			}
+		}
+	}
+	return tags
 }
 
 func getEnvironmentFromWorkloadTag(tag string) string {

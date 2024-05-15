@@ -3,6 +3,8 @@ package monitor
 import (
 	"context"
 	"encoding/json"
+	"github.com/google/go-cmp/cmp"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/url"
 	"os"
 	"testing"
@@ -267,7 +269,10 @@ func TestConfig_OnDelete_RemoveTag(t *testing.T) {
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
 					{Name: "workload:" + cluster + "|testns|app|testapp"},
-					{Name: "workload:" + cluster + "|testns|app|testapp2"},
+					{Name: "workload:" + cluster + "|aura|app|testapp"},
+					{Name: "environment:" + cluster},
+					{Name: "team:testns"},
+					{Name: "team:aura"},
 					{Name: "project:nginx"},
 					{Name: "image:nginx:latest"},
 					{Name: "version:latest"},
@@ -278,7 +283,9 @@ func TestConfig_OnDelete_RemoveTag(t *testing.T) {
 		}, nil)
 
 		c.On("UpdateProject", mock.Anything, "1", "nginx", "latest", "testns", []string{
-			"workload:" + cluster + "|testns|app|testapp2",
+			"workload:" + cluster + "|aura|app|testapp",
+			"environment:" + cluster,
+			"team:aura",
 			"project:nginx",
 			"image:nginx:latest",
 			"version:latest",
@@ -365,6 +372,48 @@ func TestConfig_OnUpdate(t *testing.T) {
 	})
 }
 
+func TestConfigOnUpdateDeleteTags(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v, "test")
+	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest2")
+	oldDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+
+	var statement in_toto.CycloneDXStatement
+	file, err := os.ReadFile("testdata/sbom.json")
+	assert.NoError(t, err)
+	err = json.Unmarshal(file, &statement)
+	assert.NoError(t, err)
+
+	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
+		newDeployment.Status.Conditions = []v1.DeploymentCondition{
+			{
+				Type:   v1.DeploymentProgressing,
+				Status: "True",
+				Reason: "NewReplicaSetAvailable",
+			},
+		}
+
+		c.On("GetProject", mock.Anything, "nginx", "latest").Return(&client.Project{
+			Classifier: "APPLICATION",
+			Group:      "testns",
+			Name:       "nginx",
+			Publisher:  "Team",
+			Tags: []client.Tag{
+				{Name: m.workloadTag(newDeployment.ObjectMeta, "app")},
+				{Name: m.workloadTag(v12.ObjectMeta{
+					Name:      "app2",
+					Namespace: "testns",
+				}, "app")},
+			},
+			Version:             "latest",
+			LastBomImportFormat: "CycloneDX 1.4",
+		}, nil)
+
+		m.OnUpdate(oldDeployment, newDeployment)
+	})
+}
+
 func TestProjectAndVersion(t *testing.T) {
 	image := "ghcr.io/securego/gosec:v2.9.1"
 	v := version(image)
@@ -377,4 +426,47 @@ func TestProjectAndVersion(t *testing.T) {
 	image = "europe-north1-docker.pkg.dev/nais-io/nais/images/picante:20230504-091909-3efbee3@sha256:456d4c3f4b2ae92baf02b2516e025abc44464be9447ea04b163a0c8d091d30b5"
 	v = version(image)
 	assert.Equal(t, "20230504-091909-3efbee3@sha256:456d4c3f4b2ae92baf02b2516e025abc44464be9447ea04b163a0c8d091d30b5", v)
+}
+
+func TestVerifyTags(t *testing.T) {
+	newTags := []string{
+		"project:nginx",
+		"image:nginx:latest",
+		"version:latest",
+		"digest:123",
+		"rekor:1234",
+		"workload:cluster|aura|app|name",
+		"workload:cluster|aura|app|name2",
+		"environment:cluster",
+		"team:aura",
+		"team:aura2",
+	}
+	ret := verifyTags("team:", "workload:cluster|aura2|app|name3", newTags)
+	assert.Len(t, ret, 9)
+	d := cmp.Diff(ret, newTags)
+	assert.NotEmpty(t, d)
+
+	ret2 := verifyTags("environment:", "workload:cluster|aura|app|name", ret)
+	assert.Len(t, ret2, 9)
+	d = cmp.Diff(ret2, ret)
+	assert.Empty(t, d)
+
+	newTags2 := []string{
+		"project:nginx",
+		"image:nginx:latest",
+		"version:latest",
+		"digest:123",
+		"rekor:1234",
+		"workload:cluster2|aura|app|name",
+		"workload:cluster3|aura|app|name2",
+		"environment:cluster",
+		"environment:cluster2",
+		"environment:cluster3",
+		"team:aura",
+		"team:aura2",
+	}
+	ret = verifyTags("environment:", "workload:cluster|aura|app|name", newTags2)
+	assert.Len(t, ret, 11)
+	d = cmp.Diff(ret, newTags2)
+	assert.NotEmpty(t, d)
 }

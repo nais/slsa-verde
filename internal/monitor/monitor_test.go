@@ -3,10 +3,11 @@ package monitor
 import (
 	"context"
 	"encoding/json"
-	v1 "k8s.io/api/apps/v1"
 	"net/url"
 	"os"
 	"testing"
+
+	v1 "k8s.io/api/apps/v1"
 
 	"github.com/google/uuid"
 
@@ -14,10 +15,11 @@ import (
 
 	"github.com/nais/dependencytrack/pkg/client"
 
+	"picante/internal/attestation"
+
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"picante/internal/attestation"
 )
 
 var cluster = "test"
@@ -256,23 +258,37 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 	})
 }
 
-func TestConfig_OnDelete(t *testing.T) {
+func TestConfig_OnDelete_NotADeployment(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v, "test")
+
+	// ok
+	t.Run("should ignore if not a deployment", func(t *testing.T) {
+		m.OnDelete(nil)
+	})
+}
+
+func TestConfig_OnDelete_ProjectIsNil(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
 
-	t.Run("should ignore if not a deployment", func(t *testing.T) {
-		m.OnDelete(nil)
-	})
-
+	// ok
 	t.Run("project is nil, should ignore", func(t *testing.T) {
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("instance:"+cluster+"-"+"testns"+"-"+"testapp")).Return(nil, nil)
 		m.OnDelete(deployment)
-
 	})
+}
 
-	t.Run("project exists, with more then 1 tag, remove this tag from project", func(t *testing.T) {
+func TestConfig_OnDelete_RemoveTag(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v, "test")
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+
+	t.Run("project exists with more than 1 tag, remove this tag from project", func(t *testing.T) {
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("instance:"+cluster+"-"+"testns"+"-"+"testapp")).Return([]*client.Project{
 			{
 				Uuid:       "1",
@@ -283,7 +299,7 @@ func TestConfig_OnDelete(t *testing.T) {
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
 					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"},
-					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp2"},
+					{Name: "instance:" + cluster + "-" + "testns" + "-" + "fjordapp"},
 					{Name: "project:nginx"},
 					{Name: "image:nginx:latest"},
 					{Name: "version:latest"},
@@ -294,7 +310,7 @@ func TestConfig_OnDelete(t *testing.T) {
 		}, nil)
 
 		c.On("UpdateProject", mock.Anything, "1", "nginx", "latest", "testns", []string{
-			"instance:" + cluster + "-" + "testns" + "-" + "testapp2",
+			"instance:" + cluster + "-" + "testns" + "-" + "fjordapp",
 			"project:nginx",
 			"image:nginx:latest",
 			"version:latest",
@@ -303,6 +319,13 @@ func TestConfig_OnDelete(t *testing.T) {
 		}).Return(nil, nil)
 		m.OnDelete(deployment)
 	})
+}
+
+func TestConfig_OnDelete_DeleteProject(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v, "test")
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
 
 	t.Run("project with only this instance tag, delete project", func(t *testing.T) {
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("instance:"+cluster+"-"+"testns"+"-"+"testapp")).Return([]*client.Project{
@@ -325,6 +348,7 @@ func TestConfig_OnDelete(t *testing.T) {
 		}, nil)
 
 		c.On("DeleteProject", mock.Anything, "1").Return(nil)
+
 		m.OnDelete(deployment)
 	})
 }
@@ -371,7 +395,6 @@ func TestConfig_OnUpdate(t *testing.T) {
 
 		m.OnUpdate(oldDeployment, newDeployment)
 	})
-
 }
 
 func TestProjectAndVersion(t *testing.T) {

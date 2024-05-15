@@ -46,7 +46,7 @@ func projectNameForDeployment(d *v1.Deployment) (string, error) {
 }
 
 func (c *Config) OnDelete(obj any) {
-	//log := c.logger.WithField("event", "OnDelete")
+	// log := c.logger.WithField("event", "OnDelete")
 	log.Debugf("delete: %v", obj)
 
 	d := getDeployment(obj)
@@ -136,7 +136,6 @@ func (c *Config) OnAdd(obj any) {
 		log.Warnf("add: verify attestation: %v", err)
 		return
 	}
-
 }
 
 func getDeployment(obj any) *v1.Deployment {

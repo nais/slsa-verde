@@ -143,9 +143,9 @@ func main() {
 		mainLogger,
 		monitor.NewMonitor(ctx, s, opts, cfg.Cluster),
 		factory.Apps().V1().Deployments().Informer(),
-		//factory.Batch().V1().Jobs().Informer(),
-		//factory.Apps().V1().StatefulSets().Informer(),
-		//factory.Apps().V1().DaemonSets().Informer(),
+		// factory.Batch().V1().Jobs().Informer(),
+		// factory.Apps().V1().StatefulSets().Informer(),
+		// factory.Apps().V1().DaemonSets().Informer(),
 		// TODO Exclude jobs as they are not needed for now
 		// factory.Batch().V1().Jobs().Informer(),
 		// factory.Apps().V1().StatefulSets().Informer(),

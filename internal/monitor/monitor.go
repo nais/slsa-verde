@@ -16,6 +16,34 @@ import (
 	"picante/internal/attestation"
 )
 
+type CustomTags struct {
+	WorkloadTags    []string
+	EnvironmentTags []string
+	TeamTags        []string
+}
+
+func (c *CustomTags) AddTags(tags []client.Tag) {
+	workloadTags := make([]string, 0)
+	teamTags := make([]string, 0)
+	environmentTags := make([]string, 0)
+
+	for _, tag := range tags {
+		if strings.Contains(tag.Name, "workload:") {
+			workloadTags = append(workloadTags, tag.Name)
+		}
+		if strings.Contains(tag.Name, "team:") {
+			teamTags = append(teamTags, tag.Name)
+		}
+		if strings.Contains(tag.Name, "environment:") {
+			environmentTags = append(environmentTags, tag.Name)
+		}
+	}
+
+	c.WorkloadTags = workloadTags
+	c.TeamTags = teamTags
+	c.EnvironmentTags = environmentTags
+}
+
 type Config struct {
 	Client   client.Client
 	Cluster  string
@@ -32,10 +60,6 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 		logger:   log.WithField("package", "monitor"),
 		ctx:      ctx,
 	}
-}
-
-func (c *Config) workloadTag(obj metav1.ObjectMeta, workloadType string) string {
-	return "workload:" + c.Cluster + "|" + obj.Namespace + "|" + workloadType + "|" + obj.Name
 }
 
 func projectNameForDeployment(d *v1.Deployment) (string, error) {
@@ -71,25 +95,29 @@ func (c *Config) OnDelete(obj any) {
 		return
 	}
 
-	workloadTags := []string{}
-	for _, tag := range project.Tags {
-		if strings.Contains(tag.Name, "workload:") {
-			workloadTags = append(workloadTags, tag.Name)
-		}
-	}
+	customTags := CustomTags{}
+	customTags.AddTags(project.Tags)
 
-	if len(workloadTags) == 1 {
+	if len(customTags.WorkloadTags) == 1 {
 		if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
 			log.Warnf("delete project: %v", err)
 			return
 		}
 	} else {
 		newTags := []string{}
+
+		deletedWorkloadTag := ""
+
 		for _, tag := range project.Tags {
 			if tag.Name != c.workloadTag(d.ObjectMeta, "app") {
 				newTags = append(newTags, tag.Name)
+			} else {
+				deletedWorkloadTag = tag.Name
 			}
 		}
+
+		newTags = verifyTags("environment:", deletedWorkloadTag, newTags)
+		newTags = verifyTags("team:", deletedWorkloadTag, newTags)
 
 		_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, newTags)
 		if err != nil {
@@ -97,6 +125,44 @@ func (c *Config) OnDelete(obj any) {
 			return
 		}
 	}
+}
+
+func verifyTags(tagTypePrefix, deletedWorkloadTag string, tags []string) []string {
+	checkValue := ""
+	switch tagTypePrefix {
+	case "environment:":
+		checkValue = getEnvironmentFromWorkloadTag(deletedWorkloadTag)
+	case "team:":
+		checkValue = getTeamFromWorkloadTag(deletedWorkloadTag)
+	}
+
+	keep := false
+
+	for _, tag := range tags {
+		if strings.HasPrefix(tag, "workload:") {
+			if tagTypePrefix == "environment:" {
+				if getEnvironmentFromWorkloadTag(tag) == checkValue {
+					keep = true
+					break
+				}
+			} else if tagTypePrefix == "team:" {
+				if getTeamFromWorkloadTag(tag) == checkValue {
+					keep = true
+					break
+				}
+			}
+		}
+	}
+
+	if !keep {
+		for i, tag := range tags {
+			if strings.HasPrefix(tag, tagTypePrefix) && tag == tagTypePrefix+checkValue {
+				tags = append(tags[:i], tags[i+1:]...)
+				break
+			}
+		}
+	}
+	return tags
 }
 
 func (c *Config) OnUpdate(old any, new any) {
@@ -221,15 +287,25 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 				"version:" + projectVersion,
 				"digest:" + metadata.Digest,
 				"rekor:" + metadata.RekorLogIndex,
+				"environment:" + c.Cluster,
+				"team:" + d.GetObjectMeta().GetNamespace(),
 				c.workloadTag(d.ObjectMeta, "app"),
 			}
 
 			if p != nil {
 				workloadTags := []string{}
+				teamTags := []string{}
+				environmentTags := []string{}
 
 				for _, tag := range p.Tags {
 					if strings.Contains(tag.Name, "workload:") {
 						workloadTags = append(workloadTags, tag.Name)
+					}
+					if strings.Contains(tag.Name, "team:") {
+						teamTags = append(teamTags, tag.Name)
+					}
+					if strings.Contains(tag.Name, "environment:") {
+						environmentTags = append(environmentTags, tag.Name)
 					}
 				}
 
@@ -338,4 +414,23 @@ func containsAllTags(tags []client.Tag, s ...string) bool {
 		}
 	}
 	return found == len(s)
+}
+
+func getEnvironmentFromWorkloadTag(tag string) string {
+	s := strings.Split(strings.Replace(tag, "workload:", "", 1), "|")
+	return s[0]
+}
+
+func getTeamFromWorkloadTag(tag string) string {
+	s := strings.Split(strings.Replace(tag, "workload:", "", 1), "|")
+	return s[1]
+}
+
+func getTypeFromWorkloadTag(tag string) string {
+	s := strings.Split(strings.Replace(tag, "workload:", "", 1), "|")
+	return s[2]
+}
+
+func (c *Config) workloadTag(obj metav1.ObjectMeta, workloadType string) string {
+	return "workload:" + c.Cluster + "|" + obj.Namespace + "|" + workloadType + "|" + obj.Name
 }

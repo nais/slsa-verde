@@ -46,8 +46,7 @@ func projectNameForDeployment(d *v1.Deployment) (string, error) {
 }
 
 func (c *Config) OnDelete(obj any) {
-	// log := c.logger.WithField("event", "OnDelete")
-	log.Debugf("delete: %v", obj)
+	log := c.logger.WithField("event", "OnDelete")
 
 	d := getDeployment(obj)
 
@@ -97,7 +96,6 @@ func (c *Config) OnDelete(obj any) {
 
 func (c *Config) OnUpdate(old any, new any) {
 	log := c.logger.WithField("event", "update")
-	log.Debugf("update: %v", new)
 
 	dOld := getDeployment(old)
 	dNew := getDeployment(new)
@@ -122,7 +120,6 @@ func (c *Config) OnUpdate(old any, new any) {
 
 func (c *Config) OnAdd(obj any) {
 	log := c.logger.WithField("event", "add")
-	log.Debugf("add: %v", obj)
 
 	deployment := getDeployment(obj)
 
@@ -170,11 +167,12 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 				"project-version": projectVersion,
 				"workload":        d.GetName(),
 				"container":       container.Name,
-			}).Debug("project exist")
+			}).Debug("project is found, updating...")
 
 			for _, tag := range pp.Tags {
 				if strings.Contains(tag.Name, "instance:") {
 					if tag.Name == "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name {
+						c.logger.Debugf("project already exists with the same instance tag, skipping...")
 						return nil
 					}
 				}
@@ -192,7 +190,7 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 			if err != nil {
 				return err
 			}
-
+			c.logger.Debugf("project updated with instance tag - instance:" + c.Cluster + "-" + d.Namespace + "-" + d.Name)
 			continue
 		} else {
 			metadata, err := c.verifier.Verify(c.ctx, container)
@@ -234,6 +232,7 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 					if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
 						log.Warnf("delete project: %v", err)
 					}
+					c.logger.Debugf("project deleted due last instance tag instance:" + c.Cluster + "-" + d.Namespace + "-" + d.Name)
 				} else {
 					newTags := []string{}
 					for _, tag := range p.Tags {
@@ -246,6 +245,7 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 					if err != nil {
 						log.Warnf("remove tags project: %v", err)
 					}
+					c.logger.Debugf("project updated with instance tag + instance:" + c.Cluster + "-" + d.Namespace + "-" + d.Name)
 				}
 
 				c.logger.WithFields(log.Fields{

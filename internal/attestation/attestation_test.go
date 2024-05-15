@@ -1,77 +1,17 @@
 package attestation
 
-/*
-func TestCosignOptions(t *testing.T) {
-	err := os.Setenv("SIGSTORE_CT_LOG_PUBLIC_KEY_FILE", "testdata/ct_log.pub")
-	assert.NoError(t, err)
+import (
+	"encoding/json"
+	"os"
+	"testing"
 
-	for _, tc := range []struct {
-		desc             string
-		keyRef           string
-		tLog             bool
-		ignoreSCT        bool
-		workloadMetaData workload.Workload
-	}{
-		{
-			desc:   "key ref cosign options should match",
-			keyRef: "testdata/cosign.pub",
-			tLog:   true,
-			workloadMetaData: &workload.ReplicaSet{
-				Metadata: &workload.Metadata{
-					Verifier: &workload.Verifier{
-						KeyRef: "true",
-					},
-				},
-			},
-		},
-		{
-			desc:   "keyless cosign options should match",
-			keyRef: "",
-			workloadMetaData: &workload.ReplicaSet{
-				Metadata: &workload.Metadata{
-					Verifier: &workload.Verifier{
-						KeyRef: "",
-					},
-				},
-			},
-		},
+	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 
-		{
-			desc:   "configured with tlog",
-			keyRef: "",
-			workloadMetaData: &workload.ReplicaSet{
-				Metadata: &workload.Metadata{
-					Verifier: &workload.Verifier{
-						KeyRef:     "",
-						IgnoreTLog: "false",
-					},
-				},
-			},
-		},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			v := &verify.VerifyAttestationCommand{
-				KeyRef:     tc.keyRef,
-				IgnoreTlog: tc.tLog,
-				IgnoreSCT:  tc.ignoreSCT,
-			}
-			co := &VerifyAttestationOpts{
-				StaticKeyRef: tc.keyRef,
-				Logger: log.WithFields(log.Fields{
-					"test-app": "picante",
-				}),
-				VerifyAttestationCommand: v,
-			}
-
-			_, err := CosignOptions(context.Background(), tc.keyRef, []cosign.Identity{})
-			assert.NoError(t, err)
-			assert.Equal(t, tc.tLog, co.IgnoreTlog)
-			assert.Equal(t, tc.keyRef, co.KeyRef)
-			assert.Equal(t, tc.keyRef, co.StaticKeyRef)
-			assert.Equal(t, "", co.RekorURL)
-		})
-	}
-}
+	"picante/internal/github"
+)
 
 func TestBuildCertificateIdentities(t *testing.T) {
 	for _, tc := range []struct {
@@ -132,4 +72,3 @@ func TestParsePayload(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)
 }
-*/

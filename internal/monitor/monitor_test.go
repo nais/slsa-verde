@@ -9,8 +9,6 @@ import (
 
 	v1 "k8s.io/api/apps/v1"
 
-	"github.com/google/uuid"
-
 	"picante/internal/test"
 
 	"github.com/nais/dependencytrack/pkg/client"
@@ -23,36 +21,6 @@ import (
 )
 
 var cluster = "test"
-
-func Test_DigestHasChanged(t *testing.T) {
-	c := NewMockClient(t)
-	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
-
-	metadata := &attestation.ImageMetadata{
-		Digest: "digest1",
-	}
-
-	p := &client.Project{
-		Name:    "test:app",
-		Tags:    []client.Tag{{Name: "digest:digest1"}, {Name: "test:app"}},
-		Uuid:    uuid.New().String(),
-		Version: "2021-01-01",
-	}
-
-	// We test the case where the digest has not changed
-	hasChanged := m.digestHasChanged(metadata, p)
-	if hasChanged {
-		t.Errorf("Expected false, got %v", hasChanged)
-	}
-
-	// We test the case where the digest has changed
-	metadata.Digest = "digest2"
-	hasChanged = m.digestHasChanged(metadata, p)
-	if !hasChanged {
-		t.Errorf("Expected true, got %v", hasChanged)
-	}
-}
 
 func TestConfig_OnAdd(t *testing.T) {
 	c := NewMockClient(t)
@@ -86,7 +54,7 @@ func TestConfig_OnAdd(t *testing.T) {
 			"version:latest",
 			"digest:123",
 			"rekor:1234",
-			"instance:" + cluster + "-" + "testns" + "-" + "testapp",
+			m.workloadTag(deployment.ObjectMeta, "app"),
 		}).Return(&client.Project{
 			Uuid: "uuid1",
 		}, nil)
@@ -126,7 +94,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			Group:               "testns",
 			Name:                "nginx",
 			Publisher:           "Team",
-			Tags:                []client.Tag{{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"}},
+			Tags:                []client.Tag{{Name: m.workloadTag(deployment.ObjectMeta, "app")}},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
@@ -134,7 +102,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		m.OnAdd(deployment)
 	})
 
-	t.Run("should delete project if this instance (Deployment) is the last instance and create new project", func(t *testing.T) {
+	t.Run("should delete project if this workload (Deployment) is the last workload and create new project", func(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
 		m := NewMonitor(context.Background(), c, v, cluster)
@@ -164,7 +132,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 				Uuid:       "uuid1",
 				Name:       "nginx",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"}, {Name: "project:nginx"}},
+				Tags:       []client.Tag{{Name: m.workloadTag(deployment.ObjectMeta, "app")}, {Name: "project:nginx"}},
 				Version:    "latest",
 			},
 		}, nil)
@@ -177,7 +145,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			"version:latest2",
 			"digest:123",
 			"rekor:1234",
-			"instance:" + cluster + "-" + "testns" + "-" + "testapp",
+			m.workloadTag(deployment.ObjectMeta, "app"),
 		}).Return(&client.Project{
 			Uuid: "uuid2",
 		}, nil)
@@ -187,7 +155,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		m.OnAdd(deployment)
 	})
 
-	t.Run("should update project tags if this instance (Deployment) is a new instance", func(t *testing.T) {
+	t.Run("should update project tags if this workload (Deployment) is a new workload", func(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
 		m := NewMonitor(context.Background(), c, v, cluster)
@@ -218,8 +186,8 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 				Name:       "nginx",
 				Publisher:  "Team",
 				Tags: []client.Tag{
-					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp2"},
-					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"},
+					{Name: "workload:" + cluster + "|" + "testns" + "|app|" + "testapp2"},
+					{Name: m.workloadTag(deployment.ObjectMeta, "app")},
 					{Name: "project:nginx"},
 					{Name: "image:nginx:latest2"},
 					{Name: "version:latest2"},
@@ -231,7 +199,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 		}, nil)
 
 		c.On("UpdateProject", mock.Anything, "uuid1", "nginx", "latest2", "testns", []string{
-			"instance:" + cluster + "-" + "testns" + "-" + "testapp2",
+			"workload:" + cluster + "|testns|app|testapp2",
 			"project:nginx",
 			"image:nginx:latest2",
 			"version:latest2",
@@ -247,7 +215,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			"version:latest",
 			"digest:123",
 			"rekor:1234",
-			"instance:" + cluster + "-" + "testns" + "-" + "testapp",
+			m.workloadTag(deployment.ObjectMeta, "app"),
 		}).Return(&client.Project{
 			Uuid: "uuid2",
 		}, nil)
@@ -277,7 +245,7 @@ func TestConfig_OnDelete_ProjectIsNil(t *testing.T) {
 
 	// ok
 	t.Run("project is nil, should ignore", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("instance:"+cluster+"-"+"testns"+"-"+"testapp")).Return(nil, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(m.workloadTag(deployment.ObjectMeta, "app"))).Return(nil, nil)
 		m.OnDelete(deployment)
 	})
 }
@@ -289,7 +257,7 @@ func TestConfig_OnDelete_RemoveTag(t *testing.T) {
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
 
 	t.Run("project exists with more than 1 tag, remove this tag from project", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("instance:"+cluster+"-"+"testns"+"-"+"testapp")).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(m.workloadTag(deployment.ObjectMeta, "app"))).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "testns",
@@ -298,8 +266,8 @@ func TestConfig_OnDelete_RemoveTag(t *testing.T) {
 				Version:    "latest",
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
-					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"},
-					{Name: "instance:" + cluster + "-" + "testns" + "-" + "fjordapp"},
+					{Name: "workload:" + cluster + "|testns|app|testapp"},
+					{Name: "workload:" + cluster + "|testns|app|testapp2"},
 					{Name: "project:nginx"},
 					{Name: "image:nginx:latest"},
 					{Name: "version:latest"},
@@ -310,7 +278,7 @@ func TestConfig_OnDelete_RemoveTag(t *testing.T) {
 		}, nil)
 
 		c.On("UpdateProject", mock.Anything, "1", "nginx", "latest", "testns", []string{
-			"instance:" + cluster + "-" + "testns" + "-" + "fjordapp",
+			"workload:" + cluster + "|testns|app|testapp2",
 			"project:nginx",
 			"image:nginx:latest",
 			"version:latest",
@@ -327,8 +295,8 @@ func TestConfig_OnDelete_DeleteProject(t *testing.T) {
 	m := NewMonitor(context.Background(), c, v, "test")
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
 
-	t.Run("project with only this instance tag, delete project", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("instance:"+cluster+"-"+"testns"+"-"+"testapp")).Return([]*client.Project{
+	t.Run("project with only this workload tag, delete project", func(t *testing.T) {
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(m.workloadTag(deployment.ObjectMeta, "app"))).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "testns",
@@ -337,7 +305,7 @@ func TestConfig_OnDelete_DeleteProject(t *testing.T) {
 				Version:    "latest",
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
-					{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"},
+					{Name: m.workloadTag(deployment.ObjectMeta, "app")},
 					{Name: "project:nginx"},
 					{Name: "image:nginx:latest"},
 					{Name: "version:latest"},
@@ -388,7 +356,7 @@ func TestConfig_OnUpdate(t *testing.T) {
 			Group:               "testns",
 			Name:                "nginx",
 			Publisher:           "Team",
-			Tags:                []client.Tag{{Name: "instance:" + cluster + "-" + "testns" + "-" + "testapp"}},
+			Tags:                []client.Tag{{Name: m.workloadTag(newDeployment.ObjectMeta, "app")}},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)

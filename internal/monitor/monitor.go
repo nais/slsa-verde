@@ -11,6 +11,7 @@ import (
 	"github.com/nais/dependencytrack/pkg/client"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"picante/internal/attestation"
 )
@@ -31,6 +32,10 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 		logger:   log.WithField("package", "monitor"),
 		ctx:      ctx,
 	}
+}
+
+func (c *Config) workloadTag(obj metav1.ObjectMeta, workloadType string) string {
+	return "workload:" + c.Cluster + "|" + obj.Namespace + "|" + workloadType + "|" + obj.Name
 }
 
 func projectNameForDeployment(d *v1.Deployment) (string, error) {
@@ -55,7 +60,7 @@ func (c *Config) OnDelete(obj any) {
 		return
 	}
 
-	project, err := c.retrieveProject(c.ctx, "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name)
+	project, err := c.retrieveProject(c.ctx, c.workloadTag(d.ObjectMeta, "app"))
 	if err != nil {
 		log.Warnf("delete: retrieve project: %v", err)
 		return
@@ -66,14 +71,14 @@ func (c *Config) OnDelete(obj any) {
 		return
 	}
 
-	instanceTags := []string{}
+	workloadTags := []string{}
 	for _, tag := range project.Tags {
-		if strings.Contains(tag.Name, "instance:") {
-			instanceTags = append(instanceTags, tag.Name)
+		if strings.Contains(tag.Name, "workload:") {
+			workloadTags = append(workloadTags, tag.Name)
 		}
 	}
 
-	if len(instanceTags) == 1 {
+	if len(workloadTags) == 1 {
 		if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
 			log.Warnf("delete project: %v", err)
 			return
@@ -81,7 +86,7 @@ func (c *Config) OnDelete(obj any) {
 	} else {
 		newTags := []string{}
 		for _, tag := range project.Tags {
-			if tag.Name != "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name {
+			if tag.Name != c.workloadTag(d.ObjectMeta, "app") {
 				newTags = append(newTags, tag.Name)
 			}
 		}
@@ -170,9 +175,9 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 			}).Debug("project is found, updating...")
 
 			for _, tag := range pp.Tags {
-				if strings.Contains(tag.Name, "instance:") {
-					if tag.Name == "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name {
-						c.logger.Debugf("project already exists with the same instance tag, skipping...")
+				if strings.Contains(tag.Name, "workload:") {
+					if tag.Name == c.workloadTag(d.ObjectMeta, "app") {
+						c.logger.Debugf("project already exists with the same workload tag, skipping...")
 						return nil
 					}
 				}
@@ -184,13 +189,13 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 				tags = append(tags, tag.Name)
 			}
 
-			tags = append(tags, "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name)
+			tags = append(tags, c.workloadTag(d.ObjectMeta, "app"))
 
 			_, err := c.Client.UpdateProject(ctx, pp.Uuid, projectName, projectVersion, d.GetNamespace(), tags)
 			if err != nil {
 				return err
 			}
-			c.logger.Debugf("project updated with instance tag - instance:" + c.Cluster + "-" + d.Namespace + "-" + d.Name)
+			c.logger.Debugf("project updated with workload tag:" + c.workloadTag(d.ObjectMeta, "app"))
 			continue
 		} else {
 			metadata, err := c.verifier.Verify(c.ctx, container)
@@ -216,27 +221,27 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 				"version:" + projectVersion,
 				"digest:" + metadata.Digest,
 				"rekor:" + metadata.RekorLogIndex,
-				"instance:" + c.Cluster + "-" + d.Namespace + "-" + d.Name,
+				c.workloadTag(d.ObjectMeta, "app"),
 			}
 
 			if p != nil {
-				instanceTags := []string{}
+				workloadTags := []string{}
 
 				for _, tag := range p.Tags {
-					if strings.Contains(tag.Name, "instance:") {
-						instanceTags = append(instanceTags, tag.Name)
+					if strings.Contains(tag.Name, "workload:") {
+						workloadTags = append(workloadTags, tag.Name)
 					}
 				}
 
-				if len(instanceTags) == 1 {
+				if len(workloadTags) == 1 {
 					if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
 						log.Warnf("delete project: %v", err)
 					}
-					c.logger.Debugf("project deleted due last instance tag instance:" + c.Cluster + "-" + d.Namespace + "-" + d.Name)
+					c.logger.Debugf("project deleted due last workload tag workload:" + c.workloadTag(d.ObjectMeta, "app"))
 				} else {
 					newTags := []string{}
 					for _, tag := range p.Tags {
-						if tag.Name != "instance:"+c.Cluster+"-"+d.Namespace+"-"+d.Name {
+						if tag.Name != c.workloadTag(d.ObjectMeta, "app") {
 							newTags = append(newTags, tag.Name)
 						}
 					}
@@ -245,7 +250,7 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 					if err != nil {
 						log.Warnf("remove tags project: %v", err)
 					}
-					c.logger.Debugf("project updated with instance tag + instance:" + c.Cluster + "-" + d.Namespace + "-" + d.Name)
+					c.logger.Debugf("project updated with workload tag:" + c.workloadTag(d.ObjectMeta, "app"))
 				}
 
 				c.logger.WithFields(log.Fields{
@@ -268,22 +273,6 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 		}
 	}
 	return nil
-}
-
-func (c *Config) digestHasChanged(metadata *attestation.ImageMetadata, p *client.Project) bool {
-	if p == nil {
-		return true
-	}
-
-	for _, tag := range p.Tags {
-		if strings.Contains(tag.Name, "digest:") {
-			d := strings.Split(tag.Name, ":")[1]
-			if d == metadata.Digest {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.ImageMetadata, project, parentUuid, projectVersion string) error {

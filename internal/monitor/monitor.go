@@ -9,10 +9,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/nais/dependencytrack/pkg/client"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"picante/internal/attestation"
 )
 
@@ -20,7 +18,7 @@ type Config struct {
 	Client   client.Client
 	Cluster  string
 	verifier attestation.Verifier
-	logger   *log.Entry
+	logger   *logrus.Entry
 	ctx      context.Context
 }
 
@@ -29,7 +27,7 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 		Client:   client,
 		Cluster:  cluster,
 		verifier: verifier,
-		logger:   log.WithField("package", "monitor"),
+		logger:   logrus.WithField("package", "monitor"),
 		ctx:      ctx,
 	}
 }
@@ -55,8 +53,8 @@ func (c *Config) OnDelete(obj any) {
 		log.Debugf("not a deployment")
 		return
 	}
-
-	project, err := c.retrieveProject(c.ctx, c.workloadTag(d.ObjectMeta, "app"))
+	workload := workloadTag(d.GetObjectMeta(), c.Cluster, "app")
+	project, err := c.retrieveProject(c.ctx, workload)
 	if err != nil {
 		log.Warnf("delete: retrieve project: %v", err)
 		return
@@ -68,7 +66,7 @@ func (c *Config) OnDelete(obj any) {
 	}
 
 	tags := Tags{}
-	tags.AddTags(project.Tags)
+	tags.ArrangeByPrefix(project.Tags)
 
 	if len(tags.WorkloadTags) == 1 {
 		if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
@@ -76,8 +74,7 @@ func (c *Config) OnDelete(obj any) {
 			return
 		}
 	} else {
-		tags.deleteWorkloadTag(c.workloadTag(d.ObjectMeta, "app"))
-
+		tags.deleteWorkloadTag(workload)
 		_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 		if err != nil {
 			log.Warnf("remove tags project: %v", err)
@@ -135,54 +132,40 @@ func getDeployment(obj any) *v1.Deployment {
 }
 
 func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deployment) error {
+	workload := workloadTag(d.GetObjectMeta(), c.Cluster, "app")
 	projectName, err := projectNameForDeployment(d)
 	if err != nil {
 		return err
 	}
 
 	for _, container := range d.Spec.Template.Spec.Containers {
-		if !strings.Contains(container.Image, projectName) {
-			continue
-		}
-
 		projectVersion := version(container.Image)
-
-		pp, err := c.Client.GetProject(ctx, projectName, projectVersion)
+		project, err := c.Client.GetProject(ctx, projectName, projectVersion)
 		if err != nil {
 			return err
 		}
 
-		// If the sbom does not exist, that's acceptable, due to it's a user error
-		if pp != nil {
-			c.logger.WithFields(log.Fields{
+		if project != nil {
+			c.logger.WithFields(logrus.Fields{
 				"project":         projectName,
 				"project-version": projectVersion,
 				"workload":        d.GetName(),
 				"container":       container.Name,
 			}).Debug("project is found, updating...")
 
-			for _, tag := range pp.Tags {
-				if strings.Contains(tag.Name, "workload:") {
-					if tag.Name == c.workloadTag(d.ObjectMeta, "app") {
-						c.logger.Debugf("project already exists with the same workload tag, skipping...")
-						return nil
-					}
+			tags := Tags{}
+			tags.ArrangeByPrefix(project.Tags)
+
+			if tags.addWorkloadTag(workload) {
+				_, err := c.Client.UpdateProject(ctx, project.Uuid, projectName, projectVersion, d.GetNamespace(), tags.getAllTags())
+				if err != nil {
+					return err
 				}
+				c.logger.Debugf("project updated with workload tag:" + workload)
+				continue
 			}
 
-			tags := []string{}
-
-			for _, tag := range pp.Tags {
-				tags = append(tags, tag.Name)
-			}
-
-			tags = append(tags, c.workloadTag(d.ObjectMeta, "app"))
-
-			_, err := c.Client.UpdateProject(ctx, pp.Uuid, projectName, projectVersion, d.GetNamespace(), tags)
-			if err != nil {
-				return err
-			}
-			c.logger.Debugf("project updated with workload tag:" + c.workloadTag(d.ObjectMeta, "app"))
+			c.logger.Debugf("project already has workload tag")
 			continue
 		} else {
 			metadata, err := c.verifier.Verify(c.ctx, container)
@@ -196,48 +179,30 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 				continue
 			}
 
-			p, err := c.retrieveProject(ctx, "project:"+projectName)
+			project, err := c.retrieveProject(ctx, "project:"+projectName)
 			if err != nil {
 				c.logger.Warnf("retrieve project, skipping %v", err)
 				continue
 			}
 
-			tags := []string{
-				"project:" + projectName,
-				"image:" + metadata.Image,
-				"version:" + projectVersion,
-				"digest:" + metadata.Digest,
-				"rekor:" + metadata.RekorLogIndex,
-				"environment:" + c.Cluster,
-				"team:" + d.GetObjectMeta().GetNamespace(),
-				c.workloadTag(d.ObjectMeta, "app"),
-			}
+			if project != nil {
+				tags := Tags{}
+				tags.ArrangeByPrefix(project.Tags)
 
-			if p != nil {
-				customTags := Tags{}
-				customTags.AddTags(p.Tags)
-
-				if len(customTags.WorkloadTags) == 1 {
-					if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
-						log.Warnf("delete project: %v", err)
+				if len(tags.WorkloadTags) == 1 {
+					if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
+						logrus.Warnf("delete project: %v", err)
 					}
-					c.logger.Debugf("project deleted due last workload tag workload:" + c.workloadTag(d.ObjectMeta, "app"))
 				} else {
-					newTags := []string{}
-					for _, tag := range p.Tags {
-						if tag.Name != c.workloadTag(d.ObjectMeta, "app") {
-							newTags = append(newTags, tag.Name)
-						}
-					}
-
-					_, err = c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, newTags)
+					tags.deleteWorkloadTag(workload)
+					_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 					if err != nil {
-						log.Warnf("remove tags project: %v", err)
+						logrus.Warnf("remove tags project: %v", err)
 					}
-					c.logger.Debugf("project updated with workload tag:" + c.workloadTag(d.ObjectMeta, "app"))
+					c.logger.Debugf("project updated with workload tag:" + workload)
 				}
 
-				c.logger.WithFields(log.Fields{
+				c.logger.WithFields(logrus.Fields{
 					"project-version": projectVersion,
 					"project":         projectName,
 					"workload":        d.GetName(),
@@ -246,6 +211,8 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 				}).Info("project does not exist, creating...")
 
 			}
+
+			tags := initTags(d.GetObjectMeta(), metadata, c.Cluster, projectName, projectVersion)
 			createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, d.GetNamespace(), tags)
 			if err != nil {
 				return err
@@ -309,74 +276,4 @@ func handleImageDigest(image string) string {
 		return imageArray[0][i+1:] + "@" + imageArray[1]
 	}
 	return imageArray[1]
-}
-
-func containsAllTags(tags []client.Tag, s ...string) bool {
-	found := 0
-	for _, t := range s {
-		for _, tag := range tags {
-			if tag.Name == t {
-				found += 1
-				break
-			}
-		}
-	}
-	return found == len(s)
-}
-
-func verifyTags(tagTypePrefix, deletedWorkloadTag string, tags []string) []string {
-	checkValue := ""
-	switch tagTypePrefix {
-	case "environment:":
-		checkValue = getEnvironmentFromWorkloadTag(deletedWorkloadTag)
-	case "team:":
-		checkValue = getTeamFromWorkloadTag(deletedWorkloadTag)
-	}
-
-	keep := false
-
-	for _, tag := range tags {
-		if strings.HasPrefix(tag, "workload:") {
-			if tagTypePrefix == "environment:" {
-				if getEnvironmentFromWorkloadTag(tag) == checkValue {
-					keep = true
-					break
-				}
-			} else if tagTypePrefix == "team:" {
-				if getTeamFromWorkloadTag(tag) == checkValue {
-					keep = true
-					break
-				}
-			}
-		}
-	}
-
-	if !keep {
-		for i, tag := range tags {
-			if strings.HasPrefix(tag, tagTypePrefix) && tag == tagTypePrefix+checkValue {
-				tags = append(tags[:i], tags[i+1:]...)
-				break
-			}
-		}
-	}
-	return tags
-}
-
-func getEnvironmentFromWorkloadTag(tag string) string {
-	s := strings.Split(strings.Replace(tag, "workload:", "", 1), "|")
-	return s[0]
-}
-
-func getTeamFromWorkloadTag(tag string) string {
-	s := strings.Split(strings.Replace(tag, "workload:", "", 1), "|")
-	return s[1]
-}
-
-func getTypeFromWorkloadTag(tag string) string {
-	s := strings.Split(strings.Replace(tag, "workload:", "", 1), "|")
-	return s[2]
-}
-
-func (c *Config) workloadTag(obj metav1.ObjectMeta, workloadType string) string {
-	return "workload:" + c.Cluster + "|" + obj.Namespace + "|" + workloadType + "|" + obj.Name
 }

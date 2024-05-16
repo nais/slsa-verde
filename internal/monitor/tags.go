@@ -1,7 +1,11 @@
 package monitor
 
 import (
+	"slices"
 	"strings"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"picante/internal/attestation"
 
 	"github.com/nais/dependencytrack/pkg/client"
 )
@@ -13,7 +17,13 @@ type Tags struct {
 	OtherTags       []string
 }
 
-func (t *Tags) AddTags(tags []client.Tag) {
+const (
+	WorkloadTagPrefix    = "workload:"
+	EnvironmentTagPrefix = "environment:"
+	TeamTagPrefix        = "team:"
+)
+
+func (t *Tags) ArrangeByPrefix(tags []client.Tag) {
 	workloadTags := make([]string, 0)
 	teamTags := make([]string, 0)
 	environmentTags := make([]string, 0)
@@ -21,11 +31,11 @@ func (t *Tags) AddTags(tags []client.Tag) {
 
 	for _, tag := range tags {
 		switch {
-		case strings.Contains(tag.Name, "workload:"):
+		case strings.Contains(tag.Name, WorkloadTagPrefix):
 			workloadTags = append(workloadTags, tag.Name)
-		case strings.Contains(tag.Name, "team:"):
+		case strings.Contains(tag.Name, TeamTagPrefix):
 			teamTags = append(teamTags, tag.Name)
-		case strings.Contains(tag.Name, "environment:"):
+		case strings.Contains(tag.Name, EnvironmentTagPrefix):
 			environmentTags = append(environmentTags, tag.Name)
 		default:
 			other = append(other, tag.Name)
@@ -39,7 +49,7 @@ func (t *Tags) AddTags(tags []client.Tag) {
 }
 
 func (t *Tags) getAllTags() []string {
-	allTags := []string{}
+	var allTags []string
 	allTags = append(allTags, t.WorkloadTags...)
 	allTags = append(allTags, t.TeamTags...)
 	allTags = append(allTags, t.EnvironmentTags...)
@@ -48,7 +58,7 @@ func (t *Tags) getAllTags() []string {
 }
 
 func (t *Tags) deleteWorkloadTag(tag string) {
-	tmp := []string{}
+	var tmp []string
 	for _, t := range t.WorkloadTags {
 		if t != tag {
 			tmp = append(tmp, t)
@@ -59,12 +69,69 @@ func (t *Tags) deleteWorkloadTag(tag string) {
 }
 
 func (t *Tags) verifyTags() {
-	clusterTags := []string{}
-	envTags := []string{}
+	var clusterTags []string
+	var envTags []string
 	for _, tag := range t.WorkloadTags {
-		clusterTags = append(clusterTags, "team:"+getTeamFromWorkloadTag(tag))
-		envTags = append(envTags, "environment:"+getEnvironmentFromWorkloadTag(tag))
+		teamTag := "team:" + getTeamFromWorkloadTag(tag)
+		if !slices.Contains(clusterTags, teamTag) {
+			clusterTags = append(clusterTags, teamTag)
+		}
+		envTag := "environment:" + getEnvironmentFromWorkloadTag(tag)
+		if !slices.Contains(envTags, envTag) {
+			envTags = append(envTags, envTag)
+		}
 	}
 	t.TeamTags = clusterTags
 	t.EnvironmentTags = envTags
+}
+
+func (t *Tags) addWorkloadTag(tag string) bool {
+	for _, t := range t.WorkloadTags {
+		if t == tag {
+			return false
+		}
+	}
+	t.WorkloadTags = append(t.WorkloadTags, tag)
+	t.verifyTags()
+	return true
+}
+
+func getEnvironmentFromWorkloadTag(tag string) string {
+	s := strings.Split(strings.Replace(tag, WorkloadTagPrefix, "", 1), "|")
+	return s[0]
+}
+
+func getTeamFromWorkloadTag(tag string) string {
+	s := strings.Split(strings.Replace(tag, WorkloadTagPrefix, "", 1), "|")
+	return s[1]
+}
+
+func workloadTag(obj metav1.Object, cluster, workloadType string) string {
+	return WorkloadTagPrefix + cluster + "|" + obj.GetNamespace() + "|" + workloadType + "|" + obj.GetName()
+}
+
+func containsAllTags(tags []client.Tag, s ...string) bool {
+	found := 0
+	for _, t := range s {
+		for _, tag := range tags {
+			if tag.Name == t {
+				found += 1
+				break
+			}
+		}
+	}
+	return found == len(s)
+}
+
+func initTags(obj metav1.Object, metadata *attestation.ImageMetadata, cluster, projectName, projectVersion string) []string {
+	return []string{
+		"project:" + projectName,
+		"image:" + metadata.Image,
+		"version:" + projectVersion,
+		"digest:" + metadata.Digest,
+		"rekor:" + metadata.RekorLogIndex,
+		"environment:" + cluster,
+		"team:" + obj.GetNamespace(),
+		workloadTag(obj, cluster, "app"),
+	}
 }

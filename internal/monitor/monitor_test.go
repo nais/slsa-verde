@@ -429,7 +429,7 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
 
-		c.On("UpdateProject", mock.Anything, "uuid1", "nginx", "latest", "testns2", []string{
+		c.On("UpdateProject", mock.Anything, "uuid1", "nginx", "latest", "testns", []string{
 			workloadTag(otherObj.GetObjectMeta(), cluster, "app"),
 			workloadTag(newDeployment.GetObjectMeta(), cluster, "app"),
 			"team:testns",

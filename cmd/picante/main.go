@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -107,7 +106,8 @@ func main() {
 	mainLogger.Info("setting up informer")
 	tweakListOpts := informers.WithTweakListOptions(
 		func(options *v1.ListOptions) {
-			options.FieldSelector = "metadata.namespace=tbd"
+			options.FieldSelector = "metadata.namespace=tbd," +
+				"metadata.namespace=dolly"
 			/*"metadata.namespace!=kube-system," +
 			"metadata.namespace!=kube-public," +
 			"metadata.namespace!=cnrm-system," +
@@ -154,11 +154,6 @@ func main() {
 	); err != nil {
 		mainLogger.WithError(err).Fatal("failed to setup informers")
 	}
-
-	// Server for pprof
-	go func() {
-		fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
 
 	defer runtime.HandleCrash()
 

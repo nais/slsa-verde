@@ -1,10 +1,12 @@
 package monitor
 
 import (
-	"picante/internal/attestation"
-	"picante/internal/test"
+	"fmt"
 	"slices"
 	"testing"
+
+	"picante/internal/attestation"
+	"picante/internal/test"
 )
 
 func TestNewTags(t *testing.T) {
@@ -16,7 +18,7 @@ func TestNewTags(t *testing.T) {
 }
 
 func TestInitTags(t *testing.T) {
-	d := test.CreateDeployment("my-cluster", "my-namespace", nil, nil, "my-app")
+	d := test.CreateDeployment("my-namespace", "my-app", nil, nil, "")
 	meta := &attestation.ImageMetadata{
 		RekorLogIndex: "10001",
 		Image:         "my-app:1.0.0",
@@ -24,6 +26,8 @@ func TestInitTags(t *testing.T) {
 	}
 
 	tags := initTags(d.GetObjectMeta(), meta, "my-cluster", "dp-project", "1.0.0")
+
+	fmt.Printf("tags: %v\n", tags)
 
 	if !slices.Contains(tags, "image:my-app:1.0.0") {
 		t.Errorf("initTags() = %v, want 'image:my-app:1.0.0' in tags", tags)
@@ -43,8 +47,7 @@ func TestInitTags(t *testing.T) {
 	if !slices.Contains(tags, "team:my-namespace") {
 		t.Errorf("initTags() = %v, want 'team:my-namespace' in tags", tags)
 	}
-	if !slices.Contains(tags, "workload:my-cluster|my-namespace|app|my-namespace") {
-		t.Errorf("initTags() = %v, want 'workload:my-cluster|my-namespace|app|my-namespace' in tags", tags)
+	if !slices.Contains(tags, "workload:my-cluster|my-namespace|app|my-app") {
+		t.Errorf("initTags() = %v, want 'workload:my-cluster|my-namespace|app|my-app' in tags", tags)
 	}
-
 }

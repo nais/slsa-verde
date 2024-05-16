@@ -34,7 +34,6 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 }
 
 func getProjectName(containerImage string) string {
-
 	if strings.Contains(containerImage, "@") {
 		return strings.Split(containerImage, "@")[0]
 	}

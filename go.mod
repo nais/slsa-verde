@@ -18,16 +18,16 @@ require (
 	github.com/vektra/mockery/v2 v2.43.0
 	golang.org/x/vuln v1.1.0
 	honnef.co/go/tools v0.4.7
-	k8s.io/api v0.30.0
-	k8s.io/apimachinery v0.30.0
-	k8s.io/client-go v0.30.0
+	k8s.io/api v0.30.1
+	k8s.io/apimachinery v0.30.1
+	k8s.io/client-go v0.30.1
 	mvdan.cc/gofumpt v0.6.0
 )
 
 require (
 	cloud.google.com/go/auth v0.4.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
-	cloud.google.com/go/iam v1.1.7 // indirect
+	cloud.google.com/go/iam v1.1.8 // indirect
 	github.com/buildkite/roko v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20240401170217-c3f982113cda // indirect

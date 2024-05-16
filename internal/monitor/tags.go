@@ -4,8 +4,9 @@ import (
 	"slices"
 	"strings"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"picante/internal/attestation"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/nais/dependencytrack/pkg/client"
 )
@@ -22,6 +23,10 @@ const (
 	EnvironmentTagPrefix = "environment:"
 	TeamTagPrefix        = "team:"
 )
+
+func NewTags() *Tags {
+	return &Tags{}
+}
 
 func (t *Tags) ArrangeByPrefix(tags []client.Tag) {
 	workloadTags := make([]string, 0)

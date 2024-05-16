@@ -6,7 +6,6 @@ toolchain go1.22.3
 
 require (
 	github.com/google/go-containerregistry v0.19.1
-	github.com/google/uuid v1.6.0
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/joho/godotenv v1.5.1
 	github.com/nais/dependencytrack v0.0.0-20240513050033-19aebdb51cb0
@@ -30,6 +29,7 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
 	cloud.google.com/go/iam v1.1.7 // indirect
 	github.com/buildkite/roko v1.2.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20240401170217-c3f982113cda // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240429193739-8cf5692501f6 // indirect
 )

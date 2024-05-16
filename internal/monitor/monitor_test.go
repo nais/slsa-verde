@@ -494,15 +494,15 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 
 func TestProjectAndVersion(t *testing.T) {
 	image := "ghcr.io/securego/gosec:v2.9.1"
-	v := version(image)
+	v := getProjectVersion(image)
 	assert.Equal(t, "v2.9.1", v)
 
 	image = "europe-north1-docker.pkg.dev/nais-io/nais/images/picante@sha256:456d4c3f4b2ae92baf02b2516e025abc44464be9447ea04b163a0c8d091d30b5"
-	v = version(image)
+	v = getProjectVersion(image)
 	assert.Equal(t, "sha256:456d4c3f4b2ae92baf02b2516e025abc44464be9447ea04b163a0c8d091d30b5", v)
 
 	image = "europe-north1-docker.pkg.dev/nais-io/nais/images/picante:20230504-091909-3efbee3@sha256:456d4c3f4b2ae92baf02b2516e025abc44464be9447ea04b163a0c8d091d30b5"
-	v = version(image)
+	v = getProjectVersion(image)
 	assert.Equal(t, "20230504-091909-3efbee3@sha256:456d4c3f4b2ae92baf02b2516e025abc44464be9447ea04b163a0c8d091d30b5", v)
 }
 

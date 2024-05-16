@@ -7,11 +7,12 @@ import (
 	"net/url"
 	"strings"
 
+	"picante/internal/attestation"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/apps/v1"
-	"picante/internal/attestation"
 )
 
 type Config struct {
@@ -32,16 +33,12 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 	}
 }
 
-func projectNameForDeployment(d *v1.Deployment) (string, error) {
-	for _, container := range d.Spec.Template.Spec.Containers {
-		if container.Name == d.GetName() {
-			if strings.Contains(container.Image, "@") {
-				return strings.Split(container.Image, "@")[0], nil
-			}
-			return strings.Split(container.Image, ":")[0], nil
-		}
+func getProjectName(containerImage string) string {
+
+	if strings.Contains(containerImage, "@") {
+		return strings.Split(containerImage, "@")[0]
 	}
-	return "", fmt.Errorf("container %s not found in deployment %s", d.GetName(), d.Name)
+	return strings.Split(containerImage, ":")[0]
 }
 
 func (c *Config) OnDelete(obj any) {
@@ -53,8 +50,8 @@ func (c *Config) OnDelete(obj any) {
 		log.Debugf("not a deployment")
 		return
 	}
-	workload := workloadTag(d.GetObjectMeta(), c.Cluster, "app")
-	project, err := c.retrieveProject(c.ctx, workload)
+	workloadTag := workloadTag(d.GetObjectMeta(), c.Cluster, "app")
+	project, err := c.retrieveProject(c.ctx, workloadTag)
 	if err != nil {
 		log.Warnf("delete: retrieve project: %v", err)
 		return
@@ -65,16 +62,16 @@ func (c *Config) OnDelete(obj any) {
 		return
 	}
 
-	tags := Tags{}
+	tags := NewTags()
 	tags.ArrangeByPrefix(project.Tags)
 
-	if len(tags.WorkloadTags) == 1 {
+	if len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workloadTag {
 		if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
 			log.Warnf("delete project: %v", err)
 			return
 		}
 	} else {
-		tags.deleteWorkloadTag(workload)
+		tags.deleteWorkloadTag(workloadTag)
 		_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 		if err != nil {
 			log.Warnf("remove tags project: %v", err)
@@ -132,14 +129,12 @@ func getDeployment(obj any) *v1.Deployment {
 }
 
 func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deployment) error {
-	workload := workloadTag(d.GetObjectMeta(), c.Cluster, "app")
-	projectName, err := projectNameForDeployment(d)
-	if err != nil {
-		return err
-	}
+	workloadTag := workloadTag(d.GetObjectMeta(), c.Cluster, "app")
 
 	for _, container := range d.Spec.Template.Spec.Containers {
-		projectVersion := version(container.Image)
+		projectName := getProjectName(container.Image)
+		projectVersion := getProjectVersion(container.Image)
+
 		project, err := c.Client.GetProject(ctx, projectName, projectVersion)
 		if err != nil {
 			return err
@@ -153,15 +148,15 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 				"container":       container.Name,
 			}).Debug("project is found, updating...")
 
-			tags := Tags{}
+			tags := NewTags()
 			tags.ArrangeByPrefix(project.Tags)
 
-			if tags.addWorkloadTag(workload) {
-				_, err := c.Client.UpdateProject(ctx, project.Uuid, projectName, projectVersion, d.GetNamespace(), tags.getAllTags())
+			if tags.addWorkloadTag(workloadTag) {
+				_, err := c.Client.UpdateProject(ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 				if err != nil {
 					return err
 				}
-				c.logger.Debugf("project updated with workload tag:" + workload)
+				c.logger.Debugf("project updated with workload tag:" + workloadTag)
 				continue
 			}
 
@@ -186,20 +181,20 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 			}
 
 			if project != nil {
-				tags := Tags{}
+				tags := NewTags()
 				tags.ArrangeByPrefix(project.Tags)
 
-				if len(tags.WorkloadTags) == 1 {
+				if len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workloadTag {
 					if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
 						logrus.Warnf("delete project: %v", err)
 					}
 				} else {
-					tags.deleteWorkloadTag(workload)
+					tags.deleteWorkloadTag(workloadTag)
 					_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 					if err != nil {
 						logrus.Warnf("remove tags project: %v", err)
 					}
-					c.logger.Debugf("project updated with workload tag:" + workload)
+					c.logger.Debugf("project updated with workload tag:" + workloadTag)
 				}
 
 				c.logger.WithFields(logrus.Fields{
@@ -258,7 +253,7 @@ func (c *Config) retrieveProject(ctx context.Context, projectName string) (*clie
 	return p, nil
 }
 
-func version(image string) string {
+func getProjectVersion(image string) string {
 	if !strings.Contains(image, "@") {
 		i := strings.LastIndex(image, ":")
 		return image[i+1:]

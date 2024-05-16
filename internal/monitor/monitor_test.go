@@ -3,11 +3,12 @@ package monitor
 import (
 	"context"
 	"encoding/json"
-	"github.com/google/go-cmp/cmp"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/url"
 	"os"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "k8s.io/api/apps/v1"
 
@@ -284,8 +285,8 @@ func TestConfig_OnDelete_RemoveTag(t *testing.T) {
 
 		c.On("UpdateProject", mock.Anything, "1", "nginx", "latest", "testns", []string{
 			"workload:" + cluster + "|aura|app|testapp",
-			"environment:" + cluster,
 			"team:aura",
+			"environment:" + cluster,
 			"project:nginx",
 			"image:nginx:latest",
 			"version:latest",
@@ -394,7 +395,7 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 			},
 		}
 
-		c.On("GetProject", mock.Anything, "nginx", "latest").Return(&client.Project{
+		c.On("GetProject", mock.Anything, "nginx", "latest2").Return(&client.Project{
 			Classifier: "APPLICATION",
 			Group:      "testns",
 			Name:       "nginx",

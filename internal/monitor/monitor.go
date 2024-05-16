@@ -16,34 +16,6 @@ import (
 	"picante/internal/attestation"
 )
 
-type CustomTags struct {
-	WorkloadTags    []string
-	EnvironmentTags []string
-	TeamTags        []string
-}
-
-func (c *CustomTags) AddTags(tags []client.Tag) {
-	workloadTags := make([]string, 0)
-	teamTags := make([]string, 0)
-	environmentTags := make([]string, 0)
-
-	for _, tag := range tags {
-		if strings.Contains(tag.Name, "workload:") {
-			workloadTags = append(workloadTags, tag.Name)
-		}
-		if strings.Contains(tag.Name, "team:") {
-			teamTags = append(teamTags, tag.Name)
-		}
-		if strings.Contains(tag.Name, "environment:") {
-			environmentTags = append(environmentTags, tag.Name)
-		}
-	}
-
-	c.WorkloadTags = workloadTags
-	c.TeamTags = teamTags
-	c.EnvironmentTags = environmentTags
-}
-
 type Config struct {
 	Client   client.Client
 	Cluster  string
@@ -95,31 +67,18 @@ func (c *Config) OnDelete(obj any) {
 		return
 	}
 
-	customTags := CustomTags{}
-	customTags.AddTags(project.Tags)
+	tags := Tags{}
+	tags.AddTags(project.Tags)
 
-	if len(customTags.WorkloadTags) == 1 {
+	if len(tags.WorkloadTags) == 1 {
 		if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
 			log.Warnf("delete project: %v", err)
 			return
 		}
 	} else {
-		newTags := []string{}
+		tags.deleteWorkloadTag(c.workloadTag(d.ObjectMeta, "app"))
 
-		deletedWorkloadTag := ""
-
-		for _, tag := range project.Tags {
-			if tag.Name != c.workloadTag(d.ObjectMeta, "app") {
-				newTags = append(newTags, tag.Name)
-			} else {
-				deletedWorkloadTag = tag.Name
-			}
-		}
-
-		newTags = verifyTags("environment:", deletedWorkloadTag, newTags)
-		newTags = verifyTags("team:", deletedWorkloadTag, newTags)
-
-		_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, newTags)
+		_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 		if err != nil {
 			log.Warnf("remove tags project: %v", err)
 			return
@@ -255,7 +214,7 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 			}
 
 			if p != nil {
-				customTags := CustomTags{}
+				customTags := Tags{}
 				customTags.AddTags(p.Tags)
 
 				if len(customTags.WorkloadTags) == 1 {

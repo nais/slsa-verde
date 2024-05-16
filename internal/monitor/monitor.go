@@ -207,7 +207,8 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 			}
 
 			tags := initTags(d.GetObjectMeta(), metadata, c.Cluster, projectName, projectVersion)
-			createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, d.GetNamespace(), tags)
+			group := getGroup(projectName)
+			createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, group, tags)
 			if err != nil {
 				return err
 			}
@@ -218,6 +219,14 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 		}
 	}
 	return nil
+}
+
+func getGroup(projectName string) string {
+	groups := strings.Split(projectName, "/")
+	if len(groups) < 1 {
+		return groups[0]
+	}
+	return ""
 }
 
 func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.ImageMetadata, project, parentUuid, projectVersion string) error {

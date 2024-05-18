@@ -28,7 +28,7 @@ func TestConfigOnAdd(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
-	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -37,22 +37,22 @@ func TestConfigOnAdd(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("should attest image and create project", func(t *testing.T) {
-		c.On("GetProject", mock.Anything, "nginx", "latest").Return(nil, nil)
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
 
 		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0]).Return(&attestation.ImageMetadata{
 			BundleVerified: false,
-			Image:          "nginx:latest",
+			Image:          "test/nginx:latest",
 			Statement:      &statement,
-			ContainerName:  "nginx",
+			ContainerName:  "test/nginx",
 			Digest:         "123",
 			RekorLogIndex:  "1234",
 		}, nil)
 
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:"+"nginx")).Return([]*client.Project{}, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{}, nil)
 
-		c.On("CreateProject", mock.Anything, "nginx", "latest", "testns", []string{
-			"project:nginx",
-			"image:nginx:latest",
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", []string{
+			"project:test/nginx",
+			"image:test/nginx:latest",
 			"version:latest",
 			"digest:123",
 			"rekor:1234",
@@ -63,13 +63,13 @@ func TestConfigOnAdd(t *testing.T) {
 			Uuid: "uuid1",
 		}, nil)
 
-		c.On("UploadProject", mock.Anything, "nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
 
 		m.OnAdd(deployment)
 	})
 
 	t.Run("should not create project if no metadata is found", func(t *testing.T) {
-		c.On("GetProject", mock.Anything, "nginx", "latest").Return(nil, nil)
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
 		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{}, nil)
 
 		m.OnAdd(deployment)
@@ -80,11 +80,83 @@ func TestConfigOnAdd(t *testing.T) {
 	})
 }
 
+func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
+	c := NewMockClient(t)
+	v := attestation.NewMockVerifier(t)
+	m := NewMonitor(context.Background(), c, v, cluster)
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest", "test/nginx:latest2")
+
+	var statement in_toto.CycloneDXStatement
+	file, err := os.ReadFile("testdata/sbom.json")
+	assert.NoError(t, err)
+	err = json.Unmarshal(file, &statement)
+	assert.NoError(t, err)
+
+	t.Run("should attest images 2 containers and create 2 projects", func(t *testing.T) {
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
+		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0]).Return(&attestation.ImageMetadata{
+			BundleVerified: false,
+			Image:          "test/nginx:latest",
+			Statement:      &statement,
+			ContainerName:  "test/nginx",
+			Digest:         "123",
+			RekorLogIndex:  "1234",
+		}, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{}, nil)
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", []string{
+			"project:test/nginx",
+			"image:test/nginx:latest",
+			"version:latest",
+			"digest:123",
+			"rekor:1234",
+			"environment:test",
+			"team:testns",
+			workloadTag(deployment.GetObjectMeta(), cluster, "app"),
+		}).Return(&client.Project{
+			Uuid: "uuid1",
+		}, nil)
+		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
+
+		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest2", "test", []string{
+			"project:test/nginx",
+			"image:test/nginx:latest2",
+			"version:latest2",
+			"digest:123",
+			"rekor:1234",
+			"environment:test",
+			"team:testns",
+			workloadTag(deployment.GetObjectMeta(), cluster, "app"),
+		}).Return(&client.Project{
+			Uuid: "uuid2",
+		}, nil)
+
+		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[1]).Return(&attestation.ImageMetadata{
+			BundleVerified: false,
+			Image:          "test/nginx:latest2",
+			Statement:      &statement,
+			ContainerName:  "test/nginx",
+			Digest:         "123",
+			RekorLogIndex:  "1234",
+		}, nil)
+		c.On("UploadProject", mock.Anything, "test/nginx", "latest2", "uuid2", false, mock.Anything).Return(nil, nil)
+
+		m.OnAdd(deployment)
+	})
+
+	t.Run("should not create project if no metadata is found", func(t *testing.T) {
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
+		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{}, nil)
+
+		m.OnAdd(deployment)
+	})
+}
+
 func TestConfigOnAddExists(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
-	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -93,10 +165,10 @@ func TestConfigOnAddExists(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("should not create project if already exists", func(t *testing.T) {
-		c.On("GetProject", mock.Anything, "nginx", "latest").Return(&client.Project{
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
 			Classifier:          "APPLICATION",
-			Group:               "testns",
-			Name:                "nginx",
+			Group:               "test",
+			Name:                "test/nginx",
 			Publisher:           "Team",
 			Tags:                []client.Tag{{Name: workloadTag(deployment.GetObjectMeta(), cluster, "app")}},
 			Version:             "latest",
@@ -110,7 +182,7 @@ func TestConfigOnAddExists(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
 		m := NewMonitor(context.Background(), c, v, cluster)
-		deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest2")
+		deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest2")
 
 		var statement in_toto.CycloneDXStatement
 		file, err := os.ReadFile("testdata/sbom.json")
@@ -118,34 +190,34 @@ func TestConfigOnAddExists(t *testing.T) {
 		err = json.Unmarshal(file, &statement)
 		assert.NoError(t, err)
 
-		c.On("GetProject", mock.Anything, "nginx", "latest2").Return(nil, nil)
+		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
 
 		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
 			BundleVerified: false,
-			Image:          "nginx:latest2",
+			Image:          "test/nginx:latest2",
 			Statement:      &statement,
 			ContainerName:  "pod1",
 			Digest:         "123",
 			RekorLogIndex:  "1234",
 		}, nil)
 
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:"+"nginx")).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
-				Group:      "testns",
+				Group:      "test",
 				Uuid:       "uuid1",
-				Name:       "nginx",
+				Name:       "test/nginx",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: workloadTag(deployment.GetObjectMeta(), cluster, "app")}, {Name: "project:nginx"}},
+				Tags:       []client.Tag{{Name: workloadTag(deployment.GetObjectMeta(), cluster, "app")}, {Name: "project:test/nginx"}},
 				Version:    "latest",
 			},
 		}, nil)
 
 		c.On("DeleteProject", mock.Anything, "uuid1").Return(nil)
 
-		c.On("CreateProject", mock.Anything, "nginx", "latest2", "testns", []string{
-			"project:nginx",
-			"image:nginx:latest2",
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest2", "test", []string{
+			"project:test/nginx",
+			"image:test/nginx:latest2",
 			"version:latest2",
 			"digest:123",
 			"rekor:1234",
@@ -156,7 +228,7 @@ func TestConfigOnAddExists(t *testing.T) {
 			Uuid: "uuid2",
 		}, nil)
 
-		c.On("UploadProject", mock.Anything, "nginx", "latest2", "uuid2", false, mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, "test/nginx", "latest2", "uuid2", false, mock.Anything).Return(nil, nil)
 
 		m.OnAdd(deployment)
 	})
@@ -165,7 +237,7 @@ func TestConfigOnAddExists(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
 		m := NewMonitor(context.Background(), c, v, cluster)
-		deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+		deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
 		file, err := os.ReadFile("testdata/sbom.json")
@@ -173,29 +245,29 @@ func TestConfigOnAddExists(t *testing.T) {
 		err = json.Unmarshal(file, &statement)
 		assert.NoError(t, err)
 
-		c.On("GetProject", mock.Anything, "nginx", "latest").Return(nil, nil)
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
 
 		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
 			BundleVerified: false,
-			Image:          "nginx:latest",
+			Image:          "test/nginx:latest",
 			Statement:      &statement,
 			ContainerName:  "pod1",
 			Digest:         "123",
 			RekorLogIndex:  "1234",
 		}, nil)
 
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:"+"nginx")).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "testns",
 				Uuid:       "uuid1",
-				Name:       "nginx",
+				Name:       "test/nginx",
 				Publisher:  "Team",
 				Tags: []client.Tag{
 					{Name: WorkloadTagPrefix + cluster + "|" + "testns" + "|app|" + "testapp2"},
 					{Name: workloadTag(deployment.GetObjectMeta(), cluster, "app")},
-					{Name: "project:nginx"},
-					{Name: "image:nginx:latest2"},
+					{Name: "project:test/nginx"},
+					{Name: "image:test/nginx:latest2"},
 					{Name: "version:latest2"},
 					{Name: "digest:123"},
 					{Name: "rekor:1234"},
@@ -206,12 +278,12 @@ func TestConfigOnAddExists(t *testing.T) {
 			},
 		}, nil)
 
-		c.On("UpdateProject", mock.Anything, "uuid1", "nginx", "latest2", "testns", []string{
+		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest2", "testns", []string{
 			WorkloadTagPrefix + cluster + "|testns|app|testapp2",
 			"team:testns",
 			"environment:test",
-			"project:nginx",
-			"image:nginx:latest2",
+			"project:test/nginx",
+			"image:test/nginx:latest2",
 			"version:latest2",
 			"digest:123",
 			"rekor:1234",
@@ -219,9 +291,9 @@ func TestConfigOnAddExists(t *testing.T) {
 			Uuid: "uuid1",
 		}, nil)
 
-		c.On("CreateProject", mock.Anything, "nginx", "latest", "testns", []string{
-			"project:nginx",
-			"image:nginx:latest",
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", []string{
+			"project:test/nginx",
+			"image:test/nginx:latest",
 			"version:latest",
 			"digest:123",
 			"rekor:1234",
@@ -232,7 +304,7 @@ func TestConfigOnAddExists(t *testing.T) {
 			Uuid: "uuid2",
 		}, nil)
 
-		c.On("UploadProject", mock.Anything, "nginx", "latest", "uuid2", false, mock.Anything).Return(nil, nil)
+		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid2", false, mock.Anything).Return(nil, nil)
 
 		m.OnAdd(deployment)
 	})
@@ -253,11 +325,11 @@ func TestConfigOnDeleteProjectIsNil(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
-	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 	// ok
 	t.Run("project is nil, should ignore", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workloadTag(deployment.GetObjectMeta(), cluster, "app"))).Return(nil, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("image:test/nginx:latest")).Return(nil, nil)
 		m.OnDelete(deployment)
 	})
 }
@@ -266,14 +338,14 @@ func TestConfigOnDeleteRemoveTag(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "dev")
-	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 	t.Run("project exists with more than 1 tag, remove this tag from project", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workloadTag(deployment.GetObjectMeta(), "dev", "app"))).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("image:test/nginx:latest")).Return([]*client.Project{
 			{
 				Uuid:       "1",
-				Group:      "testns",
-				Name:       "nginx",
+				Group:      "test",
+				Name:       "test/nginx",
 				Publisher:  "Team",
 				Version:    "latest",
 				Classifier: "APPLICATION",
@@ -284,8 +356,8 @@ func TestConfigOnDeleteRemoveTag(t *testing.T) {
 					{Name: "environment:dev"},
 					{Name: "team:testns"},
 					{Name: "team:aura"},
-					{Name: "project:nginx"},
-					{Name: "image:nginx:latest"},
+					{Name: "project:test/nginx"},
+					{Name: "image:test/nginx:latest"},
 					{Name: "version:latest"},
 					{Name: "digest:123"},
 					{Name: "rekor:1234"},
@@ -293,12 +365,12 @@ func TestConfigOnDeleteRemoveTag(t *testing.T) {
 			},
 		}, nil)
 
-		c.On("UpdateProject", mock.Anything, "1", "nginx", "latest", "testns", []string{
+		c.On("UpdateProject", mock.Anything, "1", "test/nginx", "latest", "test", []string{
 			WorkloadTagPrefix + cluster + "|aura|app|testapp",
 			"team:aura",
 			"environment:" + cluster,
-			"project:nginx",
-			"image:nginx:latest",
+			"project:test/nginx",
+			"image:test/nginx:latest",
 			"version:latest",
 			"digest:123",
 			"rekor:1234",
@@ -311,24 +383,26 @@ func TestConfigOnDeleteDeleteProject(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
-	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 	t.Run("project with only this workload tag, delete project", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workloadTag(deployment.GetObjectMeta(), cluster, "app"))).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("image:test/nginx:latest")).Return([]*client.Project{
 			{
 				Uuid:       "1",
-				Group:      "testns",
-				Name:       "nginx",
+				Group:      "test",
+				Name:       "test/nginx",
 				Publisher:  "Team",
 				Version:    "latest",
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
 					{Name: workloadTag(deployment.GetObjectMeta(), cluster, "app")},
-					{Name: "project:nginx"},
-					{Name: "image:nginx:latest"},
+					{Name: "project:test/nginx"},
+					{Name: "image:test/nginx:latest"},
 					{Name: "version:latest"},
 					{Name: "digest:123"},
 					{Name: "rekor:1234"},
+					{Name: "environment:test"},
+					{Name: "team:testns"},
 				},
 			},
 		}, nil)
@@ -343,8 +417,8 @@ func TestConfigOnUpdate(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
-	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
-	oldDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
+	oldDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -369,10 +443,10 @@ func TestConfigOnUpdate(t *testing.T) {
 			},
 		}
 
-		c.On("GetProject", mock.Anything, "nginx", "latest").Return(&client.Project{
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
 			Classifier:          "APPLICATION",
 			Group:               "testns",
-			Name:                "nginx",
+			Name:                "test/nginx",
 			Publisher:           "Team",
 			Tags:                []client.Tag{{Name: workloadTag(newDeployment.GetObjectMeta(), cluster, "app")}},
 			Version:             "latest",
@@ -386,8 +460,8 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
-	newDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "nginx:latest")
-	oldDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "nginx:latest")
+	newDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "test/nginx:latest")
+	oldDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "test/nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -409,18 +483,18 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 			Namespace: "testns",
 		}
 
-		c.On("GetProject", mock.Anything, "nginx", "latest").Return(&client.Project{
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
 			Classifier: "APPLICATION",
 			Uuid:       "uuid1",
 			Group:      "testns",
-			Name:       "nginx",
+			Name:       "test/nginx",
 			Publisher:  "Team",
 			Tags: []client.Tag{
 				{Name: workloadTag(otherObj.GetObjectMeta(), cluster, "app")},
 				{Name: "team:testns"},
 				{Name: "environment:test"},
-				{Name: "project:nginx"},
-				{Name: "image:nginx:latest"},
+				{Name: "project:test/nginx"},
+				{Name: "image:test/nginx:latest"},
 				{Name: "version:latest"},
 				{Name: "digest:123"},
 				{Name: "rekor:1234"},
@@ -429,14 +503,14 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
 
-		c.On("UpdateProject", mock.Anything, "uuid1", "nginx", "latest", "testns", []string{
+		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest", "testns", []string{
 			workloadTag(otherObj.GetObjectMeta(), cluster, "app"),
 			workloadTag(newDeployment.GetObjectMeta(), cluster, "app"),
 			"team:testns",
 			"team:testns2",
 			"environment:test",
-			"project:nginx",
-			"image:nginx:latest",
+			"project:test/nginx",
+			"image:test/nginx:latest",
 			"version:latest",
 			"digest:123",
 			"rekor:1234",
@@ -452,8 +526,8 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
-	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest2")
-	oldDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "nginx:latest")
+	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest2")
+	oldDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -475,10 +549,10 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 			Namespace: "testns",
 		}
 
-		c.On("GetProject", mock.Anything, "nginx", "latest2").Return(&client.Project{
+		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(&client.Project{
 			Classifier: "APPLICATION",
 			Group:      "testns",
-			Name:       "nginx",
+			Name:       "test/nginx",
 			Publisher:  "Team",
 			Tags: []client.Tag{
 				{Name: workloadTag(newDeployment.GetObjectMeta(), cluster, "app")},
@@ -508,8 +582,8 @@ func TestProjectAndVersion(t *testing.T) {
 
 /*func TestVerifyTags(t *testing.T) {
 	newTags := []string{
-		"project:nginx",
-		"image:nginx:latest",
+		"project:test/nginx",
+		"image:test/nginx:latest",
 		"version:latest",
 		"digest:123",
 		"rekor:1234",
@@ -530,8 +604,8 @@ func TestProjectAndVersion(t *testing.T) {
 	assert.Empty(t, d)
 
 	newTags2 := []string{
-		"project:nginx",
-		"image:nginx:latest",
+		"project:test/nginx",
+		"image:test/nginx:latest",
 		"version:latest",
 		"digest:123",
 		"rekor:1234",

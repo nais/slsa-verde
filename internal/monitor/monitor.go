@@ -71,6 +71,7 @@ func (c *Config) OnDelete(obj any) {
 				log.Warnf("delete project: %v", err)
 				return
 			}
+			log.Debugf("project deleted with workload tag:" + workload)
 		} else {
 			tags.deleteWorkloadTag(workload)
 			_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
@@ -78,6 +79,7 @@ func (c *Config) OnDelete(obj any) {
 				log.Warnf("remove tags project: %v", err)
 				return
 			}
+			log.Debugf("project updated with workload tag:" + workload)
 		}
 	}
 }
@@ -194,6 +196,7 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 					if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
 						logrus.Warnf("delete project: %v", err)
 					}
+					c.logger.Debugf("project deleted with workload tag:" + workload)
 				} else {
 					tags.deleteWorkloadTag(workload)
 					_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())

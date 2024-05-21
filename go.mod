@@ -2,8 +2,6 @@ module picante
 
 go 1.22.0
 
-toolchain go1.22.3
-
 require (
 	github.com/google/go-containerregistry v0.19.1
 	github.com/in-toto/in-toto-golang v0.9.0

@@ -1,10 +1,9 @@
 module picante
 
-go 1.22.0
-
-toolchain go1.22.3
+go 1.22.3
 
 require (
+	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.19.1
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/joho/godotenv v1.5.1
@@ -15,7 +14,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
-	github.com/vektra/mockery/v2 v2.43.1
+	github.com/vektra/mockery/v2 v2.42.3
 	golang.org/x/vuln v1.1.0
 	honnef.co/go/tools v0.4.7
 	k8s.io/api v0.30.1
@@ -145,7 +144,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/certificate-transparency-go v1.1.8 // indirect
 	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
-	github.com/google/go-cmp v0.6.0
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect

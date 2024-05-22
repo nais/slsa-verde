@@ -25,6 +25,7 @@ jobs:
   test-pr:
     runs-on: ubuntu-latest
     if: ${{ github.actor == 'dependabot[bot]' }}
+    needs: go_version
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

@@ -20,6 +20,7 @@ jobs:
           echo "GO_VERSION=$(grep golang .tool-versions | awk '{print $2}')" >> $GITHUB_OUTPUT
   test-pr:
     runs-on: ubuntu-latest
+    needs: go_version
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

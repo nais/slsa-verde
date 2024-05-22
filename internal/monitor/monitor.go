@@ -96,12 +96,12 @@ func (c *Config) OnUpdate(old any, new any) {
 		return
 	}
 
-	diff := cmp.Diff(dOld.Conditions, dNew.Conditions)
+	diff := cmp.Diff(dOld.Status, dNew.Status)
 	if diff == "" {
 		return
 	}
 
-	if dNew.getWorkloadStatus() {
+	if dNew.Status.LastSuccessful {
 		if err := c.verifyWorkloadContainers(c.ctx, dNew); err != nil {
 			log.Warnf("verify attestation: %v", err)
 		}

@@ -25,8 +25,8 @@ local:
 	export KUBECONFIG="${HOME}/.kube/config" && go build -o bin/picante cmd/picante/*.go && go run cmd/picante/main.go
 
 generate-mocks:
-	go run github.com/vektra/mockery/v2 --inpackage --case snake --srcpkg ./internal/monitor --name Client
-	go run github.com/vektra/mockery/v2 --inpackage --case snake --srcpkg ./internal/attestation --name Verifier
+	go run github.com/vektra/mockery/v2 --keeptree --case snake --srcpkg ./internal/monitor --name Client
+	go run github.com/vektra/mockery/v2 --keeptree --case snake --srcpkg ./internal/attestation --name Verifier
 
 check:
 	go version

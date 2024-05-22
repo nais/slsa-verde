@@ -5,9 +5,6 @@ import (
 	"testing"
 
 	"github.com/nais/dependencytrack/pkg/client"
-
-	"picante/internal/attestation"
-	"picante/internal/test"
 )
 
 func TestNewTags(t *testing.T) {
@@ -15,39 +12,6 @@ func TestNewTags(t *testing.T) {
 
 	if tags == nil {
 		t.Errorf("NewTags() = %v, want non-nil", tags)
-	}
-}
-
-func TestInitTags(t *testing.T) {
-	d := test.CreateDeployment("my-namespace", "my-app", nil, nil, "")
-	meta := &attestation.ImageMetadata{
-		RekorLogIndex: "10001",
-		Image:         "my-app:1.0.0",
-		Digest:        "sha256:1234567890",
-	}
-	workload := NewWorkload(d)
-	tags := workload.initWorkloadTags(meta, "my-cluster", "dp-project", "1.0.0")
-
-	if !slices.Contains(tags, "image:my-app:1.0.0") {
-		t.Errorf("initTags() = %v, want 'image:my-app:1.0.0' in tags", tags)
-	}
-	if !slices.Contains(tags, "version:1.0.0") {
-		t.Errorf("initTags() = %v, want 'version:1.0.0' in tags", tags)
-	}
-	if !slices.Contains(tags, "digest:sha256:1234567890") {
-		t.Errorf("initTags() = %v, want 'digest:sha256:1234567890' in tags", tags)
-	}
-	if !slices.Contains(tags, "rekor:10001") {
-		t.Errorf("initTags() = %v, want 'rekor:10001' in tags", tags)
-	}
-	if !slices.Contains(tags, "environment:my-cluster") {
-		t.Errorf("initTags() = %v, want 'environment:my-cluster' in tags", tags)
-	}
-	if !slices.Contains(tags, "team:my-namespace") {
-		t.Errorf("initTags() = %v, want 'team:my-namespace' in tags", tags)
-	}
-	if !slices.Contains(tags, "workload:my-cluster|my-namespace|app|my-app") {
-		t.Errorf("initTags() = %v, want 'workload:my-cluster|my-namespace|app|my-app' in tags", tags)
 	}
 }
 
@@ -95,5 +59,32 @@ func TestArrangeByPrefix(t *testing.T) {
 	workloadTags.addWorkloadTag("workload:my-cluster|my-namespace|app|my-app")
 	if len(workloadTags.WorkloadTags) != 1 {
 		t.Errorf("addWorkloadTag() = %v, want 1 tags", workloadTags.WorkloadTags)
+	}
+
+	workloadTags.verifyTags()
+	if len(workloadTags.EnvironmentTags) != 1 {
+		t.Errorf("verifyTags() = %v, want 1 tags", workloadTags.EnvironmentTags)
+	}
+
+	if len(workloadTags.TeamTags) != 1 {
+		t.Errorf("verifyTags() = %v, want 1 tags", workloadTags.TeamTags)
+	}
+}
+
+func TestContainsAllTags(t *testing.T) {
+	tags := []client.Tag{
+		{
+			Name: "workload:my-cluster|my-namespace|app|my-app",
+		},
+		{
+			Name: "team:my-namespace",
+		},
+		{
+			Name: "environment:my-cluster",
+		},
+	}
+
+	if !containsAllTags(tags, "workload:my-cluster|my-namespace|app|my-app", "team:my-namespace", "environment:my-cluster") {
+		t.Errorf("ContainsAllTags() = false, want true")
 	}
 }

@@ -87,8 +87,8 @@ func (t *Tags) verifyTags() {
 }
 
 func (t *Tags) addWorkloadTag(tag string) bool {
-	for _, t := range t.WorkloadTags {
-		if t == tag {
+	for _, workloadTag := range t.WorkloadTags {
+		if workloadTag == tag {
 			return false
 		}
 	}

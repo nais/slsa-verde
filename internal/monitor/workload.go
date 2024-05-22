@@ -1,7 +1,10 @@
 package monitor
 
 import (
+	"strings"
+
 	v1 "k8s.io/api/apps/v1"
+	batch "k8s.io/api/batch/v1"
 	core "k8s.io/api/core/v1"
 	"picante/internal/attestation"
 )
@@ -10,48 +13,46 @@ type Workload struct {
 	Name       string
 	Namespace  string
 	Containers []core.Container
-	Conditions []Conditions
+	Status     Status
 	Type       string
 }
 
-type Conditions struct {
-	Type   string
-	Status string
-	Reason string
+type Status struct {
+	LastSuccessful bool
 }
 
 func NewWorkload(obj any) *Workload {
+	workload := &Workload{}
 	if d, ok := obj.(*v1.Deployment); ok {
-		conditions := make([]Conditions, 0)
-		for _, condition := range d.Status.Conditions {
-			conditions = append(conditions, Conditions{
-				Type:   string(condition.Type),
-				Status: string(condition.Status),
-				Reason: condition.Reason,
-			})
-		}
-		return &Workload{
+		workload = &Workload{
 			Name:       d.GetName(),
 			Namespace:  d.GetNamespace(),
 			Type:       "app",
 			Containers: d.Spec.Template.Spec.Containers,
-			Conditions: conditions,
 		}
-	}
-	return nil
-}
 
-func (w *Workload) getWorkloadStatus() bool {
-	status := false
-	switch w.Type {
-	case "app":
-		for _, condition := range w.Conditions {
+		for _, condition := range d.Status.Conditions {
 			if condition.Type == "Progressing" && condition.Status == "True" && condition.Reason == "NewReplicaSetAvailable" {
-				status = true
+				workload.Status.LastSuccessful = true
 			}
 		}
 	}
-	return status
+
+	if j, ok := obj.(*batch.Job); ok {
+		workload = &Workload{
+			Name:       jobName(j),
+			Namespace:  j.GetNamespace(),
+			Type:       "job",
+			Containers: j.Spec.Template.Spec.Containers,
+		}
+		for _, condition := range j.Status.Conditions {
+			if condition.Type == "Complete" && condition.Status == "True" {
+				workload.Status.LastSuccessful = true
+			}
+		}
+	}
+
+	return workload
 }
 
 func (w *Workload) getTag(cluster string) string {
@@ -69,4 +70,22 @@ func (w *Workload) initWorkloadTags(metadata *attestation.ImageMetadata, cluster
 		"team:" + w.Namespace,
 		w.getTag(cluster),
 	}
+}
+
+func jobName(job *batch.Job) string {
+	workloadName := job.Labels["app"]
+	if workloadName != "" {
+		return workloadName
+	}
+
+	// keep everything before the last dash
+	beforeLastDash := strings.LastIndex(job.GetName(), "-")
+	if beforeLastDash == -1 {
+		// no dash, use the whole name
+		workloadName = job.GetName()
+	} else {
+		// use everything before the last dash
+		workloadName = job.GetName()[:beforeLastDash]
+	}
+	return workloadName
 }

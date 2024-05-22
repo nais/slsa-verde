@@ -16,6 +16,7 @@ jobs:
     outputs:
       go_version: ${{ steps.go_version.outputs.GO_VERSION }}
     runs-on: ubuntu-22.04
+    if: ${{ github.actor == 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@v4
       - name: Find Go version
@@ -24,7 +25,6 @@ jobs:
           echo "GO_VERSION=$(grep golang .tool-versions | awk '{print $2}')" >> $GITHUB_OUTPUT
   test-pr:
     runs-on: ubuntu-latest
-    if: ${{ github.actor == 'dependabot[bot]' }}
     needs: go_version
     steps:
       - uses: actions/checkout@v4

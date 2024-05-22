@@ -12,7 +12,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sirupsen/logrus"
-	v1 "k8s.io/api/apps/v1"
 )
 
 type Config struct {
@@ -43,15 +42,14 @@ func getProjectName(containerImage string) string {
 func (c *Config) OnDelete(obj any) {
 	log := c.logger.WithField("event", "OnDelete")
 
-	d := getDeployment(obj)
-
-	if d == nil {
-		log.Debugf("not a deployment")
+	workload := NewWorkload(obj)
+	if workload == nil {
+		log.Debugf("not a verified workload")
 		return
 	}
 
-	workload := workloadTag(d.GetObjectMeta(), c.Cluster, "app")
-	for _, container := range d.Spec.Template.Spec.Containers {
+	workloadTag := workload.getTag(c.Cluster)
+	for _, container := range workload.Containers {
 		project, err := c.retrieveProject(c.ctx, "image:"+container.Image)
 		if err != nil {
 			log.Warnf("delete: retrieve project: %v", err)
@@ -66,20 +64,20 @@ func (c *Config) OnDelete(obj any) {
 		tags := NewTags()
 		tags.ArrangeByPrefix(project.Tags)
 
-		if isThisWorkload(tags, workload) {
+		if isThisWorkload(tags, workloadTag) {
 			if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
 				log.Warnf("delete project: %v", err)
 				return
 			}
-			log.Debugf("project deleted with workload tag:" + workload)
+			log.Debugf("project deleted with workload tag: " + workloadTag)
 		} else {
-			tags.deleteWorkloadTag(workload)
+			tags.deleteWorkloadTag(workloadTag)
 			_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 			if err != nil {
 				log.Warnf("remove tags project: %v", err)
 				return
 			}
-			log.Debugf("project updated with workload tag:" + workload)
+			log.Debugf("project with workload tag: " + workloadTag + " removed")
 		}
 	}
 }
@@ -91,23 +89,21 @@ func isThisWorkload(tags *Tags, workload string) bool {
 func (c *Config) OnUpdate(old any, new any) {
 	log := c.logger.WithField("event", "update")
 
-	dOld := getDeployment(old)
-	dNew := getDeployment(new)
-
+	dOld := NewWorkload(old)
+	dNew := NewWorkload(new)
 	if dNew == nil {
+		log.Debugf("not verified workload")
 		return
 	}
 
-	diff := cmp.Diff(dOld.Status.Conditions, dNew.Status.Conditions)
+	diff := cmp.Diff(dOld.Conditions, dNew.Conditions)
 	if diff == "" {
 		return
 	}
 
-	for _, condition := range dNew.Status.Conditions {
-		if condition.Type == v1.DeploymentProgressing && condition.Status == "True" && condition.Reason == "NewReplicaSetAvailable" {
-			if err := c.verifyDeploymentContainers(c.ctx, dNew); err != nil {
-				log.Warnf("verify attestation: %v", err)
-			}
+	if dNew.getWorkloadStatus() {
+		if err := c.verifyWorkloadContainers(c.ctx, dNew); err != nil {
+			log.Warnf("verify attestation: %v", err)
 		}
 	}
 }
@@ -115,34 +111,25 @@ func (c *Config) OnUpdate(old any, new any) {
 func (c *Config) OnAdd(obj any) {
 	log := c.logger.WithField("event", "add")
 
-	deployment := getDeployment(obj)
-
-	if deployment == nil {
-		log.Debugf("not a deployment")
+	workload := NewWorkload(obj)
+	if workload == nil {
+		log.Debugf("not a verified workload")
 		return
 	}
 
-	err := c.verifyDeploymentContainers(c.ctx, deployment)
+	err := c.verifyWorkloadContainers(c.ctx, workload)
 	if err != nil {
 		log.Warnf("add: verify attestation: %v", err)
 		return
 	}
 }
 
-func getDeployment(obj any) *v1.Deployment {
-	if d, ok := obj.(*v1.Deployment); ok {
-		return d
-	}
-	return nil
-}
+func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workload) error {
+	workloadTag := workload.getTag(c.Cluster)
 
-func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deployment) error {
-	workload := workloadTag(d.GetObjectMeta(), c.Cluster, "app")
-
-	for _, container := range d.Spec.Template.Spec.Containers {
+	for _, container := range workload.Containers {
 		projectName := getProjectName(container.Image)
 		projectVersion := getProjectVersion(container.Image)
-
 		project, err := c.Client.GetProject(ctx, projectName, projectVersion)
 		if err != nil {
 			return err
@@ -152,19 +139,18 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 			c.logger.WithFields(logrus.Fields{
 				"project":         projectName,
 				"project-version": projectVersion,
-				"workload":        d.GetName(),
+				"workload":        workload.Name,
 				"container":       container.Name,
 			}).Debug("project is found, updating...")
 
 			tags := NewTags()
 			tags.ArrangeByPrefix(project.Tags)
-
-			if tags.addWorkloadTag(workload) {
+			if tags.addWorkloadTag(workloadTag) {
 				_, err := c.Client.UpdateProject(ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 				if err != nil {
 					return err
 				}
-				c.logger.Debugf("project updated with workload tag:" + workload)
+				c.logger.Debugf("project updated with workload tag: " + workloadTag)
 				continue
 			}
 
@@ -192,31 +178,31 @@ func (c *Config) verifyDeploymentContainers(ctx context.Context, d *v1.Deploymen
 				tags := NewTags()
 				tags.ArrangeByPrefix(project.Tags)
 
-				if isThisWorkload(tags, workload) {
+				if isThisWorkload(tags, workloadTag) {
 					if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
 						logrus.Warnf("delete project: %v", err)
 					}
-					c.logger.Debugf("project deleted with workload tag:" + workload)
+					c.logger.Debugf("project deleted with workload tag: " + workloadTag)
 				} else {
-					tags.deleteWorkloadTag(workload)
+					tags.deleteWorkloadTag(workloadTag)
 					_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 					if err != nil {
 						logrus.Warnf("remove tags project: %v", err)
 					}
-					c.logger.Debugf("project updated with workload tag:" + workload)
+					c.logger.Debugf("project with workload tag: " + workloadTag + " removed")
 				}
 
 				c.logger.WithFields(logrus.Fields{
 					"project-version": projectVersion,
 					"project":         projectName,
-					"workload":        d.GetName(),
+					"workload":        workload.Name,
 					"container":       metadata.ContainerName,
 					"digest":          metadata.Digest,
 				}).Info("project does not exist, creating...")
 
 			}
 
-			tags := initTags(d.GetObjectMeta(), metadata, c.Cluster, projectName, projectVersion)
+			tags := workload.initWorkloadTags(metadata, c.Cluster, projectName, projectVersion)
 			group := getGroup(projectName)
 			createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, group, tags)
 			if err != nil {

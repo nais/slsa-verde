@@ -109,8 +109,8 @@ func main() {
 			options.FieldSelector = "metadata.namespace!=kube-system," +
 				"metadata.namespace!=kube-public," +
 				"metadata.namespace!=cnrm-system," +
-				"metadata.namespace!=kyverno," + // TODO: remove me
-				"metadata.namespace!=linkerd," + // TODO: remove me
+				"metadata.namespace!=kyverno," +
+				"metadata.namespace!=linkerd," +
 				"metadata.namespace!=nais-verification," + // TODO: remove me
 				"metadata.namespace!=nais-system" // TODO: remove me
 		})
@@ -142,10 +142,6 @@ func main() {
 		mainLogger,
 		monitor.NewMonitor(ctx, s, opts, cfg.Cluster),
 		factory.Apps().V1().Deployments().Informer(),
-		// factory.Batch().V1().Jobs().Informer(),
-		// factory.Apps().V1().StatefulSets().Informer(),
-		// factory.Apps().V1().DaemonSets().Informer(),
-		// TODO Exclude jobs as they are not needed for now
 		// factory.Batch().V1().Jobs().Informer(),
 		// factory.Apps().V1().StatefulSets().Informer(),
 		// factory.Apps().V1().DaemonSets().Informer(),

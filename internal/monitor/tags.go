@@ -4,10 +4,6 @@ import (
 	"slices"
 	"strings"
 
-	"picante/internal/attestation"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/nais/dependencytrack/pkg/client"
 )
 
@@ -111,10 +107,6 @@ func getTeamFromWorkloadTag(tag string) string {
 	return s[1]
 }
 
-func workloadTag(obj metav1.Object, cluster, workloadType string) string {
-	return WorkloadTagPrefix + cluster + "|" + obj.GetNamespace() + "|" + workloadType + "|" + obj.GetName()
-}
-
 func containsAllTags(tags []client.Tag, s ...string) bool {
 	found := 0
 	for _, t := range s {
@@ -126,17 +118,4 @@ func containsAllTags(tags []client.Tag, s ...string) bool {
 		}
 	}
 	return found == len(s)
-}
-
-func initTags(obj metav1.Object, metadata *attestation.ImageMetadata, cluster, projectName, projectVersion string) []string {
-	return []string{
-		"project:" + projectName,
-		"image:" + metadata.Image,
-		"version:" + projectVersion,
-		"digest:" + metadata.Digest,
-		"rekor:" + metadata.RekorLogIndex,
-		"environment:" + cluster,
-		"team:" + obj.GetNamespace(),
-		workloadTag(obj, cluster, "app"),
-	}
 }

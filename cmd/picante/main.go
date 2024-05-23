@@ -106,15 +106,12 @@ func main() {
 	mainLogger.Info("setting up informer")
 	tweakListOpts := informers.WithTweakListOptions(
 		func(options *v1.ListOptions) {
-			options.FieldSelector = "metadata.namespace=aura"
-			/*
+			options.FieldSelector =
 				"metadata.namespace!=kube-system," +
-				"metadata.namespace!=kube-public," +
-				"metadata.namespace!=cnrm-system," +
-				"metadata.namespace!=kyverno," +
-				"metadata.namespace!=linkerd," +
-				"metadata.namespace!=nais-verification," + // TODO: remove me
-				"metadata.namespace!=nais-system"*/ // TODO: remove me
+					"metadata.namespace!=kube-public," +
+					"metadata.namespace!=cnrm-system," +
+					"metadata.namespace!=kyverno," +
+					"metadata.namespace!=linkerd"
 		})
 
 	verifyCmd := &verify.VerifyAttestationCommand{

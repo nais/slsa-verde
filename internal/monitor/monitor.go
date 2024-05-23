@@ -57,7 +57,7 @@ func (c *Config) OnDelete(obj any) {
 		}
 
 		if project == nil {
-			log.Debugf("delete: project not found")
+			log.Debugf("delete: project not found for image: " + container.Image + "with workload tag: " + workloadTag)
 			return
 		}
 

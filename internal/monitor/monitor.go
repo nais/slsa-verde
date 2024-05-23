@@ -126,7 +126,6 @@ func (c *Config) OnAdd(obj any) {
 
 func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workload) error {
 	workloadTag := workload.getTag(c.Cluster)
-
 	for _, container := range workload.Containers {
 		projectName := getProjectName(container.Image)
 		projectVersion := getProjectVersion(container.Image)
@@ -168,7 +167,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				continue
 			}
 
-			project, err := c.retrieveProject(ctx, "project:"+projectName)
+			project, err = c.retrieveProject(ctx, getProjectTag(projectName))
 			if err != nil {
 				c.logger.Warnf("retrieve project, skipping %v", err)
 				continue

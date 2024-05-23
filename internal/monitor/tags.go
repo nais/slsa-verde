@@ -18,6 +18,11 @@ const (
 	WorkloadTagPrefix    = "workload:"
 	EnvironmentTagPrefix = "environment:"
 	TeamTagPrefix        = "team:"
+	ProjectTagPrefix     = "project:"
+	ImageTagPrefix       = "image:"
+	VersionTagPrefix     = "version:"
+	RekorTagPrefix       = "rekor:"
+	DigestTagPrefix      = "digest:"
 )
 
 func NewTags() *Tags {
@@ -105,6 +110,10 @@ func getEnvironmentFromWorkloadTag(tag string) string {
 func getTeamFromWorkloadTag(tag string) string {
 	s := strings.Split(strings.Replace(tag, WorkloadTagPrefix, "", 1), "|")
 	return s[1]
+}
+
+func getProjectTag(tag string) string {
+	return ProjectTagPrefix + tag
 }
 
 func containsAllTags(tags []client.Tag, s ...string) bool {

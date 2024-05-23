@@ -61,13 +61,13 @@ func (w *Workload) getTag(cluster string) string {
 
 func (w *Workload) initWorkloadTags(metadata *attestation.ImageMetadata, cluster, projectName, projectVersion string) []string {
 	return []string{
-		"project:" + projectName,
-		"image:" + metadata.Image,
-		"version:" + projectVersion,
-		"digest:" + metadata.Digest,
-		"rekor:" + metadata.RekorLogIndex,
-		"environment:" + cluster,
-		"team:" + w.Namespace,
+		ProjectTagPrefix + projectName,
+		ImageTagPrefix + metadata.Image,
+		VersionTagPrefix + projectVersion,
+		DigestTagPrefix + metadata.Digest,
+		RekorTagPrefix + metadata.RekorLogIndex,
+		EnvironmentTagPrefix + cluster,
+		TeamTagPrefix + w.Namespace,
 		w.getTag(cluster),
 	}
 }

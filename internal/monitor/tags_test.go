@@ -25,7 +25,7 @@ func TestArrangeByPrefix(t *testing.T) {
 			Name: "team:my-namespace",
 		},
 		{
-			Name: "environment:my-cluster",
+			Name: "env:my-cluster",
 		},
 		{
 			Name: "other:getTag",
@@ -40,8 +40,8 @@ func TestArrangeByPrefix(t *testing.T) {
 	if !slices.Contains(workloadTags.TeamTags, "team:my-namespace") {
 		t.Errorf("ArrangeByPrefix() = %v, want 'team:my-namespace' in TeamTags", workloadTags.TeamTags)
 	}
-	if !slices.Contains(workloadTags.EnvironmentTags, "environment:my-cluster") {
-		t.Errorf("ArrangeByPrefix() = %v, want 'environment:my-cluster' in EnvironmentTags", workloadTags.EnvironmentTags)
+	if !slices.Contains(workloadTags.EnvironmentTags, "env:my-cluster") {
+		t.Errorf("ArrangeByPrefix() = %v, want 'env:my-cluster' in EnvironmentTags", workloadTags.EnvironmentTags)
 	}
 	if !slices.Contains(workloadTags.OtherTags, "other:getTag") {
 		t.Errorf("ArrangeByPrefix() = %v, want 'other:getTag' in OtherTags", workloadTags.OtherTags)
@@ -80,11 +80,11 @@ func TestContainsAllTags(t *testing.T) {
 			Name: "team:my-namespace",
 		},
 		{
-			Name: "environment:my-cluster",
+			Name: "env:my-cluster",
 		},
 	}
 
-	if !containsAllTags(tags, "workload:my-cluster|my-namespace|app|my-app", "team:my-namespace", "environment:my-cluster") {
+	if !containsAllTags(tags, "workload:my-cluster|my-namespace|app|my-app", "team:my-namespace", "env:my-cluster") {
 		t.Errorf("ContainsAllTags() = false, want true")
 	}
 }

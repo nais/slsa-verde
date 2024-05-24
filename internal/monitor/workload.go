@@ -3,6 +3,8 @@ package monitor
 import (
 	"strings"
 
+	dptrack "github.com/nais/dependencytrack/pkg/client"
+
 	v1 "k8s.io/api/apps/v1"
 	batch "k8s.io/api/batch/v1"
 	core "k8s.io/api/core/v1"
@@ -56,18 +58,18 @@ func NewWorkload(obj any) *Workload {
 }
 
 func (w *Workload) getTag(cluster string) string {
-	return WorkloadTagPrefix + cluster + "|" + w.Namespace + "|" + w.Type + "|" + w.Name
+	return dptrack.WorkloadTagPrefix.With(cluster + "|" + w.Namespace + "|" + w.Type + "|" + w.Name)
 }
 
 func (w *Workload) initWorkloadTags(metadata *attestation.ImageMetadata, cluster, projectName, projectVersion string) []string {
 	return []string{
-		ProjectTagPrefix + projectName,
-		ImageTagPrefix + metadata.Image,
-		VersionTagPrefix + projectVersion,
-		DigestTagPrefix + metadata.Digest,
-		RekorTagPrefix + metadata.RekorLogIndex,
-		EnvironmentTagPrefix + cluster,
-		TeamTagPrefix + w.Namespace,
+		dptrack.ProjectTagPrefix.With(projectName),
+		dptrack.ImageTagPrefix.With(metadata.Image),
+		dptrack.VersionTagPrefix.With(projectVersion),
+		dptrack.DigestTagPrefix.With(metadata.Digest),
+		dptrack.RekorTagPrefix.With(metadata.RekorLogIndex),
+		dptrack.EnvironmentTagPrefix.With(cluster),
+		dptrack.TeamTagPrefix.With(w.Namespace),
 		w.getTag(cluster),
 	}
 }

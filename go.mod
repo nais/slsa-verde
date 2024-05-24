@@ -7,7 +7,7 @@ require (
 	github.com/google/go-containerregistry v0.19.1
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/joho/godotenv v1.5.1
-	github.com/nais/dependencytrack v0.0.0-20240513050033-19aebdb51cb0
+	github.com/nais/dependencytrack v0.0.0-20240524102848-3959865cb4c4
 	github.com/secure-systems-lab/go-securesystemslib v0.8.0
 	github.com/sigstore/cosign/v2 v2.2.4
 	github.com/sirupsen/logrus v1.9.3

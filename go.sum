@@ -538,8 +538,10 @@ github.com/mozillazg/docker-credential-acr-helper v0.3.0 h1:DVWFZ3/O8BP6Ue3iS/Ol
 github.com/mozillazg/docker-credential-acr-helper v0.3.0/go.mod h1:cZlu3tof523ujmLuiNUb6JsjtHcNA70u1jitrrdnuyA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/nais/dependencytrack v0.0.0-20240513050033-19aebdb51cb0 h1:Wp1pxYQajLN3hDzSoxXMQWw6C2l4mFJ1i3jW0+za3lo=
-github.com/nais/dependencytrack v0.0.0-20240513050033-19aebdb51cb0/go.mod h1:dWeQuJfVeTWuiOuka3TkdUikOFiULxdROSown6ynRDU=
+github.com/nais/dependencytrack v0.0.0-20240524102302-26521e9daf3a h1:y2AoSDMybw1W1ysQqBfQehX/MUycDWBUcRMgRJFtmTc=
+github.com/nais/dependencytrack v0.0.0-20240524102302-26521e9daf3a/go.mod h1:2l+k1V0DzdGPJRs8ZnSS69Aa9EB0OBulFOf/vRtaMsU=
+github.com/nais/dependencytrack v0.0.0-20240524102848-3959865cb4c4 h1:04uJULVcarGTwl662mbg8eQsn+GxP6xq2KJ6D+OrVbk=
+github.com/nais/dependencytrack v0.0.0-20240524102848-3959865cb4c4/go.mod h1:2l+k1V0DzdGPJRs8ZnSS69Aa9EB0OBulFOf/vRtaMsU=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 h1:Up6+btDp321ZG5/zdSLo48H9Iaq0UQGthrhWC6pCxzE=
 github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481/go.mod h1:yKZQO8QE2bHlgozqWDiRVqTFlLQSj30K/6SAK8EeYFw=

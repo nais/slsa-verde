@@ -363,6 +363,36 @@ func (_m *Client) GenerateApiKey(ctx context.Context, uuid string) (string, erro
 	return r0, r1
 }
 
+// GetAnalysisTrail provides a mock function with given fields: ctx, projectUuid, componentUuid, vulnerabilityUuid
+func (_m *Client) GetAnalysisTrail(ctx context.Context, projectUuid string, componentUuid string, vulnerabilityUuid string) ([]*client.Analysis, error) {
+	ret := _m.Called(ctx, projectUuid, componentUuid, vulnerabilityUuid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAnalysisTrail")
+	}
+
+	var r0 []*client.Analysis
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) ([]*client.Analysis, error)); ok {
+		return rf(ctx, projectUuid, componentUuid, vulnerabilityUuid)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) []*client.Analysis); ok {
+		r0 = rf(ctx, projectUuid, componentUuid, vulnerabilityUuid)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*client.Analysis)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
+		r1 = rf(ctx, projectUuid, componentUuid, vulnerabilityUuid)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetConfigProperties provides a mock function with given fields: ctx
 func (_m *Client) GetConfigProperties(ctx context.Context) ([]client.ConfigProperty, error) {
 	ret := _m.Called(ctx)
@@ -633,6 +663,36 @@ func (_m *Client) GetProjects(ctx context.Context) ([]*client.Project, error) {
 	return r0, r1
 }
 
+// GetProjectsByPrefixedTag provides a mock function with given fields: ctx, prefix, tag
+func (_m *Client) GetProjectsByPrefixedTag(ctx context.Context, prefix client.TagPrefix, tag string) ([]*client.Project, error) {
+	ret := _m.Called(ctx, prefix, tag)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetProjectsByPrefixedTag")
+	}
+
+	var r0 []*client.Project
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, client.TagPrefix, string) ([]*client.Project, error)); ok {
+		return rf(ctx, prefix, tag)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, client.TagPrefix, string) []*client.Project); ok {
+		r0 = rf(ctx, prefix, tag)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*client.Project)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, client.TagPrefix, string) error); ok {
+		r1 = rf(ctx, prefix, tag)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetProjectsByTag provides a mock function with given fields: ctx, tag
 func (_m *Client) GetProjectsByTag(ctx context.Context, tag string) ([]*client.Project, error) {
 	ret := _m.Called(ctx, tag)
@@ -764,6 +824,24 @@ func (_m *Client) PortfolioRefresh(ctx context.Context) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
 		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// RecordAnalysis provides a mock function with given fields: ctx, analysis
+func (_m *Client) RecordAnalysis(ctx context.Context, analysis *client.AnalysisRequest) error {
+	ret := _m.Called(ctx, analysis)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordAnalysis")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *client.AnalysisRequest) error); ok {
+		r0 = rf(ctx, analysis)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -58,7 +58,7 @@ func TestConfigOnAdd(t *testing.T) {
 			"version:latest",
 			"digest:123",
 			"rekor:1234",
-			"environment:test",
+			"env:test",
 			"team:testns",
 			workload.getTag(cluster),
 		}).Return(&client.Project{
@@ -112,7 +112,7 @@ func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
 			"version:latest",
 			"digest:123",
 			"rekor:1234",
-			"environment:test",
+			"env:test",
 			"team:testns",
 			workload.getTag(cluster),
 		}).Return(&client.Project{
@@ -127,7 +127,7 @@ func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
 			"version:latest2",
 			"digest:123",
 			"rekor:1234",
-			"environment:test",
+			"env:test",
 			"team:testns",
 			workload.getTag(cluster),
 		}).Return(&client.Project{
@@ -225,7 +225,7 @@ func TestConfigOnAddExists(t *testing.T) {
 			"version:latest2",
 			"digest:123",
 			"rekor:1234",
-			"environment:test",
+			"env:test",
 			"team:testns",
 			workload.getTag(cluster),
 		}).Return(&client.Project{
@@ -268,14 +268,14 @@ func TestConfigOnAddExists(t *testing.T) {
 				Name:       "test/nginx",
 				Publisher:  "Team",
 				Tags: []client.Tag{
-					{Name: WorkloadTagPrefix + cluster + "|" + "testns" + "|app|" + "testapp2"},
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp2"},
 					{Name: workload.getTag(cluster)},
 					{Name: "project:test/nginx"},
 					{Name: "image:test/nginx:latest2"},
 					{Name: "version:latest2"},
 					{Name: "digest:123"},
 					{Name: "rekor:1234"},
-					{Name: "environment:test"},
+					{Name: "env:test"},
 					{Name: "team:testns"},
 				},
 				Version: "latest2",
@@ -283,9 +283,9 @@ func TestConfigOnAddExists(t *testing.T) {
 		}, nil)
 
 		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest2", "testns", []string{
-			WorkloadTagPrefix + cluster + "|testns|app|testapp2",
+			client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp2",
 			"team:testns",
-			"environment:test",
+			"env:test",
 			"project:test/nginx",
 			"image:test/nginx:latest2",
 			"version:latest2",
@@ -301,7 +301,7 @@ func TestConfigOnAddExists(t *testing.T) {
 			"version:latest",
 			"digest:123",
 			"rekor:1234",
-			"environment:test",
+			"env:test",
 			"team:testns",
 			workload.getTag(cluster),
 		}).Return(&client.Project{
@@ -354,10 +354,10 @@ func TestConfigOnDeleteRemoveTag(t *testing.T) {
 				Version:    "latest",
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
-					{Name: WorkloadTagPrefix + "dev|testns|app|testapp"},
-					{Name: WorkloadTagPrefix + cluster + "|aura|app|testapp"},
-					{Name: "environment:" + cluster},
-					{Name: "environment:dev"},
+					{Name: client.WorkloadTagPrefix.String() + "dev|testns|app|testapp"},
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|aura|app|testapp"},
+					{Name: "env:" + cluster},
+					{Name: "env:dev"},
 					{Name: "team:testns"},
 					{Name: "team:aura"},
 					{Name: "project:test/nginx"},
@@ -370,9 +370,9 @@ func TestConfigOnDeleteRemoveTag(t *testing.T) {
 		}, nil)
 
 		c.On("UpdateProject", mock.Anything, "1", "test/nginx", "latest", "test", []string{
-			WorkloadTagPrefix + cluster + "|aura|app|testapp",
+			client.WorkloadTagPrefix.String() + cluster + "|aura|app|testapp",
 			"team:aura",
-			"environment:" + cluster,
+			"env:" + cluster,
 			"project:test/nginx",
 			"image:test/nginx:latest",
 			"version:latest",
@@ -406,7 +406,7 @@ func TestConfigOnDeleteDeleteProject(t *testing.T) {
 					{Name: "version:latest"},
 					{Name: "digest:123"},
 					{Name: "rekor:1234"},
-					{Name: "environment:test"},
+					{Name: "env:test"},
 					{Name: "team:testns"},
 				},
 			},
@@ -441,7 +441,7 @@ func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 					{Name: "version:latest"},
 					{Name: "digest:123"},
 					{Name: "rekor:1234"},
-					{Name: "environment:test"},
+					{Name: "env:test"},
 					{Name: "team:testns"},
 				},
 			},
@@ -459,22 +459,22 @@ func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
 					{Name: workload.getTag(cluster)},
-					{Name: WorkloadTagPrefix + cluster + "|testns|app|testapp3"},
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp3"},
 					{Name: "project:test/nginx"},
 					{Name: "image:test/nginx:latest2"},
 					{Name: "version:latest2"},
 					{Name: "digest:123"},
 					{Name: "rekor:1234"},
-					{Name: "environment:test"},
+					{Name: "env:test"},
 					{Name: "team:testns"},
 				},
 			},
 		}, nil)
 
 		c.On("UpdateProject", mock.Anything, "2", "test/nginx", "latest2", "test", []string{
-			WorkloadTagPrefix + cluster + "|testns|app|testapp3",
+			client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp3",
 			"team:testns",
-			"environment:test",
+			"env:test",
 			"project:test/nginx",
 			"image:test/nginx:latest2",
 			"version:latest2",
@@ -501,10 +501,10 @@ func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 				Version:    "latest",
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
-					{Name: WorkloadTagPrefix + "dev|testns|app|testapp"},
-					{Name: WorkloadTagPrefix + cluster + "|aura|app|testapp"},
-					{Name: "environment:" + cluster},
-					{Name: "environment:dev"},
+					{Name: client.WorkloadTagPrefix.String() + "dev|testns|app|testapp"},
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|aura|app|testapp"},
+					{Name: "env:" + cluster},
+					{Name: "env:dev"},
 					{Name: "team:testns"},
 					{Name: "team:aura"},
 					{Name: "project:test/nginx"},
@@ -517,9 +517,9 @@ func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 		}, nil)
 
 		c.On("UpdateProject", mock.Anything, "1", "test/nginx", "latest", "test", []string{
-			WorkloadTagPrefix + cluster + "|aura|app|testapp",
+			client.WorkloadTagPrefix.String() + cluster + "|aura|app|testapp",
 			"team:aura",
-			"environment:" + cluster,
+			"env:" + cluster,
 			"project:test/nginx",
 			"image:test/nginx:latest",
 			"version:latest",
@@ -536,10 +536,10 @@ func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 				Version:    "latest2",
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
-					{Name: WorkloadTagPrefix + "dev|testns|app|testapp"},
-					{Name: WorkloadTagPrefix + cluster + "|aura|app|testapp"},
-					{Name: "environment:" + cluster},
-					{Name: "environment:dev"},
+					{Name: client.WorkloadTagPrefix.String() + "dev|testns|app|testapp"},
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|aura|app|testapp"},
+					{Name: "env:" + cluster},
+					{Name: "env:dev"},
 					{Name: "team:testns"},
 					{Name: "team:aura"},
 					{Name: "project:test/nginx"},
@@ -552,9 +552,9 @@ func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 		}, nil)
 
 		c.On("UpdateProject", mock.Anything, "2", "test/nginx", "latest2", "test", []string{
-			WorkloadTagPrefix + cluster + "|aura|app|testapp",
+			client.WorkloadTagPrefix.String() + cluster + "|aura|app|testapp",
 			"team:aura",
-			"environment:" + cluster,
+			"env:" + cluster,
 			"project:test/nginx",
 			"image:test/nginx:latest2",
 			"version:latest2",
@@ -639,9 +639,9 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 			Name:       "test/nginx",
 			Publisher:  "Team",
 			Tags: []client.Tag{
-				{Name: WorkloadTagPrefix + cluster + "|" + "testns" + "|app|" + "testapp"},
+				{Name: client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp"},
 				{Name: "team:testns"},
-				{Name: "environment:test"},
+				{Name: "env:test"},
 				{Name: "project:test/nginx"},
 				{Name: "image:test/nginx:latest"},
 				{Name: "version:latest"},
@@ -653,11 +653,11 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 		}, nil)
 
 		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest", "testns", []string{
-			WorkloadTagPrefix + cluster + "|" + "testns" + "|app|" + "testapp",
+			client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp",
 			workload.getTag(cluster),
 			"team:testns",
 			"team:testns2",
-			"environment:test",
+			"env:test",
 			"project:test/nginx",
 			"image:test/nginx:latest",
 			"version:latest",
@@ -701,7 +701,7 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 			Publisher:  "Team",
 			Tags: []client.Tag{
 				{Name: workload.getTag(cluster)},
-				{Name: WorkloadTagPrefix + cluster + "|testns|app|app2"},
+				{Name: client.WorkloadTagPrefix.String() + cluster + "|testns|app|app2"},
 			},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",

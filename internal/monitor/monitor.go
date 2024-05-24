@@ -50,7 +50,7 @@ func (c *Config) OnDelete(obj any) {
 
 	workloadTag := workload.getTag(c.Cluster)
 	for _, container := range workload.Containers {
-		project, err := c.retrieveProject(c.ctx, "image:"+container.Image)
+		project, err := c.retrieveProject(c.ctx, client.ImageTagPrefix.With(container.Image))
 		if err != nil {
 			log.Warnf("delete: retrieve project: %v", err)
 			return
@@ -167,7 +167,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				continue
 			}
 
-			project, err = c.retrieveProject(ctx, getProjectTag(projectName))
+			project, err = c.retrieveProject(ctx, client.ProjectTagPrefix.With(projectName))
 			if err != nil {
 				c.logger.Warnf("retrieve project, skipping %v", err)
 				continue

@@ -50,8 +50,8 @@ func TestInitWorkloadTags(t *testing.T) {
 	if !slices.Contains(tags, "rekor:10001") {
 		t.Errorf("initTags() = %v, want 'rekor:10001' in tags", tags)
 	}
-	if !slices.Contains(tags, "environment:my-cluster") {
-		t.Errorf("initTags() = %v, want 'environment:my-cluster' in tags", tags)
+	if !slices.Contains(tags, "env:my-cluster") {
+		t.Errorf("initTags() = %v, want 'env:my-cluster' in tags", tags)
 	}
 	if !slices.Contains(tags, "team:my-namespace") {
 		t.Errorf("initTags() = %v, want 'team:my-namespace' in tags", tags)

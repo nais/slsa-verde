@@ -14,17 +14,6 @@ type Tags struct {
 	OtherTags       []string
 }
 
-const (
-	WorkloadTagPrefix    = "workload:"
-	EnvironmentTagPrefix = "environment:"
-	TeamTagPrefix        = "team:"
-	ProjectTagPrefix     = "project:"
-	ImageTagPrefix       = "image:"
-	VersionTagPrefix     = "version:"
-	RekorTagPrefix       = "rekor:"
-	DigestTagPrefix      = "digest:"
-)
-
 func NewTags() *Tags {
 	return &Tags{}
 }
@@ -37,11 +26,11 @@ func (t *Tags) ArrangeByPrefix(tags []client.Tag) {
 
 	for _, tag := range tags {
 		switch {
-		case strings.Contains(tag.Name, WorkloadTagPrefix):
+		case strings.Contains(tag.Name, client.WorkloadTagPrefix.String()):
 			workloadTags = append(workloadTags, tag.Name)
-		case strings.Contains(tag.Name, TeamTagPrefix):
+		case strings.Contains(tag.Name, client.TeamTagPrefix.String()):
 			teamTags = append(teamTags, tag.Name)
-		case strings.Contains(tag.Name, EnvironmentTagPrefix):
+		case strings.Contains(tag.Name, client.EnvironmentTagPrefix.String()):
 			environmentTags = append(environmentTags, tag.Name)
 		default:
 			other = append(other, tag.Name)
@@ -78,11 +67,11 @@ func (t *Tags) verifyTags() {
 	var clusterTags []string
 	var envTags []string
 	for _, tag := range t.WorkloadTags {
-		teamTag := "team:" + getTeamFromWorkloadTag(tag)
+		teamTag := client.TeamTagPrefix.With(getTeamFromWorkloadTag(tag))
 		if !slices.Contains(clusterTags, teamTag) {
 			clusterTags = append(clusterTags, teamTag)
 		}
-		envTag := "environment:" + getEnvironmentFromWorkloadTag(tag)
+		envTag := client.EnvironmentTagPrefix.With(getEnvironmentFromWorkloadTag(tag))
 		if !slices.Contains(envTags, envTag) {
 			envTags = append(envTags, envTag)
 		}
@@ -103,17 +92,13 @@ func (t *Tags) addWorkloadTag(tag string) bool {
 }
 
 func getEnvironmentFromWorkloadTag(tag string) string {
-	s := strings.Split(strings.Replace(tag, WorkloadTagPrefix, "", 1), "|")
+	s := strings.Split(strings.Replace(tag, client.WorkloadTagPrefix.String(), "", 1), "|")
 	return s[0]
 }
 
 func getTeamFromWorkloadTag(tag string) string {
-	s := strings.Split(strings.Replace(tag, WorkloadTagPrefix, "", 1), "|")
+	s := strings.Split(strings.Replace(tag, client.WorkloadTagPrefix.String(), "", 1), "|")
 	return s[1]
-}
-
-func getProjectTag(tag string) string {
-	return ProjectTagPrefix + tag
 }
 
 func containsAllTags(tags []client.Tag, s ...string) bool {

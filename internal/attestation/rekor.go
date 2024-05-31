@@ -79,7 +79,6 @@ func GetRekorMetadata(rekorBundle *bundle.RekorBundle) (*Rekor, error) {
 }
 
 func logEntryToPubKey(decodedAnon []byte) ([]byte, error) {
-	fmt.Printf("decodedAnon: %s\n", decodedAnon)
 	logEntryPayload := struct {
 		Spec json.RawMessage `json:"spec"`
 		Kind string          `json:"kind"`

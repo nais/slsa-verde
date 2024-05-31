@@ -7,10 +7,9 @@ import (
 	"os"
 	"testing"
 
+	v1 "k8s.io/api/apps/v1"
 	mockattestation "picante/mocks/internal_/attestation"
 	mockmonitor "picante/mocks/internal_/monitor"
-
-	v1 "k8s.io/api/apps/v1"
 
 	"picante/internal/test"
 
@@ -25,6 +24,34 @@ import (
 
 var cluster = "test"
 
+var rekor = &attestation.Rekor{
+	OIDCIssuer:               "my-iss",
+	GitHubWorkflowName:       "http://localhost",
+	GitHubWorkflowRef:        "refs/heads/main",
+	GitHubWorkflowSHA:        "1234567890",
+	BuildTrigger:             "push",
+	RunInvocationURI:         "http://localhost",
+	SourceRepositoryOwnerURI: "http://localhost",
+	BuildConfigURI:           "http://localhost",
+	IntegratedTime:           "1629780000",
+	LogIndex:                 "1234",
+}
+
+func toRekorTags(rekor *attestation.Rekor) []string {
+	var tags []string
+	tags = append(tags, client.RekorTagPrefix.With(rekor.LogIndex))
+	tags = append(tags, client.RekorBuildTriggerTagPrefix.With(rekor.BuildTrigger))
+	tags = append(tags, client.RekorOIDCIssuerTagPrefix.With(rekor.OIDCIssuer))
+	tags = append(tags, client.RekorGitHubWorkflowNameTagPrefix.With(rekor.GitHubWorkflowName))
+	tags = append(tags, client.RekorGitHubWorkflowRefTagPrefix.With(rekor.GitHubWorkflowRef))
+	tags = append(tags, client.RekorGitHubWorkflowSHATagPrefix.With(rekor.GitHubWorkflowSHA))
+	tags = append(tags, client.RekorSourceRepositoryOwnerURITagPrefix.With(rekor.SourceRepositoryOwnerURI))
+	tags = append(tags, client.RekorBuildConfigURITagPrefix.With(rekor.BuildConfigURI))
+	tags = append(tags, client.RekorRunInvocationURITagPrefix.With(rekor.RunInvocationURI))
+	tags = append(tags, client.RekorIntegratedTimeTagPrefix.With(rekor.IntegratedTime))
+	return tags
+}
+
 func TestConfigOnAdd(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
@@ -38,33 +65,24 @@ func TestConfigOnAdd(t *testing.T) {
 	err = json.Unmarshal(file, &statement)
 	assert.NoError(t, err)
 
+	att := &attestation.ImageMetadata{
+		BundleVerified: false,
+		Image:          "test/nginx:latest",
+		Statement:      &statement,
+		ContainerName:  "test/nginx",
+		Digest:         "123",
+		RekorMetadata:  rekor,
+	}
+
+	tags := workload.initWorkloadTags(att, cluster, "test/nginx", "latest")
+
 	t.Run("should attest image and create project", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
-
-		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0]).Return(&attestation.ImageMetadata{
-			BundleVerified: false,
-			Image:          "test/nginx:latest",
-			Statement:      &statement,
-			ContainerName:  "test/nginx",
-			Digest:         "123",
-			RekorLogIndex:  "1234",
-		}, nil)
-
+		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0]).Return(att, nil)
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{}, nil)
-
-		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", []string{
-			"project:test/nginx",
-			"image:test/nginx:latest",
-			"version:latest",
-			"digest:123",
-			"rekor:1234",
-			"env:test",
-			"team:testns",
-			workload.getTag(cluster),
-		}).Return(&client.Project{
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(&client.Project{
 			Uuid: "uuid1",
 		}, nil)
-
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
 
 		m.OnAdd(deployment)
@@ -95,53 +113,34 @@ func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
 	err = json.Unmarshal(file, &statement)
 	assert.NoError(t, err)
 
+	att := &attestation.ImageMetadata{
+		BundleVerified: false,
+		Image:          "test/nginx:latest",
+		Statement:      &statement,
+		ContainerName:  "test/nginx",
+		Digest:         "123",
+		RekorMetadata:  rekor,
+	}
+	tags := workload.initWorkloadTags(att, cluster, "test/nginx", "latest")
 	t.Run("should attest images 2 containers and create 2 projects", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
-		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0]).Return(&attestation.ImageMetadata{
-			BundleVerified: false,
-			Image:          "test/nginx:latest",
-			Statement:      &statement,
-			ContainerName:  "test/nginx",
-			Digest:         "123",
-			RekorLogIndex:  "1234",
-		}, nil)
+		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0]).Return(att, nil)
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{}, nil)
-		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", []string{
-			"project:test/nginx",
-			"image:test/nginx:latest",
-			"version:latest",
-			"digest:123",
-			"rekor:1234",
-			"env:test",
-			"team:testns",
-			workload.getTag(cluster),
-		}).Return(&client.Project{
-			Uuid: "uuid1",
-		}, nil)
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(&client.Project{Uuid: "uuid1"}, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
-
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
-		c.On("CreateProject", mock.Anything, "test/nginx", "latest2", "test", []string{
-			"project:test/nginx",
-			"image:test/nginx:latest2",
-			"version:latest2",
-			"digest:123",
-			"rekor:1234",
-			"env:test",
-			"team:testns",
-			workload.getTag(cluster),
-		}).Return(&client.Project{
-			Uuid: "uuid2",
-		}, nil)
 
-		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[1]).Return(&attestation.ImageMetadata{
+		att = &attestation.ImageMetadata{
 			BundleVerified: false,
 			Image:          "test/nginx:latest2",
 			Statement:      &statement,
 			ContainerName:  "test/nginx",
 			Digest:         "123",
-			RekorLogIndex:  "1234",
-		}, nil)
+			RekorMetadata:  rekor,
+		}
+		tags = workload.initWorkloadTags(att, cluster, "test/nginx", "latest2")
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest2", "test", tags).Return(&client.Project{Uuid: "uuid2"}, nil)
+		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[1]).Return(att, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest2", "uuid2", false, mock.Anything).Return(nil, nil)
 
 		m.OnAdd(deployment)
@@ -194,17 +193,16 @@ func TestConfigOnAddExists(t *testing.T) {
 		err = json.Unmarshal(file, &statement)
 		assert.NoError(t, err)
 
-		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
-
-		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
+		att := &attestation.ImageMetadata{
 			BundleVerified: false,
 			Image:          "test/nginx:latest2",
 			Statement:      &statement,
 			ContainerName:  "pod1",
 			Digest:         "123",
-			RekorLogIndex:  "1234",
-		}, nil)
-
+			RekorMetadata:  rekor,
+		}
+		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
+		v.On("Verify", mock.Anything, mock.Anything).Return(att, nil)
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
@@ -216,22 +214,10 @@ func TestConfigOnAddExists(t *testing.T) {
 				Version:    "latest",
 			},
 		}, nil)
-
 		c.On("DeleteProject", mock.Anything, "uuid1").Return(nil)
 
-		c.On("CreateProject", mock.Anything, "test/nginx", "latest2", "test", []string{
-			"project:test/nginx",
-			"image:test/nginx:latest2",
-			"version:latest2",
-			"digest:123",
-			"rekor:1234",
-			"env:test",
-			"team:testns",
-			workload.getTag(cluster),
-		}).Return(&client.Project{
-			Uuid: "uuid2",
-		}, nil)
-
+		tags := workload.initWorkloadTags(att, cluster, "test/nginx", "latest2")
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest2", "test", tags).Return(&client.Project{Uuid: "uuid2"}, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest2", "uuid2", false, mock.Anything).Return(nil, nil)
 
 		m.OnAdd(deployment)
@@ -249,17 +235,17 @@ func TestConfigOnAddExists(t *testing.T) {
 		err = json.Unmarshal(file, &statement)
 		assert.NoError(t, err)
 
-		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
-
-		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
+		att := &attestation.ImageMetadata{
 			BundleVerified: false,
 			Image:          "test/nginx:latest",
 			Statement:      &statement,
 			ContainerName:  "pod1",
 			Digest:         "123",
-			RekorLogIndex:  "1234",
-		}, nil)
+			RekorMetadata:  rekor,
+		}
 
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
+		v.On("Verify", mock.Anything, mock.Anything).Return(att, nil)
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
@@ -277,12 +263,21 @@ func TestConfigOnAddExists(t *testing.T) {
 					{Name: "rekor:1234"},
 					{Name: "env:test"},
 					{Name: "team:testns"},
+					{Name: "build-trigger:push"},
+					{Name: "oidc-issuer:my-iss"},
+					{Name: "workflow-name:http://localhost"},
+					{Name: "workflow-ref:refs/heads/main"},
+					{Name: "workflow-sha:1234567890"},
+					{Name: "source-repo-owner-uri:http://localhost"},
+					{Name: "build-config-uri:http://localhost"},
+					{Name: "run-invocation-uri:http://localhost"},
+					{Name: "integrated-time:1629780000"},
 				},
 				Version: "latest2",
 			},
 		}, nil)
 
-		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest2", "testns", []string{
+		updateRetTags := []string{
 			client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp2",
 			"team:testns",
 			"env:test",
@@ -290,21 +285,23 @@ func TestConfigOnAddExists(t *testing.T) {
 			"image:test/nginx:latest2",
 			"version:latest2",
 			"digest:123",
-			"rekor:1234",
-		}).Return(&client.Project{
+		}
+		updateRetTags = append(updateRetTags, toRekorTags(rekor)...)
+		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest2", "testns", updateRetTags).Return(&client.Project{
 			Uuid: "uuid1",
 		}, nil)
 
-		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", []string{
+		CreateRetTags := []string{
 			"project:test/nginx",
 			"image:test/nginx:latest",
 			"version:latest",
 			"digest:123",
-			"rekor:1234",
 			"env:test",
 			"team:testns",
 			workload.getTag(cluster),
-		}).Return(&client.Project{
+		}
+		CreateRetTags = append(CreateRetTags, toRekorTags(rekor)...)
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", CreateRetTags).Return(&client.Project{
 			Uuid: "uuid2",
 		}, nil)
 

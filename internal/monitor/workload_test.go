@@ -30,8 +30,20 @@ func TestNewWorkload(t *testing.T) {
 
 func TestInitWorkloadTags(t *testing.T) {
 	d := test.CreateDeployment("my-namespace", "my-app", nil, nil, "")
+	workloadRekor := &attestation.Rekor{
+		OIDCIssuer:               "my-iss",
+		GitHubWorkflowName:       "my-workflow",
+		GitHubWorkflowRef:        "refs/heads/main",
+		BuildTrigger:             "push",
+		RunInvocationURI:         "http://localhost",
+		SourceRepositoryOwnerURI: "http://localhost",
+		BuildConfigURI:           "http://localhost",
+		IntegratedTime:           "1629780000",
+		LogIndex:                 "10001",
+		GitHubWorkflowSHA:        "1234567890",
+	}
 	meta := &attestation.ImageMetadata{
-		RekorLogIndex: "10001",
+		RekorMetadata: workloadRekor,
 		Image:         "my-app:1.0.0",
 		Digest:        "sha256:1234567890",
 	}
@@ -58,6 +70,33 @@ func TestInitWorkloadTags(t *testing.T) {
 	}
 	if !slices.Contains(tags, "workload:my-cluster|my-namespace|app|my-app") {
 		t.Errorf("initTags() = %v, want 'workload:my-cluster|my-namespace|app|my-app' in tags", tags)
+	}
+	if !slices.Contains(tags, "build-trigger:push") {
+		t.Errorf("initTags() = %v, want 'build-trigger:push' in tags", tags)
+	}
+	if !slices.Contains(tags, "workflow-name:my-workflow") {
+		t.Errorf("initTags() = %v, want 'workflow-name:my-workflow' in tags", tags)
+	}
+	if !slices.Contains(tags, "workflow-ref:refs/heads/main") {
+		t.Errorf("initTags() = %v, want 'workflow-ref:refs/heads/main' in tags", tags)
+	}
+	if !slices.Contains(tags, "source-repo-owner-uri:http://localhost") {
+		t.Errorf("initTags() = %v, want 'source-repo-owner-uri:http://localhost' in tags", tags)
+	}
+	if !slices.Contains(tags, "build-config-uri:http://localhost") {
+		t.Errorf("initTags() = %v, want 'build-config-uri:http://localhost' in tags", tags)
+	}
+	if !slices.Contains(tags, "oidc-issuer:my-iss") {
+		t.Errorf("initTags() = %v, want 'oidc-issuer:my-iss' in tags", tags)
+	}
+	if !slices.Contains(tags, "run-invocation-uri:http://localhost") {
+		t.Errorf("initTags() = %v, want 'run-invocation-uri:http://localhost' in tags", tags)
+	}
+	if !slices.Contains(tags, "integrated-time:1629780000") {
+		t.Errorf("initTags() = %v, want 'integrated-time:1629780000' in tags", tags)
+	}
+	if !slices.Contains(tags, "workflow-sha:1234567890") {
+		t.Errorf("initTags() = %v, want 'workflow-sha:1234567890' in tags", tags)
 	}
 }
 

@@ -7,7 +7,7 @@ require (
 	github.com/google/go-containerregistry v0.19.1
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/joho/godotenv v1.5.1
-	github.com/nais/dependencytrack v0.0.0-20240524102848-3959865cb4c4
+	github.com/nais/dependencytrack v0.0.0-20240531090306-2fe8375b3235
 	github.com/secure-systems-lab/go-securesystemslib v0.8.0
 	github.com/sigstore/cosign/v2 v2.2.4
 	github.com/sirupsen/logrus v1.9.3
@@ -15,7 +15,7 @@ require (
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
 	github.com/vektra/mockery/v2 v2.42.3
-	golang.org/x/vuln v1.1.0
+	golang.org/x/vuln v1.1.1
 	honnef.co/go/tools v0.4.7
 	k8s.io/api v0.30.1
 	k8s.io/apimachinery v0.30.1
@@ -246,7 +246,7 @@ require (
 	golang.org/x/term v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.21.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240514024235-59d9797072e7 // indirect
 	google.golang.org/api v0.181.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240521202816-d264139d666e // indirect
 	google.golang.org/grpc v1.64.0 // indirect

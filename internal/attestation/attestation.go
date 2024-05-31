@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/google"
@@ -34,7 +33,7 @@ type ImageMetadata struct {
 	ContainerName  string                      `json:"containerName"`
 	Statement      *in_toto.CycloneDXStatement `json:"statement"`
 	Digest         string                      `json:"digest"`
-	RekorLogIndex  string                      `json:"rekorLogIndex"`
+	RekorMetadata  *Rekor                      `json:"rekorMetadata"`
 }
 
 type Verifier interface {
@@ -191,24 +190,28 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container v1.Conta
 		"ref":            container.Image,
 	}).Info("attestation verified and parsed statement")
 
-	rekorIndex := "0"
+	imageMetadata := &ImageMetadata{
+		Statement:      statement,
+		Image:          ref.String(),
+		BundleVerified: bVerified,
+		ContainerName:  container.Name,
+		Digest:         digest.String(),
+	}
+
 	rekorBundle, err := att.Bundle()
 	if err != nil {
 		log.Errorf("get bundle: %v", err)
 	}
 
 	if rekorBundle != nil {
-		rekorIndex = strconv.FormatInt(rekorBundle.Payload.LogIndex, 10)
+		rekorMetadata, err := GetRekorMetadata(rekorBundle)
+		if err != nil {
+			log.Errorf("get rekor metadata: %v", err)
+		}
+		imageMetadata.RekorMetadata = rekorMetadata
 	}
 
-	return &ImageMetadata{
-		Statement:      statement,
-		Image:          ref.String(),
-		BundleVerified: bVerified,
-		ContainerName:  container.Name,
-		Digest:         digest.String(),
-		RekorLogIndex:  rekorIndex,
-	}, nil
+	return imageMetadata, nil
 }
 
 func parseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {

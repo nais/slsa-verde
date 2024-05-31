@@ -364,23 +364,23 @@ func (_m *Client) GenerateApiKey(ctx context.Context, uuid string) (string, erro
 }
 
 // GetAnalysisTrail provides a mock function with given fields: ctx, projectUuid, componentUuid, vulnerabilityUuid
-func (_m *Client) GetAnalysisTrail(ctx context.Context, projectUuid string, componentUuid string, vulnerabilityUuid string) ([]*client.Analysis, error) {
+func (_m *Client) GetAnalysisTrail(ctx context.Context, projectUuid string, componentUuid string, vulnerabilityUuid string) (*client.Analysis, error) {
 	ret := _m.Called(ctx, projectUuid, componentUuid, vulnerabilityUuid)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAnalysisTrail")
 	}
 
-	var r0 []*client.Analysis
+	var r0 *client.Analysis
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) ([]*client.Analysis, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) (*client.Analysis, error)); ok {
 		return rf(ctx, projectUuid, componentUuid, vulnerabilityUuid)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) []*client.Analysis); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) *client.Analysis); ok {
 		r0 = rf(ctx, projectUuid, componentUuid, vulnerabilityUuid)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*client.Analysis)
+			r0 = ret.Get(0).(*client.Analysis)
 		}
 	}
 
@@ -483,9 +483,9 @@ func (_m *Client) GetEcosystems(ctx context.Context) ([]string, error) {
 	return r0, r1
 }
 
-// GetFindings provides a mock function with given fields: ctx, projectUuid
-func (_m *Client) GetFindings(ctx context.Context, projectUuid string) ([]*client.Finding, error) {
-	ret := _m.Called(ctx, projectUuid)
+// GetFindings provides a mock function with given fields: ctx, projectUuid, suppressed
+func (_m *Client) GetFindings(ctx context.Context, projectUuid string, suppressed bool) ([]*client.Finding, error) {
+	ret := _m.Called(ctx, projectUuid, suppressed)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetFindings")
@@ -493,19 +493,19 @@ func (_m *Client) GetFindings(ctx context.Context, projectUuid string) ([]*clien
 
 	var r0 []*client.Finding
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) ([]*client.Finding, error)); ok {
-		return rf(ctx, projectUuid)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) ([]*client.Finding, error)); ok {
+		return rf(ctx, projectUuid, suppressed)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) []*client.Finding); ok {
-		r0 = rf(ctx, projectUuid)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) []*client.Finding); ok {
+		r0 = rf(ctx, projectUuid, suppressed)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*client.Finding)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, projectUuid)
+	if rf, ok := ret.Get(1).(func(context.Context, string, bool) error); ok {
+		r1 = rf(ctx, projectUuid, suppressed)
 	} else {
 		r1 = ret.Error(1)
 	}

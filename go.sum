@@ -542,6 +542,12 @@ github.com/nais/dependencytrack v0.0.0-20240524102302-26521e9daf3a h1:y2AoSDMybw
 github.com/nais/dependencytrack v0.0.0-20240524102302-26521e9daf3a/go.mod h1:2l+k1V0DzdGPJRs8ZnSS69Aa9EB0OBulFOf/vRtaMsU=
 github.com/nais/dependencytrack v0.0.0-20240524102848-3959865cb4c4 h1:04uJULVcarGTwl662mbg8eQsn+GxP6xq2KJ6D+OrVbk=
 github.com/nais/dependencytrack v0.0.0-20240524102848-3959865cb4c4/go.mod h1:2l+k1V0DzdGPJRs8ZnSS69Aa9EB0OBulFOf/vRtaMsU=
+github.com/nais/dependencytrack v0.0.0-20240530081040-e956077866ea h1:S87du7WdE2ZwH/uA+DpVI5ZudPLP0OU9wZrP7zEGtvA=
+github.com/nais/dependencytrack v0.0.0-20240530081040-e956077866ea/go.mod h1:a5YSLDbU+Qnb6160hYoeV/hM5BK1NyoBv6SWNWLXFqw=
+github.com/nais/dependencytrack v0.0.0-20240530192107-0f51d05d0bf5 h1:Kdx784AxTdyicKfad8HN8V/qPzWbRefdsaVSUkX/u8M=
+github.com/nais/dependencytrack v0.0.0-20240530192107-0f51d05d0bf5/go.mod h1:a5YSLDbU+Qnb6160hYoeV/hM5BK1NyoBv6SWNWLXFqw=
+github.com/nais/dependencytrack v0.0.0-20240531090306-2fe8375b3235 h1:tU3Zw+CViUfGBS8ex43bZOXmrNZRidLm6V+OYF8HHls=
+github.com/nais/dependencytrack v0.0.0-20240531090306-2fe8375b3235/go.mod h1:a5YSLDbU+Qnb6160hYoeV/hM5BK1NyoBv6SWNWLXFqw=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 h1:Up6+btDp321ZG5/zdSLo48H9Iaq0UQGthrhWC6pCxzE=
 github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481/go.mod h1:yKZQO8QE2bHlgozqWDiRVqTFlLQSj30K/6SAK8EeYFw=
@@ -905,8 +911,12 @@ golang.org/x/tools v0.1.12/go.mod h1:hNGJHUnrk76NpqgfD5Aqm5Crs+Hm0VOH/i9J2+nxYbc
 golang.org/x/tools v0.6.0/go.mod h1:Xwgl3UAJ/d3gWutnCtw505GrjyAbvKui8lOU390QaIU=
 golang.org/x/tools v0.21.0 h1:qc0xYgIbsSDt9EyWz05J5wfa7LOVW0YTLOXrqdLAWIw=
 golang.org/x/tools v0.21.0/go.mod h1:aiJjzUbINMkxbQROHiO6hDPo2LHcIPhhQsa9DLh0yGk=
+golang.org/x/tools v0.21.1-0.20240514024235-59d9797072e7 h1:DnP3aRQn/r68glNGB8/7+3iE77jA+YZZCxpfIXx2MdA=
+golang.org/x/tools v0.21.1-0.20240514024235-59d9797072e7/go.mod h1:aiJjzUbINMkxbQROHiO6hDPo2LHcIPhhQsa9DLh0yGk=
 golang.org/x/vuln v1.1.0 h1:ECEdI+aEtjpF90eqEcDL5Q11DWSZAw5PJQWlp0+gWqc=
 golang.org/x/vuln v1.1.0/go.mod h1:HT/Ar8fE34tbxWG2s7PYjVl+iIE4Er36/940Z+K540Y=
+golang.org/x/vuln v1.1.1 h1:4nYQg4OSr7uYQMtjuuYqLAEVuTjY4k/CPMYqvv5OPcI=
+golang.org/x/vuln v1.1.1/go.mod h1:hNgE+SKMSp2wHVUpW0Ow2ejgKpNJePdML+4YjxrVxik=
 golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=

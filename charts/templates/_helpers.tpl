@@ -6,7 +6,7 @@ Expand the name of the chart.
 {{- end }}
 
 {{- define "dependencytrack.name" -}}
-{{- default "dependencytrack" }}
+{{- default "dependencytrack" }}-test {{/* remove me "-test"*/}}
 {{- end }}
 
 {{/*

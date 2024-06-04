@@ -4,7 +4,7 @@ package mocks
 
 import (
 	context "context"
-	attestation "picante/internal/attestation"
+	attestation "slsa-verde/internal/attestation"
 
 	mock "github.com/stretchr/testify/mock"
 

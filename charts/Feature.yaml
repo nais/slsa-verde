@@ -35,7 +35,7 @@ values:
   config.dependencytrack.password:
     displayName: dependencytrack API password
     computed:
-      template: '"{{.Management.picante_dependencytrack_password}}"'
+      template: '"{{.Management.picante_dependencytrack_password}}"' # TODO change to slsa_verde
   config.dependencytrack.api:
     displayName: dependencytrack API endpoint
     computed:
@@ -54,7 +54,7 @@ values:
   google.serviceAccountEmail:
     displayName: Google service account email
     computed:
-      template: '"{{.Env.picante_service_account}}"'
+      template: '"{{.Env.picante_service_account}}"' # TODO change to slsa_verde
     config:
       type: string
   image.tag:

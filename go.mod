@@ -1,4 +1,4 @@
-module picante
+module slsa-verde
 
 go 1.22.3
 

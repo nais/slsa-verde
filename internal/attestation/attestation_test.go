@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
-	"picante/internal/github"
+	"slsa-verde/internal/github"
 )
 
 func TestBuildCertificateIdentities(t *testing.T) {

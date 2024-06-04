@@ -12,7 +12,7 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/oci/remote"
 	v1 "k8s.io/api/core/v1"
 
-	"picante/internal/github"
+	"slsa-verde/internal/github"
 
 	gh "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"

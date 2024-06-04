@@ -1,7 +1,7 @@
 apiVersion: v2
-name: picante
+name: slsa-verde
 sources:
-  - https://github.com/nais/picante/tree/main/charts
+  - https://github.com/nais/slsa-verde/tree/main/charts
 description: Informer to update salsa storage (dependency-track) with attestation metadata (sbom)
 type: application
 version: 0.2.5

@@ -7,7 +7,7 @@ on:
       - '*.md'
       - 'LICENSE.md'
 env:
-  NAME: picante
+  NAME: slsa-verde
   FEATURE_REPOSITORY: oci://europe-north1-docker.pkg.dev/nais-io/nais/feature
 
 jobs:

@@ -1,11 +1,11 @@
 .idea
 .*.env
-picante.*
+slsa-verde.*
 swagger.json
 secret.json
 cover.out
 etc
-/bin/picante
+/bin/slsa-verde
 /.env
 .vscode
 test.yaml

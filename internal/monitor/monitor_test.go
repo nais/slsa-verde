@@ -8,14 +8,14 @@ import (
 	"testing"
 
 	v1 "k8s.io/api/apps/v1"
-	mockattestation "picante/mocks/internal_/attestation"
-	mockmonitor "picante/mocks/internal_/monitor"
+	mockattestation "slsa-verde/mocks/internal_/attestation"
+	mockmonitor "slsa-verde/mocks/internal_/monitor"
 
-	"picante/internal/test"
+	"slsa-verde/internal/test"
 
 	"github.com/nais/dependencytrack/pkg/client"
 
-	"picante/internal/attestation"
+	"slsa-verde/internal/attestation"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/stretchr/testify/assert"

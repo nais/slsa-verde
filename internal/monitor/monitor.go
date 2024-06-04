@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"picante/internal/attestation"
+	"slsa-verde/internal/attestation"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/nais/dependencytrack/pkg/client"

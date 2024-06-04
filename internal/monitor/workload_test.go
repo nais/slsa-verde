@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"picante/internal/attestation"
-	"picante/internal/test"
+	"slsa-verde/internal/attestation"
+	"slsa-verde/internal/test"
 )
 
 func TestNewWorkload(t *testing.T) {

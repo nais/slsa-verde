@@ -13,8 +13,8 @@ import (
 	flag "github.com/spf13/pflag"
 
 	_ "net/http/pprof"
-	"picante/internal/attestation"
-	"picante/internal/monitor"
+	"slsa-verde/internal/attestation"
+	"slsa-verde/internal/monitor"
 
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
@@ -92,7 +92,7 @@ func main() {
 		"component": "main",
 	})
 
-	mainLogger.Info("starting picante")
+	mainLogger.Info("starting slsa-verde")
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 

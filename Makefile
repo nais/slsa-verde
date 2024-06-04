@@ -1,6 +1,6 @@
 .PHONY: piacante
-picante:
-	go build -o bin/picante cmd/picante/*.go
+slsa-verde:
+	go build -o bin/slsa-verde cmd/slsa-verde/*.go
 
 test: check fmt vet
 	go test ./... -coverprofile cover.out -short
@@ -22,7 +22,7 @@ dtrack-down:
 	docker compose -f hack/docker-compse-dtrack.yaml down
 
 local:
-	export KUBECONFIG="${HOME}/.kube/config" && go build -o bin/picante cmd/picante/*.go && go run cmd/picante/main.go
+	export KUBECONFIG="${HOME}/.kube/config" && go build -o bin/slsa-verde cmd/slsa-verde/*.go && go run cmd/slsa-verde/main.go
 
 generate-mocks:
 	go run github.com/vektra/mockery/v2 --keeptree --case snake --srcpkg ./internal/monitor --name Client

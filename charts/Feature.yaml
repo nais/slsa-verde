@@ -39,6 +39,7 @@ values:
   config.dependencytrack.api:
     displayName: dependencytrack API endpoint
     computed:
+      # TODO revert to dependencytrack-backend
       template: |
         {{ if eq .Kind "management" }}
           "http://dependencytrack-test-backend:8080"
@@ -54,7 +55,7 @@ values:
   google.serviceAccountEmail:
     displayName: Google service account email
     computed:
-      template: '"{{.Env.picante_service_account}}"' # TODO change to slsa_verde
+      template: '"{{.Env.slsa_verde_service_account}}"'
     config:
       type: string
   image.tag:

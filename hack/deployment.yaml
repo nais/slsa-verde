@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: picanteapp1
+  name: slsa-verdeapp1
   labels:
-    app.kubernetes.io/name: picanteapp1
+    app.kubernetes.io/name: slsa-verdeapp1
     team: nais-system
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: picanteapp1
+      app.kubernetes.io/name: slsa-verdeapp1
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: picanteapp1
+        app.kubernetes.io/name: slsa-verdeapp1
         team: nais-system
         nais.io/salsa-verify-attestation: "true"
         #nais.io/salsa-key-ref: "true" # default false (true|false)
@@ -27,8 +27,8 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
       containers:
-        - name: picanteapp1
-          image: "europe-north1-docker.pkg.dev/nais-io/nais/images/picante:20230329-115432-16edba4"
+        - name: slsa-verdeapp1
+          image: "europe-north1-docker.pkg.dev/nais-io/nais/images/slsa-verde:20230329-115432-16edba4"
           imagePullPolicy: "IfNotPresent"
           ports:
             - name: http

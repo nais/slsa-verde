@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -12,6 +11,10 @@ import (
 
 	"github.com/joho/godotenv"
 	flag "github.com/spf13/pflag"
+
+	_ "net/http/pprof"
+	"slsa-verde/internal/attestation"
+	"slsa-verde/internal/monitor"
 
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
@@ -25,9 +28,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	_ "net/http/pprof"
-	"picante/internal/attestation"
-	"picante/internal/monitor"
 )
 
 type Cosign struct {
@@ -92,7 +92,7 @@ func main() {
 		"component": "main",
 	})
 
-	mainLogger.Info("starting picante")
+	mainLogger.Info("starting slsa-verde")
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 
@@ -108,7 +108,9 @@ func main() {
 		func(options *v1.ListOptions) {
 			options.FieldSelector = "metadata.namespace!=kube-system," +
 				"metadata.namespace!=kube-public," +
-				"metadata.namespace!=cnrm-system"
+				"metadata.namespace!=cnrm-system," +
+				"metadata.namespace!=kyverno," +
+				"metadata.namespace!=linkerd"
 		})
 
 	verifyCmd := &verify.VerifyAttestationCommand{
@@ -137,19 +139,13 @@ func main() {
 		ctx,
 		mainLogger,
 		monitor.NewMonitor(ctx, s, opts, cfg.Cluster),
-		factory.Apps().V1().ReplicaSets().Informer(),
-		// TODO Exclude jobs as they are not needed for now
-		// factory.Batch().V1().Jobs().Informer(),
-		factory.Apps().V1().StatefulSets().Informer(),
-		factory.Apps().V1().DaemonSets().Informer(),
+		factory.Apps().V1().Deployments().Informer(),
+		factory.Batch().V1().Jobs().Informer(),
+		// factory.Apps().V1().StatefulSets().Informer(),
+		// factory.Apps().V1().DaemonSets().Informer(),
 	); err != nil {
 		mainLogger.WithError(err).Fatal("failed to setup informers")
 	}
-
-	// Server for pprof
-	go func() {
-		fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
 
 	defer runtime.HandleCrash()
 

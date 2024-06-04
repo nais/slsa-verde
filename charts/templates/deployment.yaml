@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "picante.fullname" . }}
+  name: {{ include "slsa-verde.fullname" . }}
   labels:
-    {{- include "picante.labels" . | nindent 4 }}
+    {{- include "slsa-verde.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "picante.selectorLabels" . | nindent 6 }}
+      {{- include "slsa-verde.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "picante.selectorLabels" . | nindent 8 }}
+        {{- include "slsa-verde.selectorLabels" . | nindent 8 }}
       annotations:
         kubectl.kubernetes.io/default-container: {{ .Chart.Name }}
     spec:
-      serviceAccountName: {{ include "picante.name" . }}
+      serviceAccountName: {{ include "slsa-verde.name" . }}
       securityContext:
         seccompProfile:
           type: RuntimeDefault
@@ -57,17 +57,17 @@ spec:
             - name: DEPENDENCYTRACK_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "picante.fullname" . }}
+                  name: {{ include "slsa-verde.fullname" . }}
                   key: dependencytrack_username
             - name: DEPENDENCYTRACK_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "picante.fullname" . }}
+                  name: {{ include "slsa-verde.fullname" . }}
                   key: dependencytrack_password
             - name: COSIGN_KEY_REF
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "picante.fullname" . }}
+                  name: {{ include "slsa-verde.fullname" . }}
                   key: cosign_key_ref
 
           securityContext:
@@ -86,8 +86,8 @@ spec:
           volumeMounts:
             - mountPath: /etc/cosign
               name: config-volume
-            - mountPath: "/etc/picante"
-              name: picante-config
+            - mountPath: "/etc/slsa-verde"
+              name: slsa-verde-config
             - mountPath: /.sigstore
               name: writable-tmp
             - mountPath: /etc/docker-credentials
@@ -99,10 +99,10 @@ spec:
           emptyDir: { }
         - name: config-volume
           configMap:
-            name: {{ include "picante.fullname" . }}
-        - name: picante-config
+            name: {{ include "slsa-verde.fullname" . }}
+        - name: slsa-verde-config
           secret:
-            secretName: {{ include "picante.fullname" . }}
+            secretName: {{ include "slsa-verde.fullname" . }}
             optional: true
         - name: docker-credentials
           secret:
@@ -111,4 +111,4 @@ spec:
               - key: .dockerconfigjson
                 path: config.json
             optional: true
-            secretName: picante-docker-credentials
+            secretName: slsa-verde-docker-credentials

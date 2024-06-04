@@ -5,7 +5,7 @@ Expand the name of the chart.
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{/* remove me "-test"*/}}
+{{/* TODO remove me "-test"*/}}
 {{- define "dependencytrack.name" -}}
 {{- default "dependencytrack-test" }}
 {{- end }}

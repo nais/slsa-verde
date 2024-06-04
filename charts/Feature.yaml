@@ -56,6 +56,8 @@ values:
     displayName: Google service account email
     computed:
       template: '"{{.Env.slsa_verde_service_account}}"'
+    ignoreKind:
+      - onprem
     config:
       type: string
   image.tag:

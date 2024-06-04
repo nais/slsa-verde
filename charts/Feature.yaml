@@ -41,9 +41,9 @@ values:
     computed:
       template: |
         {{ if eq .Kind "management" }}
-          "http://dependencytrack-backend:8080"
+          "http://dependencytrack-test-backend:8080"
         {{ else }}
-          "https://dependencytrack-backend.{{.Tenant.Name}}.cloud.nais.io"
+          "https://dependencytrack-test-backend.{{.Tenant.Name}}.cloud.nais.io"
         {{ end }}
   dockerconfigjson:
     displayName: Docker config json

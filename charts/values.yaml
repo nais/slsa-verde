@@ -31,7 +31,7 @@ config:
     keyRef:
   dependencytrack:
     api: http://dependencytrack-backend-test:8080
-    username: slsa-verde
+    username: picante # TODO revert to "slsa-verde"
     password:
     team: Administrators
   github:

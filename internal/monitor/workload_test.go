@@ -18,7 +18,7 @@ func TestNewWorkload(t *testing.T) {
 		t.Errorf("NewWorkload() = %v, want 'my-app'", workload.Name)
 	}
 
-	j := test.CreateJob("my-job-20002", nil)
+	j := test.CreateJob("my-namespace", "my-job-20002", nil)
 	workload = NewWorkload(j)
 	if workload.Type != "job" {
 		t.Errorf("NewWorkload() = %v, want 'job'", workload.Type)
@@ -101,13 +101,13 @@ func TestInitWorkloadTags(t *testing.T) {
 }
 
 func TestJobName(t *testing.T) {
-	j := test.CreateJob("my-job", map[string]string{"app": "my-job"})
+	j := test.CreateJob("my-namespace", "my-job", map[string]string{"app": "my-job"})
 	name := jobName(j)
 	if name != "my-job" {
 		t.Errorf("jobName() = %v, want 'my-job'", name)
 	}
 
-	j = test.CreateJob("my-job-20123", nil)
+	j = test.CreateJob("my-namespace", "my-job-20123", nil)
 	name = jobName(j)
 	if name != "my-job" {
 		t.Errorf("jobName() = %v, want 'my-job'", name)

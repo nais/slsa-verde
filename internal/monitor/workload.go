@@ -86,6 +86,10 @@ func (w *Workload) initWorkloadTags(metadata *attestation.ImageMetadata, cluster
 	return tags
 }
 
+func (w *Workload) isJob() bool {
+	return w.Type == "job"
+}
+
 func jobName(job *batch.Job) string {
 	workloadName := job.Labels["app"]
 	if workloadName != "" {

@@ -63,6 +63,11 @@ func (c *Config) OnDelete(obj any) {
 
 		tags := NewTags()
 		tags.ArrangeByPrefix(project.Tags)
+		log.WithFields(logrus.Fields{
+			"project":  project.Name,
+			"uuid":     project.Uuid,
+			"workload": workloadTag,
+		})
 
 		if isThisWorkload(tags, workloadTag) {
 			if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
@@ -173,15 +178,28 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				continue
 			}
 
+			c.logger.WithFields(logrus.Fields{
+				"project-version": projectVersion,
+				"project":         projectName,
+				"workload":        workload.Name,
+				"type":            workload.Type,
+				"digest":          metadata.Digest,
+			}).Info("updating project...")
+
 			if project != nil {
 				tags := NewTags()
 				tags.ArrangeByPrefix(project.Tags)
 
 				if isThisWorkload(tags, workloadTag) {
-					if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
-						logrus.Warnf("delete project: %v", err)
+					if workload.isJob() && project.Version == projectVersion {
+						c.logger.Debugf("project is a job and has the same version as the container, skipping")
+						continue
+					} else {
+						if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
+							logrus.Warnf("delete project: %v", err)
+						}
+						c.logger.Debugf("project deleted with workload tag: " + workloadTag)
 					}
-					c.logger.Debugf("project deleted with workload tag: " + workloadTag)
 				} else {
 					tags.deleteWorkloadTag(workloadTag)
 					_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
@@ -190,15 +208,6 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 					}
 					c.logger.Debugf("project with workload tag: " + workloadTag + " removed")
 				}
-
-				c.logger.WithFields(logrus.Fields{
-					"project-version": projectVersion,
-					"project":         projectName,
-					"workload":        workload.Name,
-					"container":       metadata.ContainerName,
-					"digest":          metadata.Digest,
-				}).Info("project does not exist, creating...")
-
 			}
 
 			tags := workload.initWorkloadTags(metadata, c.Cluster, projectName, projectVersion)

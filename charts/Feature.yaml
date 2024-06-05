@@ -46,6 +46,8 @@ values:
         {{ else }}
           "https://dependencytrack-test-backend.{{.Tenant.Name}}.cloud.nais.io"
         {{ end }}
+    config:
+      type: string
   dockerconfigjson:
     displayName: Docker config json
     required: true

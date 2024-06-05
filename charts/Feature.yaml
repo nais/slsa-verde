@@ -39,12 +39,11 @@ values:
   config.dependencytrack.api:
     displayName: dependencytrack API endpoint
     computed:
-      # TODO revert to dependencytrack-backend
       template: |
         {{ if eq .Kind "management" }}
-          "http://dependencytrack-test-backend:8080"
+          "http://dependencytrack-backend:8080"
         {{ else }}
-          "https://dependencytrack-test-backend.{{.Tenant.Name}}.cloud.nais.io"
+          "https://dependencytrack-backend.{{.Tenant.Name}}.cloud.nais.io"
         {{ end }}
     config:
       type: string

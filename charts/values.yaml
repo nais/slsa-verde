@@ -30,7 +30,7 @@ config:
   cosign:
     keyRef:
   dependencytrack:
-    api: http://dependencytrack-backend-test:8080
+    api: http://dependencytrack-backend:8080
     username: picante # TODO revert to "slsa-verde"
     password:
     team: Administrators

@@ -50,39 +50,44 @@ func (c *Config) OnDelete(obj any) {
 
 	workloadTag := workload.getTag(c.Cluster)
 	for _, container := range workload.Containers {
-		project, err := c.retrieveProject(c.ctx, client.ImageTagPrefix.With(container.Image))
+		projectName := getProjectName(container.Image)
+		projectVersion := getProjectVersion(container.Image)
+		projects, err := c.retrieveProjects(c.ctx, client.ProjectTagPrefix.With(projectName))
 		if err != nil {
-			log.Warnf("delete: retrieve project: %v", err)
+			log.Warnf("retrieve projects: %v", err)
 			return
 		}
 
-		if project == nil {
-			log.Debugf("delete: project not found for image: " + container.Image + "with workload tag: " + workloadTag)
-			return
-		}
-
-		tags := NewTags()
-		tags.ArrangeByPrefix(project.Tags)
-		log.WithFields(logrus.Fields{
-			"project":  project.Name,
-			"uuid":     project.Uuid,
-			"workload": workloadTag,
-		})
-
-		if isThisWorkload(tags, workloadTag) {
-			if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
-				log.Warnf("delete project: %v", err)
-				return
+		for _, p := range projects {
+			if p == nil {
+				log.Debugf("project not found for image: " + container.Image + "with workload tag: " + workloadTag)
+				continue
 			}
-			log.Debugf("project deleted with workload tag: " + workloadTag)
-		} else {
-			tags.deleteWorkloadTag(workloadTag)
-			_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
-			if err != nil {
-				log.Warnf("remove tags project: %v", err)
-				return
+
+			tags := NewTags()
+			tags.ArrangeByPrefix(p.Tags)
+			log.WithFields(logrus.Fields{
+				"project":  p.Name,
+				"uuid":     p.Uuid,
+				"workload": workloadTag,
+			})
+
+			validVersion := p.Version == projectVersion
+			if isThisWorkload(tags, workloadTag) && validVersion {
+				if err := c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
+					c.logger.Warnf("delete project: %v", err)
+					continue
+				}
+				c.logger.Debugf("project: " + p.Uuid + " deleted with workload tag: " + workloadTag)
+			} else if tags.hasWorkload(workloadTag) && validVersion {
+				tags.deleteWorkloadTag(workloadTag)
+				_, err := c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
+				if err != nil {
+					c.logger.Warnf("remove tags project: %v", err)
+					continue
+				}
+				c.logger.Debugf("project with workload tag: " + workloadTag + " removed from project uuid: " + p.Uuid)
 			}
-			log.Debugf("project with workload tag: " + workloadTag + " removed")
 		}
 	}
 }
@@ -154,12 +159,23 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				if err != nil {
 					return err
 				}
-				c.logger.Debugf("project updated with workload tag: " + workloadTag)
+				c.logger.Debugf("project: " + project.Uuid + " updated with workload tag: " + workloadTag)
+
+				projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
+				if err != nil {
+					c.logger.Warnf("retrieve project, skipping %v", err)
+				}
+
+				// filter slice of projects from the updated project
+				projects = filterProjects(projects, projectVersion)
+				// cleanup projects with the same workload tag
+				if err = c.CleanupWorkload(projects, workload, projectVersion, workloadTag); err != nil {
+					return err
+				}
+			} else {
+				c.logger.Debugf("project already has workload tag: " + workloadTag)
 				continue
 			}
-
-			c.logger.Debugf("project already has workload tag")
-			continue
 		} else {
 			metadata, err := c.verifier.Verify(c.ctx, container)
 			if err != nil {
@@ -172,42 +188,26 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				continue
 			}
 
-			project, err = c.retrieveProject(ctx, client.ProjectTagPrefix.With(projectName))
-			if err != nil {
-				c.logger.Warnf("retrieve project, skipping %v", err)
-				continue
-			}
-
 			c.logger.WithFields(logrus.Fields{
 				"project-version": projectVersion,
 				"project":         projectName,
 				"workload":        workload.Name,
 				"type":            workload.Type,
 				"digest":          metadata.Digest,
-			}).Info("updating project...")
+			}).Info("updating workload tags...")
 
-			if project != nil {
-				tags := NewTags()
-				tags.ArrangeByPrefix(project.Tags)
+			projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
+			if err != nil {
+				c.logger.Warnf("retrieve project, skipping %v", err)
+			}
+			if err = c.CleanupWorkload(projects, workload, projectVersion, workloadTag); err != nil {
+				return err
+			}
 
-				if isThisWorkload(tags, workloadTag) {
-					if workload.isJob() && project.Version == projectVersion {
-						c.logger.Debugf("project is a job and has the same version as the container, skipping")
-						continue
-					} else {
-						if err = c.Client.DeleteProject(c.ctx, project.Uuid); err != nil {
-							logrus.Warnf("delete project: %v", err)
-						}
-						c.logger.Debugf("project deleted with workload tag: " + workloadTag)
-					}
-				} else {
-					tags.deleteWorkloadTag(workloadTag)
-					_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
-					if err != nil {
-						logrus.Warnf("remove tags project: %v", err)
-					}
-					c.logger.Debugf("project with workload tag: " + workloadTag + " removed")
-				}
+			// if i do not find the new digest in any of projects, create a new project
+			if !workloadDigestHasChanged(projects, metadata.Digest) {
+				c.logger.Debugf("digest has not changed, skipping")
+				continue
 			}
 
 			tags := workload.initWorkloadTags(metadata, c.Cluster, projectName, projectVersion)
@@ -220,9 +220,61 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 			if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
 				return err
 			}
+			c.logger.Debugf("project: " + createdP.Uuid + " created with workload tag: " + workloadTag)
 		}
 	}
 	return nil
+}
+
+func workloadDigestHasChanged(projects []*client.Project, digest string) bool {
+	for _, p := range projects {
+		for _, tag := range p.Tags {
+			if tag.Name == client.DigestTagPrefix.With(digest) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func filterProjects(projects []*client.Project, version string) []*client.Project {
+	var filteredProjects []*client.Project
+	for _, p := range projects {
+		if p.Version != version {
+			filteredProjects = append(filteredProjects, p)
+		}
+	}
+	return filteredProjects
+}
+
+func (c *Config) CleanupWorkload(projects []*client.Project, workload *Workload, projectVersion, workloadTag string) error {
+	var err error
+	for _, p := range projects {
+		tags := NewTags()
+		tags.ArrangeByPrefix(p.Tags)
+
+		if isThisWorkload(tags, workloadTag) {
+			if workload.isJob() && p.Version == projectVersion {
+				c.logger.Debugf("project is a job and has the same version as the container, skipping")
+				continue
+			} else {
+				if err := c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
+					c.logger.Warnf("delete project: %v", err)
+					continue
+				}
+				c.logger.Debugf("project: " + p.Uuid + " deleted with workload tag: " + workloadTag)
+			}
+		} else if tags.hasWorkload(workloadTag) {
+			tags.deleteWorkloadTag(workloadTag)
+			_, err := c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
+			if err != nil {
+				c.logger.Warnf("remove tags project: %v", err)
+				continue
+			}
+			c.logger.Debugf("project tagged with workload: " + workloadTag + ", removed from project uuid: " + p.Uuid)
+		}
+	}
+	return err
 }
 
 func getGroup(projectName string) string {
@@ -245,7 +297,7 @@ func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.
 	return nil
 }
 
-func (c *Config) retrieveProject(ctx context.Context, projectName string) (*client.Project, error) {
+func (c *Config) retrieveProjects(ctx context.Context, projectName string) ([]*client.Project, error) {
 	tag := url.QueryEscape(projectName)
 	projects, err := c.Client.GetProjectsByTag(ctx, tag)
 	if err != nil {
@@ -255,14 +307,7 @@ func (c *Config) retrieveProject(ctx context.Context, projectName string) (*clie
 	if len(projects) == 0 {
 		return nil, nil
 	}
-	var p *client.Project
-	for _, project := range projects {
-		if containsAllTags(project.Tags, projectName) && project.Classifier == "APPLICATION" {
-			p = project
-			break
-		}
-	}
-	return p, nil
+	return projects, nil
 }
 
 func getProjectVersion(image string) string {

@@ -158,8 +158,8 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
-	deployment := test.CreateJobWithContainer("testns", "testjob", nil, "test/nginx:latest")
-	workload := NewWorkload(deployment)
+	job := test.CreateJobWithContainer("testns", "testjob", nil, "test/nginx:latest")
+	workload := NewWorkload(job)
 
 	var statement in_toto.CycloneDXStatement
 	file, err := os.ReadFile("testdata/sbom.json")
@@ -191,11 +191,11 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 				Uuid:       "uuid1",
 				Name:       "test/nginx",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}},
+				Tags:       []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
 				Version:    "latest",
 			},
 		}, nil)
-		m.OnAdd(deployment)
+		m.OnAdd(job)
 	})
 }
 
@@ -300,7 +300,7 @@ func TestConfigOnAddExists(t *testing.T) {
 				Uuid:       "uuid1",
 				Name:       "test/nginx",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}},
+				Tags:       []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:124"}, {Name: "rekor:12345"}},
 				Version:    "latest",
 			},
 		}, nil)
@@ -381,22 +381,6 @@ func TestConfigOnAddExists(t *testing.T) {
 			Uuid: "uuid1",
 		}, nil)
 
-		CreateRetTags := []string{
-			"project:test/nginx",
-			"image:test/nginx:latest",
-			"version:latest",
-			"digest:123",
-			"env:test",
-			"team:testns",
-			workload.getTag(cluster),
-		}
-		CreateRetTags = append(CreateRetTags, toRekorTags(rekor)...)
-		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", CreateRetTags).Return(&client.Project{
-			Uuid: "uuid2",
-		}, nil)
-
-		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid2", false, mock.Anything).Return(nil, nil)
-
 		m.OnAdd(deployment)
 	})
 }
@@ -420,7 +404,7 @@ func TestConfigOnDeleteProjectIsNil(t *testing.T) {
 
 	// ok
 	t.Run("project is nil, should ignore", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("image:test/nginx:latest")).Return(nil, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return(nil, nil)
 		m.OnDelete(deployment)
 	})
 }
@@ -432,7 +416,7 @@ func TestConfigOnDeleteRemoveTag(t *testing.T) {
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 	t.Run("project exists with more than 1 getTag, remove this getTag from project", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("image:test/nginx:latest")).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "test",
@@ -478,7 +462,7 @@ func TestConfigOnDeleteDeleteProject(t *testing.T) {
 	workload := NewWorkload(deployment)
 
 	t.Run("project with only this workload getTag, delete project", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("image:test/nginx:latest")).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "test",
@@ -512,8 +496,8 @@ func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest", "test/nginx:latest2")
 	workload := NewWorkload(deployment)
 
-	t.Run("project with only this workload getTag, delete project, and remove/update other tags associated with this workload", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("image:test/nginx:latest")).Return([]*client.Project{
+	t.Run("project with only this workload tag, delete project and update if other container ad workload is present", func(t *testing.T) {
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "test",
@@ -532,11 +516,6 @@ func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 					{Name: "team:testns"},
 				},
 			},
-		}, nil)
-
-		c.On("DeleteProject", mock.Anything, "1").Return(nil)
-
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("image:test/nginx:latest2")).Return([]*client.Project{
 			{
 				Uuid:       "2",
 				Group:      "test",
@@ -558,6 +537,8 @@ func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 			},
 		}, nil)
 
+		c.On("DeleteProject", mock.Anything, "1").Return(nil)
+
 		c.On("UpdateProject", mock.Anything, "2", "test/nginx", "latest2", "test", []string{
 			client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp3",
 			"team:testns",
@@ -578,8 +559,8 @@ func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 	m := NewMonitor(context.Background(), c, v, "dev")
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest", "test/nginx:latest2")
 
-	t.Run("project exists with more than 1 getTag, remove this getTag from project and for all containers in the resource", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("image:test/nginx:latest")).Return([]*client.Project{
+	t.Run("project exists with more than 1 getTag, remove this tag from project and for all containers in the resource", func(t *testing.T) {
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "test",
@@ -601,20 +582,6 @@ func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 					{Name: "rekor:1234"},
 				},
 			},
-		}, nil)
-
-		c.On("UpdateProject", mock.Anything, "1", "test/nginx", "latest", "test", []string{
-			client.WorkloadTagPrefix.String() + cluster + "|aura|app|testapp",
-			"team:aura",
-			"env:" + cluster,
-			"project:test/nginx",
-			"image:test/nginx:latest",
-			"version:latest",
-			"digest:123",
-			"rekor:1234",
-		}).Return(nil, nil)
-
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("image:test/nginx:latest2")).Return([]*client.Project{
 			{
 				Uuid:       "2",
 				Group:      "test",
@@ -637,6 +604,17 @@ func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 				},
 			},
 		}, nil)
+
+		c.On("UpdateProject", mock.Anything, "1", "test/nginx", "latest", "test", []string{
+			client.WorkloadTagPrefix.String() + cluster + "|aura|app|testapp",
+			"team:aura",
+			"env:" + cluster,
+			"project:test/nginx",
+			"image:test/nginx:latest",
+			"version:latest",
+			"digest:123",
+			"rekor:1234",
+		}).Return(nil, nil)
 
 		c.On("UpdateProject", mock.Anything, "2", "test/nginx", "latest2", "test", []string{
 			client.WorkloadTagPrefix.String() + cluster + "|aura|app|testapp",
@@ -752,6 +730,28 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 			"rekor:1234",
 		}).Return(&client.Project{
 			Uuid: "uuid1",
+		}, nil)
+
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
+			{
+				Classifier: "APPLICATION",
+				Group:      "testns",
+				Uuid:       "uuid1",
+				Name:       "test/nginx",
+				Version:    "latest",
+				Publisher:  "Team",
+				Tags: []client.Tag{
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp"},
+					{Name: workload.getTag(cluster)},
+					{Name: "team:testns"},
+					{Name: "env:test"},
+					{Name: "project:test/nginx"},
+					{Name: "image:test/nginx:latest"},
+					{Name: "version:latest"},
+					{Name: "digest:123"},
+					{Name: "rekor:1234"},
+				},
+			},
 		}, nil)
 
 		m.OnUpdate(oldDeployment, newDeployment)

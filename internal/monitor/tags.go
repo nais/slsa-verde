@@ -91,6 +91,15 @@ func (t *Tags) addWorkloadTag(tag string) bool {
 	return true
 }
 
+func (t *Tags) hasWorkload(tag string) bool {
+	for _, workloadTag := range t.WorkloadTags {
+		if workloadTag == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func getEnvironmentFromWorkloadTag(tag string) string {
 	s := strings.Split(strings.Replace(tag, client.WorkloadTagPrefix.String(), "", 1), "|")
 	return s[0]

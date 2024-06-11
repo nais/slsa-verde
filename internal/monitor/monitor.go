@@ -154,27 +154,25 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 
 			tags := NewTags()
 			tags.ArrangeByPrefix(project.Tags)
+
+			projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(project.Name))
+			if err != nil {
+				c.logger.Warnf("retrieve project, skipping %v", err)
+			}
 			if tags.addWorkloadTag(workloadTag) {
 				_, err := c.Client.UpdateProject(ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 				if err != nil {
 					return err
 				}
 				c.logger.Debugf("project: " + project.Uuid + " updated with workload tag: " + workloadTag)
-
-				projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
-				if err != nil {
-					c.logger.Warnf("retrieve project, skipping %v", err)
-				}
-
-				// filter slice of projects from the updated project
-				projects = filterProjects(projects, projectVersion)
-				// cleanup projects with the same workload tag
-				if err = c.CleanupWorkload(projects, workload, projectVersion, workloadTag); err != nil {
-					return err
-				}
 			} else {
 				c.logger.Debugf("project already has workload tag: " + workloadTag)
-				continue
+			}
+			// filter the current project from the slice of projects
+			projects = filterProjects(projects, project.Version)
+			// cleanup projects with the same workload tag
+			if err = c.CleanupWorkload(projects, workload, project.Version, workloadTag); err != nil {
+				return err
 			}
 		} else {
 			metadata, err := c.verifier.Verify(c.ctx, container)
@@ -204,7 +202,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				return err
 			}
 
-			// if i do not find the new digest in any of projects, create a new project
+			// if we do not find the new digest in any of projects, create a new project
 			if !workloadDigestHasChanged(projects, metadata.Digest) {
 				c.logger.Debugf("digest has not changed, skipping")
 				continue

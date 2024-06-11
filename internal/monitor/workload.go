@@ -33,10 +33,15 @@ func NewWorkload(obj any) *Workload {
 			Containers: d.Spec.Template.Spec.Containers,
 		}
 
-		for _, condition := range d.Status.Conditions {
-			if condition.Type == "Progressing" && condition.Status == "True" && condition.Reason == "NewReplicaSetAvailable" {
-				workload.Status.LastSuccessful = true
-			}
+		desiredReplicas := *d.Spec.Replicas
+		if d.Spec.Replicas != nil &&
+			d.Generation == d.Status.ObservedGeneration &&
+			desiredReplicas == d.Status.Replicas &&
+			desiredReplicas == d.Status.ReadyReplicas &&
+			desiredReplicas == d.Status.AvailableReplicas &&
+			desiredReplicas == d.Status.UpdatedReplicas &&
+			d.Status.UnavailableReplicas == 0 {
+			workload.Status.LastSuccessful = true
 		}
 	}
 

@@ -49,7 +49,8 @@ func CreateDeployment(namespace, name string, labels map[string]string, annotati
 			Replicas: &replicas,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: l,
+					Generation: 1,
+					Labels:     l,
 				},
 				Spec: v1.PodSpec{
 					Containers: containers(images, name),

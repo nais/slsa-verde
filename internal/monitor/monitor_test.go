@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	v1 "k8s.io/api/apps/v1"
 	mockattestation "slsa-verde/mocks/internal_/attestation"
 	mockmonitor "slsa-verde/mocks/internal_/monitor"
 
@@ -266,6 +265,18 @@ func TestConfigOnAddExists(t *testing.T) {
 			Tags:                []client.Tag{{Name: workload.getTag(cluster)}},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",
+		}, nil)
+
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{
+			{
+				Classifier: "APPLICATION",
+				Group:      "test",
+				Uuid:       "uuid1",
+				Name:       "test/nginx",
+				Publisher:  "Team",
+				Tags:       []client.Tag{{Name: workload.getTag(cluster)}, {Name: client.WorkloadTagPrefix.With(cluster + "|testns|app|testapp2")}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
+				Version:    "latest",
+			},
 		}, nil)
 
 		m.OnAdd(deployment)
@@ -653,13 +664,12 @@ func TestConfigOnUpdate(t *testing.T) {
 	})
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
-		newDeployment.Status.Conditions = []v1.DeploymentCondition{
-			{
-				Type:   v1.DeploymentProgressing,
-				Status: "True",
-				Reason: "NewReplicaSetAvailable",
-			},
-		}
+		newDeployment.Status.Replicas = 1
+		newDeployment.Status.AvailableReplicas = 1
+		newDeployment.Status.UpdatedReplicas = 1
+		newDeployment.Status.ObservedGeneration = newDeployment.Generation
+		newDeployment.Status.ReadyReplicas = 1
+		newDeployment.Status.UnavailableReplicas = 0
 
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
 			Classifier:          "APPLICATION",
@@ -669,6 +679,28 @@ func TestConfigOnUpdate(t *testing.T) {
 			Tags:                []client.Tag{{Name: workload.getTag(cluster)}},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",
+		}, nil)
+
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
+			{
+				Classifier: "APPLICATION",
+				Group:      "testns",
+				Uuid:       "uuid1",
+				Name:       "test/nginx",
+				Version:    "latest",
+				Publisher:  "Team",
+				Tags: []client.Tag{
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp"},
+					{Name: workload.getTag(cluster)},
+					{Name: "team:testns"},
+					{Name: "env:test"},
+					{Name: "project:test/nginx"},
+					{Name: "image:test/nginx:latest"},
+					{Name: "version:latest"},
+					{Name: "digest:123"},
+					{Name: "rekor:1234"},
+				},
+			},
 		}, nil)
 		m.OnUpdate(oldDeployment, newDeployment)
 	})
@@ -689,13 +721,12 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
-		newDeployment.Status.Conditions = []v1.DeploymentCondition{
-			{
-				Type:   v1.DeploymentProgressing,
-				Status: "True",
-				Reason: "NewReplicaSetAvailable",
-			},
-		}
+		newDeployment.Status.Replicas = 1
+		newDeployment.Status.AvailableReplicas = 1
+		newDeployment.Status.UpdatedReplicas = 1
+		newDeployment.Status.ObservedGeneration = newDeployment.Generation
+		newDeployment.Status.ReadyReplicas = 1
+		newDeployment.Status.UnavailableReplicas = 0
 
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
 			Classifier: "APPLICATION",
@@ -772,14 +803,24 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 	err = json.Unmarshal(file, &statement)
 	assert.NoError(t, err)
 
+	t.Run("should ignore deployment if the condition not fulfilled", func(t *testing.T) {
+		newDeployment.Status.Replicas = 1
+		newDeployment.Status.AvailableReplicas = 1
+		newDeployment.Status.UpdatedReplicas = 0
+		newDeployment.Status.ObservedGeneration = newDeployment.Generation
+		newDeployment.Status.ReadyReplicas = 1
+		newDeployment.Status.UnavailableReplicas = 1
+
+		m.OnUpdate(oldDeployment, newDeployment)
+	})
+
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
-		newDeployment.Status.Conditions = []v1.DeploymentCondition{
-			{
-				Type:   v1.DeploymentProgressing,
-				Status: "True",
-				Reason: "NewReplicaSetAvailable",
-			},
-		}
+		newDeployment.Status.Replicas = 1
+		newDeployment.Status.AvailableReplicas = 1
+		newDeployment.Status.UpdatedReplicas = 1
+		newDeployment.Status.ObservedGeneration = newDeployment.Generation
+		newDeployment.Status.ReadyReplicas = 1
+		newDeployment.Status.UnavailableReplicas = 0
 
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(&client.Project{
 			Classifier: "APPLICATION",
@@ -792,6 +833,28 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 			},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",
+		}, nil)
+
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
+			{
+				Classifier: "APPLICATION",
+				Group:      "testns",
+				Uuid:       "uuid1",
+				Name:       "test/nginx",
+				Version:    "latest",
+				Publisher:  "Team",
+				Tags: []client.Tag{
+					{Name: workload.getTag(cluster)},
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|testns|app|app2"},
+					{Name: "team:testns"},
+					{Name: "env:test"},
+					{Name: "project:test/nginx"},
+					{Name: "image:test/nginx:latest2"},
+					{Name: "version:latest"},
+					{Name: "digest:123"},
+					{Name: "rekor:1234"},
+				},
+			},
 		}, nil)
 
 		m.OnUpdate(oldDeployment, newDeployment)

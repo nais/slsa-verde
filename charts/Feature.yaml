@@ -35,7 +35,7 @@ values:
   config.dependencytrack.password:
     displayName: dependencytrack API password
     computed:
-      template: '"{{.Management.picante_dependencytrack_password}}"' # TODO change to slsa_verde
+      template: '"{{.Management.slsa_verde_dependencytrack_password}}"'
   config.dependencytrack.api:
     displayName: dependencytrack API endpoint
     computed:

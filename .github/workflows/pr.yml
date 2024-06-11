@@ -1,46 +1,31 @@
 name: PR Check
 
 on:
-  pull_request_target:
+  pull_request:
     paths-ignore:
       - 'charts/**'
-      - '.github/workflows/chart.yaml'
       - '*.md'
       - 'LICENSE.md'
 
-permissions:
-  pull-requests: write
-  contents: write
-
 jobs:
+  go_version:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    outputs:
+      go_version: ${{ steps.go_version.outputs.GO_VERSION }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find Go version
+        id: go_version
+        run: |
+          echo "GO_VERSION=$(grep golang .tool-versions | awk '{print $2}')" >> $GITHUB_OUTPUT
   test-pr:
     runs-on: ubuntu-latest
+    needs: go_version
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '>=1.22.1'
+          go-version: ${{ needs.go_version.outputs.go_version }}
           cache-dependency-path: ./go.sum
       - run: make test
-
-  dependabot_pr:
-    runs-on: ubuntu-latest
-    if: ${{ github.actor == 'dependabot[bot]' }}
-    needs: test-pr
-    steps:
-      - name: Dependabot metadata
-        id: dependabot-metadata
-        uses: dependabot/fetch-metadata@v2
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-      - name: Approve a PR
-        run: gh pr review --approve "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Enable auto-merge for Dependabot PRs
-        if: ${{ steps.dependabot-metadata.outputs.update-type != 'version-update:semver-major' }}
-        run: gh pr merge --auto --squash "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

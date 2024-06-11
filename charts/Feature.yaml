@@ -35,7 +35,7 @@ values:
   config.dependencytrack.password:
     displayName: dependencytrack API password
     computed:
-      template: '"{{.Management.picante_dependencytrack_password}}"'
+      template: '"{{.Management.slsa_verde_dependencytrack_password}}"'
   config.dependencytrack.api:
     displayName: dependencytrack API endpoint
     computed:
@@ -45,6 +45,8 @@ values:
         {{ else }}
           "https://dependencytrack-backend.{{.Tenant.Name}}.cloud.nais.io"
         {{ end }}
+    config:
+      type: string
   dockerconfigjson:
     displayName: Docker config json
     required: true
@@ -54,7 +56,9 @@ values:
   google.serviceAccountEmail:
     displayName: Google service account email
     computed:
-      template: '"{{.Env.picante_service_account}}"'
+      template: '"{{.Env.slsa_verde_service_account}}"'
+    ignoreKind:
+      - onprem
     config:
       type: string
   image.tag:

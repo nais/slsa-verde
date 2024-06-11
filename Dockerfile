@@ -1,4 +1,4 @@
-FROM golang:1.22.2 as builder
+FROM golang:1.22.4 as builder
 
 ENV GOOS=linux
 ENV CGO_ENABLED=0
@@ -8,12 +8,12 @@ RUN go version
 COPY . /src
 WORKDIR /src
 RUN go mod download
-RUN go build -a -installsuffix cgo -o /bin/picante cmd/picante/main.go
+RUN go build -a -installsuffix cgo -o /bin/slsa-verde cmd/slsa-verde/main.go
 
 FROM alpine:3
 RUN export PATH=$PATH:/app
 WORKDIR /app
-COPY --from=builder /bin/picante /app/picante
+COPY --from=builder /bin/slsa-verde /app/slsa-verde
 RUN apk add --no-cache git
 
-ENTRYPOINT ["/app/picante"]
+ENTRYPOINT ["/app/slsa-verde"]

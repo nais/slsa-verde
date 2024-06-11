@@ -5,14 +5,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strconv"
-
-	"picante/internal/workload"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/cosign/v2/pkg/oci/remote"
+	v1 "k8s.io/api/core/v1"
+
+	"slsa-verde/internal/github"
 
 	gh "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -25,7 +25,6 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/oci"
 	"github.com/sigstore/cosign/v2/pkg/signature"
 	log "github.com/sirupsen/logrus"
-	"picante/internal/github"
 )
 
 type ImageMetadata struct {
@@ -34,11 +33,11 @@ type ImageMetadata struct {
 	ContainerName  string                      `json:"containerName"`
 	Statement      *in_toto.CycloneDXStatement `json:"statement"`
 	Digest         string                      `json:"digest"`
-	RekorLogIndex  string                      `json:"rekorLogIndex"`
+	RekorMetadata  *Rekor                      `json:"rekorMetadata"`
 }
 
 type Verifier interface {
-	Verify(ctx context.Context, container workload.Container) (*ImageMetadata, error)
+	Verify(ctx context.Context, container v1.Container) (*ImageMetadata, error)
 }
 
 var _ Verifier = &VerifyAttestationOpts{}
@@ -132,7 +131,7 @@ func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign
 	return co, nil
 }
 
-func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload.Container) (*ImageMetadata, error) {
+func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container v1.Container) (*ImageMetadata, error) {
 	ref, err := name.ParseReference(container.Image)
 
 	opts := vao.CheckOpts
@@ -191,24 +190,28 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container workload
 		"ref":            container.Image,
 	}).Info("attestation verified and parsed statement")
 
-	rekorIndex := "0"
+	imageMetadata := &ImageMetadata{
+		Statement:      statement,
+		Image:          ref.String(),
+		BundleVerified: bVerified,
+		ContainerName:  container.Name,
+		Digest:         digest.String(),
+	}
+
 	rekorBundle, err := att.Bundle()
 	if err != nil {
 		log.Errorf("get bundle: %v", err)
 	}
 
 	if rekorBundle != nil {
-		rekorIndex = strconv.FormatInt(rekorBundle.Payload.LogIndex, 10)
+		rekorMetadata, err := GetRekorMetadata(rekorBundle)
+		if err != nil {
+			log.Errorf("get rekor metadata: %v", err)
+		}
+		imageMetadata.RekorMetadata = rekorMetadata
 	}
 
-	return &ImageMetadata{
-		Statement:      statement,
-		Image:          ref.String(),
-		BundleVerified: bVerified,
-		ContainerName:  container.Name,
-		Digest:         digest.String(),
-		RekorLogIndex:  rekorIndex,
-	}, nil
+	return imageMetadata, nil
 }
 
 func parseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {

@@ -2,8 +2,8 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    {{- include "picante.labels" . | nindent 4 }}
-  name: {{ include "picante.fullname" . }}
+    {{- include "slsa-verde.labels" . | nindent 4 }}
+  name: {{ include "slsa-verde.fullname" . }}
 spec:
   type: ClusterIP
   ports:
@@ -12,4 +12,4 @@ spec:
       protocol: TCP
       targetPort: http
   selector:
-    {{- include "picante.selectorLabels" . | nindent 4 }}
+    {{- include "slsa-verde.selectorLabels" . | nindent 4 }}

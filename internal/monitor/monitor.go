@@ -7,18 +7,18 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/nais/dependencytrack/pkg/client"
-	log "github.com/sirupsen/logrus"
-	"picante/internal/workload"
+	"slsa-verde/internal/attestation"
 
-	"picante/internal/attestation"
+	"github.com/google/go-cmp/cmp"
+	"github.com/nais/dependencytrack/pkg/client"
+	"github.com/sirupsen/logrus"
 )
 
 type Config struct {
 	Client   client.Client
 	Cluster  string
 	verifier attestation.Verifier
-	logger   *log.Entry
+	logger   *logrus.Entry
 	ctx      context.Context
 }
 
@@ -27,182 +27,262 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 		Client:   client,
 		Cluster:  cluster,
 		verifier: verifier,
-		logger:   log.WithFields(log.Fields{"package": "monitor"}),
+		logger:   logrus.WithField("package", "monitor"),
 		ctx:      ctx,
 	}
 }
 
+func getProjectName(containerImage string) string {
+	if strings.Contains(containerImage, "@") {
+		return strings.Split(containerImage, "@")[0]
+	}
+	return strings.Split(containerImage, ":")[0]
+}
+
 func (c *Config) OnDelete(obj any) {
-	c.logger.WithFields(log.Fields{"event": "OnDelete"})
+	log := c.logger.WithField("event", "OnDelete")
 
-	w := workload.GetMetadata(obj, c.logger)
-
-	if w == nil {
+	workload := NewWorkload(obj)
+	if workload == nil {
+		log.Debugf("not a verified workload")
 		return
 	}
 
-	if w.GetName() == "" {
-		c.logger.Warnf("%s:no app name found: %s ", "delete", w.GetKind())
-		return
-	}
+	workloadTag := workload.getTag(c.Cluster)
+	for _, container := range workload.Containers {
+		projectName := getProjectName(container.Image)
+		projectVersion := getProjectVersion(container.Image)
+		projects, err := c.retrieveProjects(c.ctx, client.ProjectTagPrefix.With(projectName))
+		if err != nil {
+			log.Warnf("retrieve projects: %v", err)
+			return
+		}
 
-	for _, container := range w.GetContainers() {
-		if err := c.deleteProject(w, container); err != nil {
-			c.logger.Errorf("delete: %v", err)
-			continue
+		for _, p := range projects {
+			if p == nil {
+				log.Debugf("project not found for image: " + container.Image + "with workload tag: " + workloadTag)
+				continue
+			}
+
+			tags := NewTags()
+			tags.ArrangeByPrefix(p.Tags)
+			log.WithFields(logrus.Fields{
+				"project":  p.Name,
+				"uuid":     p.Uuid,
+				"workload": workloadTag,
+			})
+
+			validVersion := p.Version == projectVersion
+			if isThisWorkload(tags, workloadTag) && validVersion {
+				if err := c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
+					c.logger.Warnf("delete project: %v", err)
+					continue
+				}
+				c.logger.Debugf("project: " + p.Uuid + " deleted with workload tag: " + workloadTag)
+			} else if tags.hasWorkload(workloadTag) && validVersion {
+				tags.deleteWorkloadTag(workloadTag)
+				_, err := c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
+				if err != nil {
+					c.logger.Warnf("remove tags project: %v", err)
+					continue
+				}
+				c.logger.Debugf("project with workload tag: " + workloadTag + " removed from project uuid: " + p.Uuid)
+			}
 		}
 	}
 }
 
+func isThisWorkload(tags *Tags, workload string) bool {
+	return len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workload
+}
+
 func (c *Config) OnUpdate(old any, new any) {
-	c.logger.WithFields(log.Fields{"event": "update"})
+	log := c.logger.WithField("event", "update")
 
-	wNew := workload.GetMetadata(new, c.logger)
-	wOld := workload.GetMetadata(old, c.logger)
-
-	if wNew == nil || wOld == nil {
+	dOld := NewWorkload(old)
+	dNew := NewWorkload(new)
+	if dNew == nil {
+		log.Debugf("not verified workload")
 		return
 	}
 
-	if wNew.GetName() == "" || wOld.GetName() == "" {
-		c.logger.Debugf("%s:no app name found: %s ", "update", wNew.GetKind())
+	diff := cmp.Diff(dOld.Status, dNew.Status)
+	if diff == "" {
 		return
 	}
 
-	if wNew.Active() && !wOld.Active() {
-		if err := c.verifyContainers(c.ctx, wNew); err != nil {
-			c.logger.Warnf("update: verify attestation: %v", err)
+	if dNew.Status.LastSuccessful {
+		if err := c.verifyWorkloadContainers(c.ctx, dNew); err != nil {
+			log.Warnf("verify attestation: %v", err)
 		}
 	}
 }
 
 func (c *Config) OnAdd(obj any) {
-	c.logger.WithFields(log.Fields{"event": "add"})
+	log := c.logger.WithField("event", "add")
 
-	w := workload.GetMetadata(obj, c.logger)
-	if w == nil {
-		return
-	}
-	if w.GetName() == "" {
-		c.logger.Debugf("%s:no app name found: %s ", "add", w.GetKind())
-		return
-	}
-	if !w.Active() {
-		c.logger.Debugf("%s:%s:%s:%s is not active, skipping", "add", w.GetKind(), w.GetName(), w.GetIdentifier())
+	workload := NewWorkload(obj)
+	if workload == nil {
+		log.Debugf("not a verified workload")
 		return
 	}
 
-	if err := c.verifyContainers(c.ctx, w); err != nil {
-		c.logger.Warnf("add: verify attestation: %v", err)
+	err := c.verifyWorkloadContainers(c.ctx, workload)
+	if err != nil {
+		log.Warnf("add: verify attestation: %v", err)
+		return
 	}
 }
 
-func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) error {
-	for _, container := range w.GetContainers() {
-		appName := w.GetName()
-		project := workload.ProjectName(w, c.Cluster, container.Name)
-		projectVersion := version(container.Image)
-		pp, err := c.Client.GetProject(ctx, project, projectVersion)
+func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workload) error {
+	workloadTag := workload.getTag(c.Cluster)
+	for _, container := range workload.Containers {
+		projectName := getProjectName(container.Image)
+		projectVersion := getProjectVersion(container.Image)
+		project, err := c.Client.GetProject(ctx, projectName, projectVersion)
 		if err != nil {
 			return err
 		}
 
-		// If the sbom does not exist, that's acceptable, due to it's a user error
-		if pp != nil {
-			c.logger.WithFields(log.Fields{
-				"project":         project,
+		if project != nil {
+			c.logger.WithFields(logrus.Fields{
+				"project":         projectName,
 				"project-version": projectVersion,
-				"workload":        w.GetName(),
+				"workload":        workload.Name,
 				"container":       container.Name,
-			}).Debug("project exist, skipping")
-			continue
-		} else {
+			}).Debug("project is found, updating...")
 
+			tags := NewTags()
+			tags.ArrangeByPrefix(project.Tags)
+			if tags.addWorkloadTag(workloadTag) {
+				_, err := c.Client.UpdateProject(ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
+				if err != nil {
+					return err
+				}
+				c.logger.Debugf("project: " + project.Uuid + " updated with workload tag: " + workloadTag)
+
+				projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
+				if err != nil {
+					c.logger.Warnf("retrieve project, skipping %v", err)
+				}
+
+				// filter slice of projects from the updated project
+				projects = filterProjects(projects, projectVersion)
+				// cleanup projects with the same workload tag
+				if err = c.CleanupWorkload(projects, workload, projectVersion, workloadTag); err != nil {
+					return err
+				}
+			} else {
+				c.logger.Debugf("project already has workload tag: " + workloadTag)
+				continue
+			}
+		} else {
 			metadata, err := c.verifier.Verify(c.ctx, container)
 			if err != nil {
 				c.logger.Warnf("verify attestation, skipping: %v", err)
 				continue
 			}
 
-			p, err := c.retrieveProject(ctx, project, c.Cluster, w.GetNamespace(), appName)
-			if err != nil {
-				c.logger.Warnf("retrieve project, skipping %v", err)
+			if metadata.Statement == nil {
+				c.logger.Warnf("metadata is empty, skipping")
 				continue
 			}
 
-			tags := []string{
-				project,
-				w.GetNamespace(),
-				appName,
-				metadata.ContainerName,
-				metadata.Image,
-				c.Cluster,
-				projectVersion,
-				"digest:" + metadata.Digest,
-				"rekor:" + metadata.RekorLogIndex,
+			c.logger.WithFields(logrus.Fields{
+				"project-version": projectVersion,
+				"project":         projectName,
+				"workload":        workload.Name,
+				"type":            workload.Type,
+				"digest":          metadata.Digest,
+			}).Info("updating workload tags...")
+
+			projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
+			if err != nil {
+				c.logger.Warnf("retrieve project, skipping %v", err)
+			}
+			if err = c.CleanupWorkload(projects, workload, projectVersion, workloadTag); err != nil {
+				return err
 			}
 
-			if p != nil {
-				if !c.digestHasChanged(metadata, p) {
-					c.logger.WithFields(log.Fields{
-						"project-version": projectVersion,
-						"workload":        w.GetName(),
-						"container":       metadata.ContainerName,
-						"digest":          metadata.Digest,
-					}).Info("project exist and has same digest, skipping")
-					continue
-				}
-
-				c.logger.WithFields(log.Fields{
-					"current-version": p.Version,
-					"new-version":     projectVersion,
-					"workload":        w.GetName(),
-					"container":       metadata.ContainerName,
-					"digest":          metadata.Digest,
-				}).Info("project exist update project with a new version and upload sbom...")
-
-				_, err := c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
-				if err != nil {
-					return err
-				}
-
-				if err = c.uploadSBOMToProject(ctx, metadata, project, p.Uuid, projectVersion); err != nil {
-					return err
-				}
-
-			} else {
-				c.logger.WithFields(log.Fields{
-					"project-version": projectVersion,
-					"project":         project,
-					"workload":        w.GetName(),
-					"container":       metadata.ContainerName,
-					"digest":          metadata.Digest,
-				}).Info("project does not exist, creating...")
-
-				createdP, err := c.Client.CreateProject(ctx, project, projectVersion, w.GetNamespace(), tags)
-				if err != nil {
-					return err
-				}
-
-				if err = c.uploadSBOMToProject(ctx, metadata, project, createdP.Uuid, projectVersion); err != nil {
-					return err
-				}
+			// if i do not find the new digest in any of projects, create a new project
+			if !workloadDigestHasChanged(projects, metadata.Digest) {
+				c.logger.Debugf("digest has not changed, skipping")
+				continue
 			}
+
+			tags := workload.initWorkloadTags(metadata, c.Cluster, projectName, projectVersion)
+			group := getGroup(projectName)
+			createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, group, tags)
+			if err != nil {
+				return err
+			}
+
+			if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
+				return err
+			}
+			c.logger.Debugf("project: " + createdP.Uuid + " created with workload tag: " + workloadTag)
 		}
 	}
 	return nil
 }
 
-func (c *Config) digestHasChanged(metadata *attestation.ImageMetadata, p *client.Project) bool {
-	for _, tag := range p.Tags {
-		if strings.Contains(tag.Name, "digest:") {
-			d := strings.Split(tag.Name, ":")[1]
-			if d == metadata.Digest {
+func workloadDigestHasChanged(projects []*client.Project, digest string) bool {
+	for _, p := range projects {
+		for _, tag := range p.Tags {
+			if tag.Name == client.DigestTagPrefix.With(digest) {
 				return false
 			}
 		}
 	}
 	return true
+}
+
+func filterProjects(projects []*client.Project, version string) []*client.Project {
+	var filteredProjects []*client.Project
+	for _, p := range projects {
+		if p.Version != version {
+			filteredProjects = append(filteredProjects, p)
+		}
+	}
+	return filteredProjects
+}
+
+func (c *Config) CleanupWorkload(projects []*client.Project, workload *Workload, projectVersion, workloadTag string) error {
+	var err error
+	for _, p := range projects {
+		tags := NewTags()
+		tags.ArrangeByPrefix(p.Tags)
+
+		if isThisWorkload(tags, workloadTag) {
+			if workload.isJob() && p.Version == projectVersion {
+				c.logger.Debugf("project is a job and has the same version as the container, skipping")
+				continue
+			} else {
+				if err := c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
+					c.logger.Warnf("delete project: %v", err)
+					continue
+				}
+				c.logger.Debugf("project: " + p.Uuid + " deleted with workload tag: " + workloadTag)
+			}
+		} else if tags.hasWorkload(workloadTag) {
+			tags.deleteWorkloadTag(workloadTag)
+			_, err := c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
+			if err != nil {
+				c.logger.Warnf("remove tags project: %v", err)
+				continue
+			}
+			c.logger.Debugf("project tagged with workload: " + workloadTag + ", removed from project uuid: " + p.Uuid)
+		}
+	}
+	return err
+}
+
+func getGroup(projectName string) string {
+	groups := strings.Split(projectName, "/")
+	if len(groups) > 1 {
+		return groups[0]
+	}
+	return ""
 }
 
 func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.ImageMetadata, project, parentUuid, projectVersion string) error {
@@ -217,28 +297,7 @@ func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.
 	return nil
 }
 
-func (c *Config) deleteProject(w workload.Workload, container workload.Container) error {
-	project := workload.ProjectName(w, c.Cluster, container.Name)
-	projectVersion := version(container.Image)
-	pr, err := c.Client.GetProject(c.ctx, project, projectVersion)
-	if err != nil {
-		return fmt.Errorf("delete: get project: %v", err)
-	}
-
-	if pr == nil {
-		c.logger.Debugf("%s:trying to delete project:%s:%s, project not found", w.GetKind(), project, projectVersion)
-		return nil
-	}
-
-	if err = c.Client.DeleteProject(c.ctx, pr.Uuid); err != nil {
-		return fmt.Errorf("delete project:%s: %v", project, err)
-	}
-
-	c.logger.Infof("%s:deleted project:%s:%s", w.GetKind(), project, projectVersion)
-	return nil
-}
-
-func (c *Config) retrieveProject(ctx context.Context, projectName, env, team, app string) (*client.Project, error) {
+func (c *Config) retrieveProjects(ctx context.Context, projectName string) ([]*client.Project, error) {
 	tag := url.QueryEscape(projectName)
 	projects, err := c.Client.GetProjectsByTag(ctx, tag)
 	if err != nil {
@@ -248,17 +307,10 @@ func (c *Config) retrieveProject(ctx context.Context, projectName, env, team, ap
 	if len(projects) == 0 {
 		return nil, nil
 	}
-	var p *client.Project
-	for _, project := range projects {
-		if containsAllTags(project.Tags, env, team, app) && project.Classifier == "APPLICATION" {
-			p = project
-			break
-		}
-	}
-	return p, nil
+	return projects, nil
 }
 
-func version(image string) string {
+func getProjectVersion(image string) string {
 	if !strings.Contains(image, "@") {
 		i := strings.LastIndex(image, ":")
 		return image[i+1:]
@@ -276,17 +328,4 @@ func handleImageDigest(image string) string {
 		return imageArray[0][i+1:] + "@" + imageArray[1]
 	}
 	return imageArray[1]
-}
-
-func containsAllTags(tags []client.Tag, s ...string) bool {
-	found := 0
-	for _, t := range s {
-		for _, tag := range tags {
-			if tag.Name == t {
-				found += 1
-				break
-			}
-		}
-	}
-	return found == len(s)
 }

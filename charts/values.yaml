@@ -2,7 +2,7 @@ apiserverIP:
 
 image:
   repository: europe-north1-docker.pkg.dev/nais-io/nais/images
-  name: picante
+  name: slsa-verde
   tag: 20230414-090558-6aaa3f2
 
 team: nais
@@ -31,7 +31,7 @@ config:
     keyRef:
   dependencytrack:
     api: http://dependencytrack-backend:8080
-    username: picante
+    username: slsa-verde
     password:
     team: Administrators
   github:

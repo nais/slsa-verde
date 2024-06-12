@@ -9,7 +9,6 @@ import (
 
 	"slsa-verde/internal/attestation"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sirupsen/logrus"
 )
@@ -96,18 +95,12 @@ func isThisWorkload(tags *Tags, workload string) bool {
 	return len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workload
 }
 
-func (c *Config) OnUpdate(old any, new any) {
+func (c *Config) OnUpdate(_ any, new any) {
 	log := c.logger.WithField("event", "update")
 
-	dOld := NewWorkload(old)
 	dNew := NewWorkload(new)
 	if dNew == nil {
 		log.Debug("not verified workload")
-		return
-	}
-
-	diff := cmp.Diff(dOld.Status, dNew.Status)
-	if diff == "" {
 		return
 	}
 
@@ -127,10 +120,12 @@ func (c *Config) OnAdd(obj any) {
 		return
 	}
 
-	err := c.verifyWorkloadContainers(c.ctx, workload)
-	if err != nil {
-		log.Warnf("add: verify attestation: %v", err)
-		return
+	if workload.Status.LastSuccessful {
+		err := c.verifyWorkloadContainers(c.ctx, workload)
+		if err != nil {
+			log.Warnf("add: verify attestation: %v", err)
+			return
+		}
 	}
 }
 
@@ -150,7 +145,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				"project-version": projectVersion,
 				"workload":        workload.Name,
 				"container":       container.Name,
-			}).Info("project is exists, updating workload ...")
+			}).Info("project found, updating workload ...")
 
 			tags := NewTags()
 			tags.ArrangeByPrefix(project.Tags)

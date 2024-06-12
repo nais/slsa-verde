@@ -37,6 +37,7 @@ func CreateDeployment(namespace, name string, labels map[string]string, annotati
 	}, labels)
 
 	replicas := int32(1)
+	generation := int64(1)
 
 	return &app.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -44,6 +45,15 @@ func CreateDeployment(namespace, name string, labels map[string]string, annotati
 			Namespace:   namespace,
 			Labels:      l,
 			Annotations: annotations,
+			Generation:  generation,
+		},
+		Status: app.DeploymentStatus{
+			ObservedGeneration:  generation,
+			Replicas:            replicas,
+			AvailableReplicas:   replicas,
+			UpdatedReplicas:     replicas,
+			ReadyReplicas:       replicas,
+			UnavailableReplicas: 0,
 		},
 		Spec: app.DeploymentSpec{
 			Replicas: &replicas,
@@ -88,6 +98,10 @@ func CreateJobWithContainer(namespace, name string, labels map[string]string, im
 			},
 		},
 	}
+	job.Status.Conditions = append(job.Status.Conditions, batch.JobCondition{
+		Type:   "Complete",
+		Status: "True",
+	})
 
 	return job
 }

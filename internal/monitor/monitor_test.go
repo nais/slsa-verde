@@ -196,6 +196,12 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 		}, nil)
 		m.OnAdd(job)
 	})
+
+	t.Run("should ignore failed jobs conditions", func(t *testing.T) {
+		job.Status.Conditions[0].Status = "False"
+		job.Status.Conditions[0].Type = "Failed"
+		m.OnAdd(job)
+	})
 }
 
 func TestConfigOnAddExistsJobWithNewVersion(t *testing.T) {
@@ -646,7 +652,6 @@ func TestConfigOnUpdate(t *testing.T) {
 	v := mockattestation.NewVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
 	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
-	oldDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(newDeployment)
 
 	var statement in_toto.CycloneDXStatement
@@ -659,18 +664,13 @@ func TestConfigOnUpdate(t *testing.T) {
 		m.OnUpdate(nil, nil)
 	})
 
-	t.Run("should not do anything if conditions not changed", func(t *testing.T) {
-		m.OnUpdate(oldDeployment, newDeployment)
+	t.Run("should not do anything if condition is not satisfied", func(t *testing.T) {
+		newDeployment.Status.UnavailableReplicas = 1
+		m.OnUpdate(nil, newDeployment)
 	})
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
-		newDeployment.Status.Replicas = 1
-		newDeployment.Status.AvailableReplicas = 1
-		newDeployment.Status.UpdatedReplicas = 1
-		newDeployment.Status.ObservedGeneration = newDeployment.Generation
-		newDeployment.Status.ReadyReplicas = 1
 		newDeployment.Status.UnavailableReplicas = 0
-
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
 			Classifier:          "APPLICATION",
 			Group:               "testns",
@@ -702,7 +702,7 @@ func TestConfigOnUpdate(t *testing.T) {
 				},
 			},
 		}, nil)
-		m.OnUpdate(oldDeployment, newDeployment)
+		m.OnUpdate(nil, newDeployment)
 	})
 }
 
@@ -721,13 +721,6 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
-		newDeployment.Status.Replicas = 1
-		newDeployment.Status.AvailableReplicas = 1
-		newDeployment.Status.UpdatedReplicas = 1
-		newDeployment.Status.ObservedGeneration = newDeployment.Generation
-		newDeployment.Status.ReadyReplicas = 1
-		newDeployment.Status.UnavailableReplicas = 0
-
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
 			Classifier: "APPLICATION",
 			Uuid:       "uuid1",
@@ -804,22 +797,11 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("should ignore deployment if the condition not fulfilled", func(t *testing.T) {
-		newDeployment.Status.Replicas = 1
-		newDeployment.Status.AvailableReplicas = 1
-		newDeployment.Status.UpdatedReplicas = 0
-		newDeployment.Status.ObservedGeneration = newDeployment.Generation
-		newDeployment.Status.ReadyReplicas = 1
 		newDeployment.Status.UnavailableReplicas = 1
-
 		m.OnUpdate(oldDeployment, newDeployment)
 	})
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
-		newDeployment.Status.Replicas = 1
-		newDeployment.Status.AvailableReplicas = 1
-		newDeployment.Status.UpdatedReplicas = 1
-		newDeployment.Status.ObservedGeneration = newDeployment.Generation
-		newDeployment.Status.ReadyReplicas = 1
 		newDeployment.Status.UnavailableReplicas = 0
 
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(&client.Project{

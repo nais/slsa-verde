@@ -44,7 +44,7 @@ func (c *Config) OnDelete(obj any) {
 
 	workload := NewWorkload(obj)
 	if workload == nil {
-		log.Debugf("not a verified workload")
+		log.Debug("not a verified workload")
 		return
 	}
 
@@ -60,7 +60,7 @@ func (c *Config) OnDelete(obj any) {
 
 		for _, p := range projects {
 			if p == nil {
-				log.Debugf("project not found for image: " + container.Image + "with workload tag: " + workloadTag)
+				log.Debug("project not found for image: " + container.Image + "with workload tag: " + workloadTag)
 				continue
 			}
 
@@ -78,7 +78,7 @@ func (c *Config) OnDelete(obj any) {
 					c.logger.Warnf("delete project: %v", err)
 					continue
 				}
-				c.logger.Debugf("project: " + p.Uuid + " deleted with workload tag: " + workloadTag)
+				c.logger.Debug("project: " + p.Uuid + " deleted with workload tag: " + workloadTag)
 			} else if tags.hasWorkload(workloadTag) && validVersion {
 				tags.deleteWorkloadTag(workloadTag)
 				_, err := c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
@@ -86,7 +86,7 @@ func (c *Config) OnDelete(obj any) {
 					c.logger.Warnf("remove tags project: %v", err)
 					continue
 				}
-				c.logger.Debugf("project with workload tag: " + workloadTag + " removed from project uuid: " + p.Uuid)
+				c.logger.Debug("project with workload tag: " + workloadTag + " removed from project uuid: " + p.Uuid)
 			}
 		}
 	}
@@ -102,7 +102,7 @@ func (c *Config) OnUpdate(old any, new any) {
 	dOld := NewWorkload(old)
 	dNew := NewWorkload(new)
 	if dNew == nil {
-		log.Debugf("not verified workload")
+		log.Debug("not verified workload")
 		return
 	}
 
@@ -123,7 +123,7 @@ func (c *Config) OnAdd(obj any) {
 
 	workload := NewWorkload(obj)
 	if workload == nil {
-		log.Debugf("not a verified workload")
+		log.Debug("not a verified workload")
 		return
 	}
 
@@ -150,7 +150,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				"project-version": projectVersion,
 				"workload":        workload.Name,
 				"container":       container.Name,
-			}).Debug("project is found, updating...")
+			}).Info("project is exists, updating workload ...")
 
 			tags := NewTags()
 			tags.ArrangeByPrefix(project.Tags)
@@ -164,9 +164,9 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				if err != nil {
 					return err
 				}
-				c.logger.Debugf("project: " + project.Uuid + " updated with workload tag: " + workloadTag)
+				c.logger.Info("project: " + project.Uuid + " updated with workload tag: " + workloadTag)
 			} else {
-				c.logger.Debugf("project already has workload tag: " + workloadTag)
+				c.logger.Debug("project already has workload tag: " + workloadTag)
 			}
 			// filter the current project from the slice of projects
 			projects = filterProjects(projects, project.Version)
@@ -177,12 +177,16 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 		} else {
 			metadata, err := c.verifier.Verify(c.ctx, container)
 			if err != nil {
-				c.logger.Warnf("verify attestation, skipping: %v", err)
+				if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
+					c.logger.Debugf("skipping, %v", err)
+					continue
+				}
+				c.logger.Warnf("verify attestation error, skipping: %v", err)
 				continue
 			}
 
 			if metadata.Statement == nil {
-				c.logger.Warnf("metadata is empty, skipping")
+				c.logger.Warn("metadata is empty, skipping")
 				continue
 			}
 
@@ -192,7 +196,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				"workload":        workload.Name,
 				"type":            workload.Type,
 				"digest":          metadata.Digest,
-			}).Info("updating workload tags...")
+			}).Info("project does not exist, updating workload ...")
 
 			projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
 			if err != nil {
@@ -204,7 +208,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 
 			// if we do not find the new digest in any of projects, create a new project
 			if !workloadDigestHasChanged(projects, metadata.Digest) {
-				c.logger.Debugf("digest has not changed, skipping")
+				c.logger.Debug("digest has not changed, skipping")
 				continue
 			}
 
@@ -218,7 +222,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 			if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
 				return err
 			}
-			c.logger.Debugf("project: " + createdP.Uuid + " created with workload tag: " + workloadTag)
+			c.logger.Print("project: " + createdP.Uuid + " created with workload tag: " + workloadTag)
 		}
 	}
 	return nil
@@ -254,14 +258,14 @@ func (c *Config) CleanupWorkload(projects []*client.Project, workload *Workload,
 		if isThisWorkload(tags, workloadTag) {
 			// TODO is this necessary?
 			if workload.isJob() && p.Version == projectVersion {
-				c.logger.Debugf("project is a job and has the same version as the container, skipping")
+				c.logger.Debug("project is a job and has the same version as the container, skipping")
 				continue
 			} else {
 				if err := c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
 					c.logger.Warnf("delete project: %v", err)
 					continue
 				}
-				c.logger.Debugf("project: " + p.Uuid + " deleted with workload tag: " + workloadTag)
+				c.logger.Debug("project: " + p.Uuid + " deleted with workload tag: " + workloadTag)
 			}
 		} else if tags.hasWorkload(workloadTag) {
 			tags.deleteWorkloadTag(workloadTag)
@@ -270,7 +274,7 @@ func (c *Config) CleanupWorkload(projects []*client.Project, workload *Workload,
 				c.logger.Warnf("remove tags project: %v", err)
 				continue
 			}
-			c.logger.Debugf("project tagged with workload: " + workloadTag + ", removed from project uuid: " + p.Uuid)
+			c.logger.Debug("project tagged with workload: " + workloadTag + ", removed from project uuid: " + p.Uuid)
 		}
 	}
 	return err

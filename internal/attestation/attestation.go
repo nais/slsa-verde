@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/google"
@@ -25,6 +26,10 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/oci"
 	"github.com/sigstore/cosign/v2/pkg/signature"
 	log "github.com/sirupsen/logrus"
+)
+
+const (
+	ErrNoAttestation = "no matching attestations"
 )
 
 type ImageMetadata struct {
@@ -161,9 +166,14 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container v1.Conta
 	} else {
 		verified, bVerified, err = cosign.VerifyImageAttestations(ctx, ref, opts)
 		if err != nil {
-			vao.Logger.Logger.WithFields(log.Fields{
+			l := vao.Logger.Logger.WithFields(log.Fields{
 				"ref": ref.String(),
-			}).Warn("verifying image attestations")
+			})
+			if strings.Contains(err.Error(), ErrNoAttestation) {
+				l.Debug("no attestations found")
+				return nil, err
+			}
+			l.Warn("verifying image attestations")
 			return nil, err
 		}
 	}

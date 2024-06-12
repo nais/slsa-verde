@@ -101,6 +101,7 @@ func jobName(job *batch.Job) string {
 		return workloadName
 	}
 
+	// TODO bug when job id deployed manually or using dash
 	// keep everything before the last dash
 	beforeLastDash := strings.LastIndex(job.GetName(), "-")
 	if beforeLastDash == -1 {

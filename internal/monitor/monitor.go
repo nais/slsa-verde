@@ -222,7 +222,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 			if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
 				return err
 			}
-			c.logger.Print("project: " + createdP.Uuid + " created with workload tag: " + workloadTag)
+			c.logger.Info("project: " + createdP.Uuid + " created with workload tag: " + workloadTag)
 		}
 	}
 	return nil

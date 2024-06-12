@@ -104,10 +104,13 @@ func (c *Config) OnUpdate(_ any, new any) {
 		return
 	}
 
-	if dNew.Status.LastSuccessful {
-		if err := c.verifyWorkloadContainers(c.ctx, dNew); err != nil {
-			log.Warnf("verify attestation: %v", err)
-		}
+	if !dNew.Status.LastSuccessful {
+		log.Debug("workload not successful")
+		return
+	}
+
+	if err := c.verifyWorkloadContainers(c.ctx, dNew); err != nil {
+		log.Warnf("verify attestation: %v", err)
 	}
 }
 
@@ -120,12 +123,14 @@ func (c *Config) OnAdd(obj any) {
 		return
 	}
 
-	if workload.Status.LastSuccessful {
-		err := c.verifyWorkloadContainers(c.ctx, workload)
-		if err != nil {
-			log.Warnf("add: verify attestation: %v", err)
-			return
-		}
+	if !workload.Status.LastSuccessful {
+		log.Debug("workload not successful")
+		return
+	}
+
+	if err := c.verifyWorkloadContainers(c.ctx, workload); err != nil {
+		log.Warnf("verify attestation: %v", err)
+		return
 	}
 }
 

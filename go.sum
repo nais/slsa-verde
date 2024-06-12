@@ -540,6 +540,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/nais/dependencytrack v0.0.0-20240531090306-2fe8375b3235 h1:tU3Zw+CViUfGBS8ex43bZOXmrNZRidLm6V+OYF8HHls=
 github.com/nais/dependencytrack v0.0.0-20240531090306-2fe8375b3235/go.mod h1:a5YSLDbU+Qnb6160hYoeV/hM5BK1NyoBv6SWNWLXFqw=
+github.com/nais/dependencytrack v0.0.0-20240612071449-a3137dcde65b h1:9ueu+m8EPiPTJBLoTxymenP8S2e1aPp4FWf7qe7vWiE=
+github.com/nais/dependencytrack v0.0.0-20240612071449-a3137dcde65b/go.mod h1:BdPp1+tyE1hSMZigr7aGmhcTqaksf9Pxxbo4ZAi4On8=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 h1:Up6+btDp321ZG5/zdSLo48H9Iaq0UQGthrhWC6pCxzE=
 github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481/go.mod h1:yKZQO8QE2bHlgozqWDiRVqTFlLQSj30K/6SAK8EeYFw=

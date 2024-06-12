@@ -129,7 +129,13 @@ func main() {
 	}
 
 	mainLogger.Info("setting up dtrack client")
-	s := client.New(cfg.DependencyTrack.Api, cfg.DependencyTrack.Username, cfg.DependencyTrack.Password, client.WithApiKeySource(cfg.DependencyTrack.Team))
+	s := client.New(
+		cfg.DependencyTrack.Api,
+		cfg.DependencyTrack.Username,
+		cfg.DependencyTrack.Password,
+		client.WithApiKeySource(cfg.DependencyTrack.Team),
+		client.WithRetry(2, 2*time.Second),
+	)
 	if err != nil {
 		mainLogger.WithError(err).Fatal("failed to get teams")
 	}

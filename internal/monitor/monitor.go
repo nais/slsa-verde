@@ -252,6 +252,7 @@ func (c *Config) CleanupWorkload(projects []*client.Project, workload *Workload,
 		tags.ArrangeByPrefix(p.Tags)
 
 		if isThisWorkload(tags, workloadTag) {
+			// TODO is this necessary?
 			if workload.isJob() && p.Version == projectVersion {
 				c.logger.Debugf("project is a job and has the same version as the container, skipping")
 				continue

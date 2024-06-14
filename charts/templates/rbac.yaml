@@ -6,10 +6,9 @@ metadata:
   name: {{ include "slsa-verde.fullname" . }}
 rules:
   - apiGroups:
-      - ""
+      - "apps"
     resources:
       - deployments
-      - jobs
     verbs:
       - list
       - get

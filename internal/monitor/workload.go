@@ -7,6 +7,8 @@ import (
 	"slsa-verde/internal/attestation"
 
 	v1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type Workload struct {
@@ -51,8 +53,13 @@ func NewWorkload(obj any) *Workload {
 			workload.Status.LastSuccessful = true
 		}
 		return workload
-	case *nais_io_v1.Naisjob:
-		job := obj
+	case *unstructured.Unstructured:
+		job := &nais_io_v1.Naisjob{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, job)
+		if err != nil {
+			return nil
+		}
+
 		workload := &Workload{
 			Name:      jobName(job),
 			Namespace: job.GetNamespace(),

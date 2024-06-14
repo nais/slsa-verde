@@ -6,7 +6,7 @@ metadata:
   name: {{ include "slsa-verde.fullname" . }}
 rules:
   - apiGroups:
-      - '*'
+      - ""
     resources:
       - deployments
       - jobs
@@ -14,7 +14,14 @@ rules:
       - list
       - get
       - watch
-
+  - apiGroups:
+      - "nais.io"
+    resources:
+      - naisjobs
+    verbs:
+      - get
+      - list
+      - watch
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

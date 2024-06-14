@@ -1,10 +1,10 @@
 package test
 
 import (
-	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	app "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func merge(map1, map2 map[string]string) map[string]string {
@@ -70,23 +70,43 @@ func CreateDeployment(namespace, name string, labels map[string]string, annotati
 	}
 }
 
-func CreateJob(namespace, name string, labels map[string]string) *nais_io_v1.Naisjob {
-	return &nais_io_v1.Naisjob{
+func CreateJob(namespace, name string, labels map[string]string) *unstructured.Unstructured {
+	/*return &nais_io_v1.Naisjob{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    labels,
 			Name:      name,
 			Namespace: namespace,
 		},
-	}
+	}*/
+
+	ret := &unstructured.Unstructured{}
+	ret.SetAPIVersion("nais.io/v1")
+	ret.SetKind("Naisjob")
+	ret.SetName(name)
+	ret.SetNamespace(namespace)
+	ret.SetLabels(labels)
+	return ret
 }
 
-func CreateJobWithImage(namespace, name string, labels map[string]string, images ...string) *nais_io_v1.Naisjob {
-	job := CreateJob(namespace, name, labels)
+func CreateJobWithImage(namespace, name string, labels map[string]string, images ...string) *unstructured.Unstructured {
+	/*job := CreateJob(namespace, name, labels)
 
 	job.Spec = nais_io_v1.NaisjobSpec{
 		Image: images[0],
 	}
 	job.Status.DeploymentRolloutStatus = "complete"
 
-	return job
+	return job*/
+	ret := &unstructured.Unstructured{}
+	ret.SetAPIVersion("nais.io/v1")
+	ret.SetKind("Naisjob")
+	ret.SetName(name)
+	ret.SetNamespace(namespace)
+	ret.Object["spec"] = map[string]interface{}{
+		"image": images[0],
+	}
+	ret.Object["status"] = map[string]interface{}{
+		"deploymentRolloutStatus": "complete",
+	}
+	return ret
 }

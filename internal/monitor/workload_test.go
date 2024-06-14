@@ -6,6 +6,10 @@ import (
 
 	"slsa-verde/internal/attestation"
 	"slsa-verde/internal/test"
+
+	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestNewWorkload(t *testing.T) {
@@ -101,8 +105,11 @@ func TestInitWorkloadTags(t *testing.T) {
 }
 
 func TestJobName(t *testing.T) {
-	j := test.CreateJob("my-namespace", "my-job", map[string]string{"app": "my-job"})
-	name := jobName(j)
+	obj := test.CreateJob("my-namespace", "my-job", map[string]string{"app": "my-job"})
+	job := &nais_io_v1.Naisjob{}
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, job)
+	assert.NoError(t, err)
+	name := jobName(job)
 	if name != "my-job" {
 		t.Errorf("jobName() = %v, want 'my-job'", name)
 	}

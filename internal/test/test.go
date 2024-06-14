@@ -80,13 +80,13 @@ func CreateJob(namespace, name string, labels map[string]string) *nais_io_v1.Nai
 	}
 }
 
-func CreateJobWithContainer(namespace, name string, labels map[string]string, images ...string) *nais_io_v1.Naisjob {
+func CreateJobWithImage(namespace, name string, labels map[string]string, images ...string) *nais_io_v1.Naisjob {
 	job := CreateJob(namespace, name, labels)
 
 	job.Spec = nais_io_v1.NaisjobSpec{
 		Image: images[0],
 	}
-	job.Status.DeploymentRolloutStatus = "completed"
+	job.Status.DeploymentRolloutStatus = "complete"
 
 	return job
 }

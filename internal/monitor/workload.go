@@ -1,16 +1,12 @@
 package monitor
 
 import (
-	"strings"
-
 	dptrack "github.com/nais/dependencytrack/pkg/client"
 	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 
 	"slsa-verde/internal/attestation"
 
 	v1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type Workload struct {
@@ -26,36 +22,39 @@ type Status struct {
 }
 
 func NewWorkload(obj any) *Workload {
-	workload := &Workload{}
-	if d, ok := obj.(*v1.Deployment); ok {
+	if obj == nil {
+		return nil
+	}
+
+	switch obj := obj.(type) {
+	case *v1.Deployment:
+		deployment := obj
 		images := make([]string, 0)
-		for _, c := range d.Spec.Template.Spec.Containers {
+		for _, c := range deployment.Spec.Template.Spec.Containers {
 			images = append(images, c.Image)
 		}
-		workload = &Workload{
-			Name:      d.GetName(),
-			Namespace: d.GetNamespace(),
+		workload := &Workload{
+			Name:      deployment.GetName(),
+			Namespace: deployment.GetNamespace(),
 			Type:      "app",
 			Images:    images,
 		}
 
-		desiredReplicas := *d.Spec.Replicas
-		if d.Spec.Replicas != nil &&
-			d.Generation == d.Status.ObservedGeneration &&
-			desiredReplicas == d.Status.Replicas &&
-			desiredReplicas == d.Status.ReadyReplicas &&
-			desiredReplicas == d.Status.AvailableReplicas &&
-			desiredReplicas == d.Status.UpdatedReplicas &&
-			d.Status.UnavailableReplicas == 0 {
+		desiredReplicas := *deployment.Spec.Replicas
+		if deployment.Spec.Replicas != nil &&
+			deployment.Generation == deployment.Status.ObservedGeneration &&
+			desiredReplicas == deployment.Status.Replicas &&
+			desiredReplicas == deployment.Status.ReadyReplicas &&
+			desiredReplicas == deployment.Status.AvailableReplicas &&
+			desiredReplicas == deployment.Status.UpdatedReplicas &&
+			deployment.Status.UnavailableReplicas == 0 {
 			workload.Status.LastSuccessful = true
 		}
 		return workload
-	}
-
-	job := &nais_io_v1.Naisjob{}
-	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.(*unstructured.Unstructured).Object, job); err == nil {
+	case *nais_io_v1.Naisjob:
+		job := obj
 		workload := &Workload{
-			Name:      job.GetName(),
+			Name:      jobName(job),
 			Namespace: job.GetNamespace(),
 			Type:      "job",
 			Images:    []string{job.Spec.Image},
@@ -65,9 +64,9 @@ func NewWorkload(obj any) *Workload {
 			workload.Status.LastSuccessful = true
 		}
 		return workload
+	default:
+		return nil
 	}
-
-	return nil
 }
 
 func (w *Workload) getTag(cluster string) string {
@@ -109,15 +108,5 @@ func jobName(job *nais_io_v1.Naisjob) string {
 		return workloadName
 	}
 
-	// TODO bug when job id deployed manually or using dash
-	// keep everything before the last dash
-	beforeLastDash := strings.LastIndex(job.GetName(), "-")
-	if beforeLastDash == -1 {
-		// no dash, use the whole name
-		workloadName = job.GetName()
-	} else {
-		// use everything before the last dash
-		workloadName = job.GetName()[:beforeLastDash]
-	}
-	return workloadName
+	return job.GetName()
 }

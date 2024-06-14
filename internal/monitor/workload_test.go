@@ -106,10 +106,4 @@ func TestJobName(t *testing.T) {
 	if name != "my-job" {
 		t.Errorf("jobName() = %v, want 'my-job'", name)
 	}
-
-	j = test.CreateJob("my-namespace", "my-job-20123", nil)
-	name = jobName(j)
-	if name != "my-job" {
-		t.Errorf("jobName() = %v, want 'my-job'", name)
-	}
 }

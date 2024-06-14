@@ -157,7 +157,7 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
-	job := test.CreateJobWithContainer("testns", "testjob", nil, "test/nginx:latest")
+	job := test.CreateJobWithImage("testns", "testjob", nil, "test/nginx:latest")
 	workload := NewWorkload(job)
 
 	var statement in_toto.CycloneDXStatement
@@ -209,8 +209,8 @@ func TestConfigOnAddExistsJobWithNewVersion(t *testing.T) {
 	m := NewMonitor(context.Background(), c, v, cluster)
 
 	t.Run("should delete project if this workload(job) is the last workload and have new version", func(t *testing.T) {
-		deployment := test.CreateJobWithContainer("testns", "testjob", nil, "test/nginx:latest2")
-		workload := NewWorkload(deployment)
+		job := test.CreateJobWithImage("testns", "testjob", nil, "test/nginx:latest2")
+		workload := NewWorkload(job)
 		var statement in_toto.CycloneDXStatement
 		file, err := os.ReadFile("testdata/sbom.json")
 		assert.NoError(t, err)
@@ -244,7 +244,7 @@ func TestConfigOnAddExistsJobWithNewVersion(t *testing.T) {
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest2", "test", tags).Return(&client.Project{Uuid: "uuid2"}, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest2", "uuid2", false, mock.Anything).Return(nil, nil)
 
-		m.OnAdd(deployment)
+		m.OnAdd(job)
 	})
 }
 

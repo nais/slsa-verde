@@ -11,7 +11,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/cosign/v2/pkg/oci/remote"
-	v1 "k8s.io/api/core/v1"
 
 	"slsa-verde/internal/github"
 
@@ -42,7 +41,7 @@ type ImageMetadata struct {
 }
 
 type Verifier interface {
-	Verify(ctx context.Context, container v1.Container) (*ImageMetadata, error)
+	Verify(ctx context.Context, image string) (*ImageMetadata, error)
 }
 
 var _ Verifier = &VerifyAttestationOpts{}
@@ -136,8 +135,8 @@ func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign
 	return co, nil
 }
 
-func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container v1.Container) (*ImageMetadata, error) {
-	ref, err := name.ParseReference(container.Image)
+func (vao *VerifyAttestationOpts) Verify(ctx context.Context, image string) (*ImageMetadata, error) {
+	ref, err := name.ParseReference(image)
 
 	opts := vao.CheckOpts
 
@@ -154,12 +153,11 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container v1.Conta
 	var statement *in_toto.CycloneDXStatement
 
 	vao.Logger.WithFields(log.Fields{
-		"image":          container.Image,
-		"container-name": container.Name,
+		"image": image,
 	}).Debug("verifying image attestations")
 
 	if vao.LocalImage {
-		verified, bVerified, err = cosign.VerifyLocalImageAttestations(ctx, container.Image, opts)
+		verified, bVerified, err = cosign.VerifyLocalImageAttestations(ctx, image, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -197,14 +195,14 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, container v1.Conta
 	vao.Logger.WithFields(log.Fields{
 		"predicate-type": statement.PredicateType,
 		"statement-type": statement.Type,
-		"ref":            container.Image,
+		"ref":            image,
 	}).Info("attestation verified and parsed statement")
 
 	imageMetadata := &ImageMetadata{
 		Statement:      statement,
 		Image:          ref.String(),
 		BundleVerified: bVerified,
-		ContainerName:  container.Name,
+		ContainerName:  image,
 		Digest:         digest.String(),
 	}
 

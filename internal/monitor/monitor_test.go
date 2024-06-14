@@ -77,7 +77,7 @@ func TestConfigOnAdd(t *testing.T) {
 
 	t.Run("should attest image and create project", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
-		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0]).Return(att, nil)
+		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0].Image).Return(att, nil)
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{}, nil)
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(&client.Project{
 			Uuid: "uuid1",
@@ -123,7 +123,7 @@ func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
 	tags := workload.initWorkloadTags(att, cluster, "test/nginx", "latest")
 	t.Run("should attest images 2 containers and create 2 projects", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
-		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0]).Return(att, nil)
+		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0].Image).Return(att, nil)
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{}, nil)
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(&client.Project{Uuid: "uuid1"}, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
@@ -139,7 +139,7 @@ func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
 		}
 		tags = workload.initWorkloadTags(att, cluster, "test/nginx", "latest2")
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest2", "test", tags).Return(&client.Project{Uuid: "uuid2"}, nil)
-		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[1]).Return(att, nil)
+		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[1].Image).Return(att, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest2", "uuid2", false, mock.Anything).Return(nil, nil)
 
 		m.OnAdd(deployment)
@@ -198,8 +198,7 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 	})
 
 	t.Run("should ignore failed jobs conditions", func(t *testing.T) {
-		job.Status.Conditions[0].Status = "False"
-		job.Status.Conditions[0].Type = "Failed"
+		job.Status.DeploymentRolloutStatus = "unknown"
 		m.OnAdd(job)
 	})
 }

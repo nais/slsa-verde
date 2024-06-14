@@ -17,11 +17,14 @@ import (
 	"slsa-verde/internal/monitor"
 
 	"github.com/nais/dependencytrack/pkg/client"
+	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -103,14 +106,24 @@ func main() {
 		mainLogger.WithError(err).Fatal("setting up k8s client")
 	}
 
+	dynamicClient, err := dynamic.NewForConfig(kubeConfig)
+	if err != nil {
+		mainLogger.WithError(err).Fatal("create dynamic client: %w", err)
+	}
+
 	mainLogger.Info("setting up informer")
+	namespaceOpts := "metadata.namespace!=kube-system," +
+		"metadata.namespace!=kube-public," +
+		"metadata.namespace!=cnrm-system," +
+		"metadata.namespace!=kyverno," +
+		"metadata.namespace!=linkerd"
 	tweakListOpts := informers.WithTweakListOptions(
 		func(options *v1.ListOptions) {
-			options.FieldSelector = "metadata.namespace!=kube-system," +
-				"metadata.namespace!=kube-public," +
-				"metadata.namespace!=cnrm-system," +
-				"metadata.namespace!=kyverno," +
-				"metadata.namespace!=linkerd"
+			options.FieldSelector = namespaceOpts
+		})
+	dynTweakListOpts := dynamicinformer.TweakListOptionsFunc(
+		func(options *v1.ListOptions) {
+			options.FieldSelector = namespaceOpts
 		})
 
 	verifyCmd := &verify.VerifyAttestationCommand{
@@ -141,14 +154,14 @@ func main() {
 	}
 
 	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 0, tweakListOpts)
+	dinf := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, 4*time.Hour, "", dynTweakListOpts)
+
 	if err = setupInformers(
 		ctx,
 		mainLogger,
 		monitor.NewMonitor(ctx, s, opts, cfg.Cluster),
 		factory.Apps().V1().Deployments().Informer(),
-		factory.Batch().V1().Jobs().Informer(),
-		// factory.Apps().V1().StatefulSets().Informer(),
-		// factory.Apps().V1().DaemonSets().Informer(),
+		dinf.ForResource(nais_io_v1.GroupVersion.WithResource("naisjobs")).Informer(),
 	); err != nil {
 		mainLogger.WithError(err).Fatal("failed to setup informers")
 	}

@@ -4,19 +4,21 @@ import (
 	"strings"
 
 	dptrack "github.com/nais/dependencytrack/pkg/client"
+	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+
+	"slsa-verde/internal/attestation"
 
 	v1 "k8s.io/api/apps/v1"
-	batch "k8s.io/api/batch/v1"
-	core "k8s.io/api/core/v1"
-	"slsa-verde/internal/attestation"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type Workload struct {
-	Name       string
-	Namespace  string
-	Containers []core.Container
-	Status     Status
-	Type       string
+	Name      string
+	Namespace string
+	Images    []string
+	Status    Status
+	Type      string
 }
 
 type Status struct {
@@ -26,11 +28,15 @@ type Status struct {
 func NewWorkload(obj any) *Workload {
 	workload := &Workload{}
 	if d, ok := obj.(*v1.Deployment); ok {
+		images := make([]string, 0)
+		for _, c := range d.Spec.Template.Spec.Containers {
+			images = append(images, c.Image)
+		}
 		workload = &Workload{
-			Name:       d.GetName(),
-			Namespace:  d.GetNamespace(),
-			Type:       "app",
-			Containers: d.Spec.Template.Spec.Containers,
+			Name:      d.GetName(),
+			Namespace: d.GetNamespace(),
+			Type:      "app",
+			Images:    images,
 		}
 
 		desiredReplicas := *d.Spec.Replicas
@@ -43,23 +49,25 @@ func NewWorkload(obj any) *Workload {
 			d.Status.UnavailableReplicas == 0 {
 			workload.Status.LastSuccessful = true
 		}
+		return workload
 	}
 
-	if j, ok := obj.(*batch.Job); ok {
-		workload = &Workload{
-			Name:       jobName(j),
-			Namespace:  j.GetNamespace(),
-			Type:       "job",
-			Containers: j.Spec.Template.Spec.Containers,
+	job := &nais_io_v1.Naisjob{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.(*unstructured.Unstructured).Object, job); err == nil {
+		workload := &Workload{
+			Name:      job.GetName(),
+			Namespace: job.GetNamespace(),
+			Type:      "job",
+			Images:    []string{job.Spec.Image},
 		}
-		for _, condition := range j.Status.Conditions {
-			if condition.Type == "Complete" && condition.Status == "True" {
-				workload.Status.LastSuccessful = true
-			}
+
+		if job.Status.DeploymentRolloutStatus == "complete" {
+			workload.Status.LastSuccessful = true
 		}
+		return workload
 	}
 
-	return workload
+	return nil
 }
 
 func (w *Workload) getTag(cluster string) string {
@@ -95,7 +103,7 @@ func (w *Workload) isJob() bool {
 	return w.Type == "job"
 }
 
-func jobName(job *batch.Job) string {
+func jobName(job *nais_io_v1.Naisjob) string {
 	workloadName := job.Labels["app"]
 	if workloadName != "" {
 		return workloadName

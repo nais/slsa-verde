@@ -1,8 +1,8 @@
 package test
 
 import (
+	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	app "k8s.io/api/apps/v1"
-	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -70,8 +70,8 @@ func CreateDeployment(namespace, name string, labels map[string]string, annotati
 	}
 }
 
-func CreateJob(namespace, name string, labels map[string]string) *batch.Job {
-	return &batch.Job{
+func CreateJob(namespace, name string, labels map[string]string) *nais_io_v1.Naisjob {
+	return &nais_io_v1.Naisjob{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    labels,
 			Name:      name,
@@ -80,28 +80,13 @@ func CreateJob(namespace, name string, labels map[string]string) *batch.Job {
 	}
 }
 
-func CreateJobWithContainer(namespace, name string, labels map[string]string, images ...string) *batch.Job {
+func CreateJobWithContainer(namespace, name string, labels map[string]string, images ...string) *nais_io_v1.Naisjob {
 	job := CreateJob(namespace, name, labels)
-	l := merge(map[string]string{
-		"nais.io/salsa-keyRef-provider": "cosign",
-		"team":                          namespace,
-		"app.kubernetes.io/name":        name,
-	}, labels)
 
-	job.Spec = batch.JobSpec{
-		Template: v1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: l,
-			},
-			Spec: v1.PodSpec{
-				Containers: containers(images, name),
-			},
-		},
+	job.Spec = nais_io_v1.NaisjobSpec{
+		Image: images[0],
 	}
-	job.Status.Conditions = append(job.Status.Conditions, batch.JobCondition{
-		Type:   "Complete",
-		Status: "True",
-	})
+	job.Status.DeploymentRolloutStatus = "completed"
 
 	return job
 }

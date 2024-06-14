@@ -18,7 +18,7 @@ func TestNewWorkload(t *testing.T) {
 		t.Errorf("NewWorkload() = %v, want 'my-app'", workload.Name)
 	}
 
-	j := test.CreateJob("my-namespace", "my-job-20002", nil)
+	j := test.CreateJob("my-namespace", "my-job", nil)
 	workload = NewWorkload(j)
 	if workload.Type != "job" {
 		t.Errorf("NewWorkload() = %v, want 'job'", workload.Type)

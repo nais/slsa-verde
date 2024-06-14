@@ -47,9 +47,9 @@ func (c *Config) OnDelete(obj any) {
 	})
 
 	workloadTag := workload.getTag(c.Cluster)
-	for _, container := range workload.Containers {
-		projectName := getProjectName(container.Image)
-		projectVersion := getProjectVersion(container.Image)
+	for _, image := range workload.Images {
+		projectName := getProjectName(image)
+		projectVersion := getProjectVersion(image)
 		projects, err := c.retrieveProjects(c.ctx, client.ProjectTagPrefix.With(projectName))
 		if err != nil {
 			l.Warnf("retrieve projects: %v", err)
@@ -66,7 +66,7 @@ func (c *Config) OnDelete(obj any) {
 				"project":         projectName,
 				"project-version": projectVersion,
 				"workload-tag":    workloadTag,
-				"image":           container.Image,
+				"image":           image,
 				"project-uuid":    p.Uuid,
 			})
 
@@ -145,9 +145,9 @@ func (c *Config) OnAdd(obj any) {
 
 func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workload, log *logrus.Entry) error {
 	workloadTag := workload.getTag(c.Cluster)
-	for _, container := range workload.Containers {
-		projectName := getProjectName(container.Image)
-		projectVersion := getProjectVersion(container.Image)
+	for _, image := range workload.Images {
+		projectName := getProjectName(image)
+		projectVersion := getProjectVersion(image)
 		project, err := c.Client.GetProject(ctx, projectName, projectVersion)
 		if err != nil {
 			return err
@@ -156,7 +156,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 		l := log.WithFields(logrus.Fields{
 			"project":         projectName,
 			"project-version": projectVersion,
-			"container":       container.Name,
+			"container":       image,
 			"workload-tag":    workloadTag,
 		})
 		if project != nil {
@@ -187,7 +187,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				return err
 			}
 		} else {
-			metadata, err := c.verifier.Verify(c.ctx, container)
+			metadata, err := c.verifier.Verify(c.ctx, image)
 			if err != nil {
 				if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
 					l.Debugf("skipping, %v", err)

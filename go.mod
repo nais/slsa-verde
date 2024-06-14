@@ -34,6 +34,7 @@ require (
 	github.com/google/go-github/v55 v55.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/letsencrypt/boulder v0.0.0-20240521171313-5be3650e564e // indirect
+	github.com/mitchellh/hashstructure v1.1.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/sigstore/sigstore v1.8.3 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
@@ -41,6 +42,7 @@ require (
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	google.golang.org/genproto v0.0.0-20240521202816-d264139d666e // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240521202816-d264139d666e // indirect
+	sigs.k8s.io/controller-runtime v0.15.0 // indirect
 )
 
 require (
@@ -181,6 +183,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mozillazg/docker-credential-acr-helper v0.3.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/nais/liberator v0.0.0-20240604120701-30ca18330205
 	github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oleiade/reflections v1.0.1 // indirect

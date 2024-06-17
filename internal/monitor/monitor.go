@@ -72,14 +72,13 @@ func (c *Config) OnDelete(obj any) {
 
 			tags := NewTags()
 			tags.ArrangeByPrefix(p.Tags)
-			validVersion := p.Version == projectVersion
-			if isThisWorkload(tags, workloadTag) && validVersion {
+			if isThisWorkload(tags, workloadTag) {
 				if err := c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
 					ll.Warnf("delete project: %v", err)
 					continue
 				}
 				ll.Info("project deleted with workload tag")
-			} else if tags.hasWorkload(workloadTag) && validVersion {
+			} else if tags.hasWorkload(workloadTag) {
 				tags.deleteWorkloadTag(workloadTag)
 				_, err := c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
 				if err != nil {

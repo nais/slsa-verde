@@ -665,12 +665,14 @@ func TestConfigOnUpdate(t *testing.T) {
 	})
 
 	t.Run("should not do anything if condition is not satisfied", func(t *testing.T) {
-		newDeployment.Status.UnavailableReplicas = 1
+		replicas := int32(2)
+		newDeployment.Spec.Replicas = &replicas
 		m.OnUpdate(nil, newDeployment)
 	})
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
-		newDeployment.Status.UnavailableReplicas = 0
+		replicas := int32(1)
+		newDeployment.Spec.Replicas = &replicas
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
 			Classifier:          "APPLICATION",
 			Group:               "testns",
@@ -797,12 +799,14 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("should ignore deployment if the condition not fulfilled", func(t *testing.T) {
-		newDeployment.Status.UnavailableReplicas = 1
+		replicas := int32(2)
+		newDeployment.Spec.Replicas = &replicas
 		m.OnUpdate(oldDeployment, newDeployment)
 	})
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
-		newDeployment.Status.UnavailableReplicas = 0
+		replicas := int32(1)
+		newDeployment.Spec.Replicas = &replicas
 
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(&client.Project{
 			Classifier: "APPLICATION",

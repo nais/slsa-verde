@@ -61,6 +61,8 @@ type Config struct {
 	DependencyTrack    DependencyTrack `json:"dependencytrack"`
 }
 
+type SlsaInformers map[string]cache.SharedIndexInformer
+
 var cfg = &Config{
 	LogLevel: "debug",
 }
@@ -111,21 +113,6 @@ func main() {
 		mainLogger.WithError(err).Fatal("create dynamic client: %w", err)
 	}
 
-	mainLogger.Info("setting up informer")
-	namespaceOpts := "metadata.namespace!=kube-system," +
-		"metadata.namespace!=kube-public," +
-		"metadata.namespace!=cnrm-system," +
-		"metadata.namespace!=kyverno," +
-		"metadata.namespace!=linkerd"
-	tweakListOpts := informers.WithTweakListOptions(
-		func(options *v1.ListOptions) {
-			options.FieldSelector = namespaceOpts
-		})
-	dynTweakListOpts := dynamicinformer.TweakListOptionsFunc(
-		func(options *v1.ListOptions) {
-			options.FieldSelector = namespaceOpts
-		})
-
 	verifyCmd := &verify.VerifyAttestationCommand{
 		RekorURL:   cfg.Cosign.RekorURL,
 		LocalImage: cfg.Cosign.LocalImage,
@@ -153,23 +140,35 @@ func main() {
 		mainLogger.WithError(err).Fatal("failed to get teams")
 	}
 
-	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 0, tweakListOpts)
-	dinf := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, 4*time.Hour, "", dynTweakListOpts)
-
-	if err = setupInformers(
-		ctx,
-		mainLogger,
-		monitor.NewMonitor(ctx, s, opts, cfg.Cluster),
-		factory.Apps().V1().Deployments().Informer(),
-		dinf.ForResource(nais_io_v1.GroupVersion.WithResource("naisjobs")).Informer(),
-	); err != nil {
+	slsaInformers := prepareInformers(k8sClient, dynamicClient, mainLogger)
+	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
+	if err = startInformers(ctx, m, slsaInformers, mainLogger); err != nil {
 		mainLogger.WithError(err).Fatal("failed to setup informers")
 	}
-
 	defer runtime.HandleCrash()
 
 	<-ctx.Done()
 	mainLogger.Info("shutting down")
+}
+
+func prepareInformers(k8sClient *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, logger *log.Entry) SlsaInformers {
+	logger.Info("prepare informer(s)")
+	namespaceOpts := "metadata.namespace=tbd"
+	tweakListOpts := informers.WithTweakListOptions(
+		func(options *v1.ListOptions) {
+			options.FieldSelector = namespaceOpts
+		})
+	dynTweakListOpts := dynamicinformer.TweakListOptionsFunc(
+		func(options *v1.ListOptions) {
+			options.FieldSelector = namespaceOpts
+		})
+	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 4*time.Hour, tweakListOpts)
+	dinf := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, 4*time.Hour, "", dynTweakListOpts)
+
+	return SlsaInformers{
+		"deployment": factory.Apps().V1().Deployments().Informer(),
+		"naisjob":    dinf.ForResource(nais_io_v1.GroupVersion.WithResource("naisjobs")).Informer(),
+	}
 }
 
 func setupKubeConfig() *rest.Config {
@@ -192,16 +191,17 @@ func setupKubeConfig() *rest.Config {
 	return kubeConfig
 }
 
-func setupInformers(ctx context.Context, log *log.Entry, monitor *monitor.Config, informers ...cache.SharedIndexInformer) error {
-	for _, informer := range informers {
-		log.Infof("setting up informer")
+func startInformers(ctx context.Context, monitor *monitor.Config, informers SlsaInformers, log *log.Entry) error {
+	log.Infof("setting up informer(s)")
+	for name, informer := range informers {
+		l := log.WithField("resource", name)
 		err := informer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
 		if err != nil {
 			return fmt.Errorf("set watch error handler: %w", err)
 		}
 
-		log.Info("setting up monitor, event handler")
-		event, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		l.Info("setting up monitor for resource")
+		_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    monitor.OnAdd,
 			UpdateFunc: monitor.OnUpdate,
 			DeleteFunc: monitor.OnDelete,
@@ -216,7 +216,7 @@ func setupInformers(ctx context.Context, log *log.Entry, monitor *monitor.Config
 			return fmt.Errorf("timed out waiting for caches to sync")
 		}
 
-		log.Infof("informer cache synced: %v", event.HasSynced())
+		l.Infof("informer cache synced: %v", informer.HasSynced())
 	}
 	return nil
 }

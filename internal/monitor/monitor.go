@@ -49,44 +49,20 @@ func (c *Config) OnDelete(obj any) {
 	workloadTag := workload.getTag(c.Cluster)
 	for _, image := range workload.Images {
 		projectName := getProjectName(image)
-		projectVersion := getProjectVersion(image)
 		projects, err := c.retrieveProjects(c.ctx, client.ProjectTagPrefix.With(projectName))
 		if err != nil {
 			l.Warnf("retrieve projects: %v", err)
 			return
 		}
 
-		for _, p := range projects {
-			if p == nil {
-				log.Debug("project not found")
-				continue
-			}
+		ll := l.WithFields(logrus.Fields{
+			"project":      projectName,
+			"workload-tag": workloadTag,
+			"image":        image,
+		})
 
-			ll := l.WithFields(logrus.Fields{
-				"project":         projectName,
-				"project-version": projectVersion,
-				"workload-tag":    workloadTag,
-				"image":           image,
-				"project-uuid":    p.Uuid,
-			})
-
-			tags := NewTags()
-			tags.ArrangeByPrefix(p.Tags)
-			if isThisWorkload(tags, workloadTag) {
-				if err := c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
-					ll.Warnf("delete project: %v", err)
-					continue
-				}
-				ll.Info("project deleted with workload tag")
-			} else if tags.hasWorkload(workloadTag) {
-				tags.deleteWorkloadTag(workloadTag)
-				_, err := c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
-				if err != nil {
-					ll.Warnf("remove tags project: %v", err)
-					continue
-				}
-				ll.Info("project tagged with workload is removed from project")
-			}
+		if err := c.cleanupWorkload(projects, workloadTag, ll); err != nil {
+			ll.Warnf("cleanup workload: %v", err)
 		}
 	}
 }
@@ -182,7 +158,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 			// filter the current project from the slice of projects
 			projects = filterProjects(projects, project.Version)
 			// cleanup projects with the same workload tag
-			if err = c.cleanupWorkload(projects, workload, project.Version, workloadTag, l); err != nil {
+			if err = c.cleanupWorkload(projects, workloadTag, l); err != nil {
 				return err
 			}
 		} else {
@@ -211,7 +187,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 			if err != nil {
 				l.Warnf("retrieve project, skipping %v", err)
 			}
-			if err = c.cleanupWorkload(projects, workload, projectVersion, workloadTag, l); err != nil {
+			if err = c.cleanupWorkload(projects, workloadTag, l); err != nil {
 				return err
 			}
 
@@ -294,27 +270,21 @@ func isThisWorkload(tags *Tags, workload string) bool {
 	return len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workload
 }
 
-func (c *Config) cleanupWorkload(projects []*client.Project, workload *Workload, projectVersion, workloadTag string, log *logrus.Entry) error {
+func (c *Config) cleanupWorkload(projects []*client.Project, workloadTag string, log *logrus.Entry) error {
 	var err error
 	for _, p := range projects {
 		tags := NewTags()
 		tags.ArrangeByPrefix(p.Tags)
 
 		if isThisWorkload(tags, workloadTag) {
-			// TODO is this necessary?
-			if workload.isJob() && p.Version == projectVersion {
-				log.Debug("project is a job and has the same version as the container, skipping")
+			if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
+				log.Warnf("delete project: %v", err)
 				continue
-			} else {
-				if err := c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
-					log.Warnf("delete project: %v", err)
-					continue
-				}
-				log.Debug("project deleted with workload tag")
 			}
+			log.Debug("project deleted with workload tag")
 		} else if tags.hasWorkload(workloadTag) {
 			tags.deleteWorkloadTag(workloadTag)
-			_, err := c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
+			_, err = c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
 			if err != nil {
 				log.Warnf("remove tags project: %v", err)
 				continue

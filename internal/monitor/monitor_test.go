@@ -167,7 +167,7 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 	err = json.Unmarshal(file, &statement)
 	assert.NoError(t, err)
 
-	t.Run("should not delete project if this workload(job) is the last workload and have the same version as the new workload", func(t *testing.T) {
+	t.Run("should delete project if this workload(job) is the last workload", func(t *testing.T) {
 		var statement in_toto.CycloneDXStatement
 		file, err := os.ReadFile("testdata/sbom.json")
 		assert.NoError(t, err)
@@ -195,6 +195,7 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 				Version:    "latest",
 			},
 		}, nil)
+		c.On("DeleteProject", mock.Anything, "uuid1").Return(nil)
 		m.OnAdd(job)
 	})
 

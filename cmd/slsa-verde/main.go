@@ -59,6 +59,7 @@ type Config struct {
 	LogLevel           string          `json:"log-level"`
 	MetricsBindAddress string          `json:"metrics-address"`
 	DependencyTrack    DependencyTrack `json:"dependencytrack"`
+	Namespace          string          `json:"namespace"`
 }
 
 type SlsaInformers map[string]cache.SharedIndexInformer
@@ -81,6 +82,7 @@ func init() {
 	flag.StringVar(&cfg.DependencyTrack.Team, "dependencytrack-team", "", "Salsa storage team")
 	flag.StringVar(&cfg.DependencyTrack.Username, "dependencytrack-username", "", "Salsa storage username")
 	flag.StringSliceVar(&cfg.GitHub.Organizations, "github-organizations", []string{}, "List of GitHub organizations to filter on")
+	flag.StringVar(&cfg.Namespace, "namespace", "", "Specify a single namespace to watch")
 }
 
 func main() {
@@ -140,7 +142,7 @@ func main() {
 		mainLogger.WithError(err).Fatal("failed to get teams")
 	}
 
-	slsaInformers := prepareInformers(k8sClient, dynamicClient, mainLogger)
+	slsaInformers := prepareInformers(k8sClient, dynamicClient, cfg.Namespace, mainLogger)
 	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
 	if err = startInformers(ctx, m, slsaInformers, mainLogger); err != nil {
 		mainLogger.WithError(err).Fatal("failed to setup informers")
@@ -151,16 +153,27 @@ func main() {
 	mainLogger.Info("shutting down")
 }
 
-func prepareInformers(k8sClient *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, logger *log.Entry) SlsaInformers {
+func prepareInformers(k8sClient *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, namespace string, logger *log.Entry) SlsaInformers {
 	logger.Info("prepare informer(s)")
-	namespaceOpts := "metadata.namespace=tbd"
+	// default ignore system namespaces
+	switch namespace {
+	case "":
+		namespace = "metadata.namespace!=kube-system," +
+			"metadata.namespace!=kube-public," +
+			"metadata.namespace!=cnrm-system," +
+			"metadata.namespace!=kyverno," +
+			"metadata.namespace!=linkerd"
+	default:
+		namespace = "metadata.namespace=" + namespace
+	}
+
 	tweakListOpts := informers.WithTweakListOptions(
 		func(options *v1.ListOptions) {
-			options.FieldSelector = namespaceOpts
+			options.FieldSelector = namespace
 		})
 	dynTweakListOpts := dynamicinformer.TweakListOptionsFunc(
 		func(options *v1.ListOptions) {
-			options.FieldSelector = namespaceOpts
+			options.FieldSelector = namespace
 		})
 	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 4*time.Hour, tweakListOpts)
 	dinf := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, 4*time.Hour, "", dynTweakListOpts)

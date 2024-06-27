@@ -160,13 +160,6 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				c.count(workloadTag, projectName, image)
 				ll.Info("project tagged with workload")
 			} else {
-				cacheKey := workloadTag + project.Name
-				if v, ok := c.cache.Get(cacheKey); ok {
-					if v.(bool) {
-						l.Debug("cache: project already tagged with workload")
-						continue
-					}
-				}
 				c.count(workloadTag, projectName, image)
 				l.Debug("project already tagged with workload")
 			}
@@ -233,12 +226,18 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 }
 
 func (c *Config) count(workloadTag, projectName, image string) {
+	cacheKey := workloadTag + projectName
+	if v, ok := c.cache.Get(cacheKey); ok {
+		if v.(bool) {
+			return
+		}
+	}
 	if getRegistryNamespace(image) != "nais-io" {
 		namespace := getTeamFromWorkloadTag(workloadTag)
 		registry := getRegistry(image)
 		workloadType := getTypeFromWorkloadTag(workloadTag)
 		observability.WorkloadTotalGauge.WithLabelValues(c.Cluster, namespace, workloadType, registry).Inc()
-		c.cache.Set(workloadTag+projectName, true, cache.DefaultExpiration)
+		c.cache.Set(cacheKey, true, cache.DefaultExpiration)
 	}
 }
 

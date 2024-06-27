@@ -2,12 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/joho/godotenv"
 	flag "github.com/spf13/pflag"
@@ -100,8 +104,13 @@ func main() {
 	})
 
 	mainLogger.Info("starting slsa-verde")
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	ctx, signalStop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
+	defer signalStop()
 
 	mainLogger.Info("setting up k8s client")
 	kubeConfig := setupKubeConfig()
@@ -115,6 +124,12 @@ func main() {
 		mainLogger.WithError(err).Fatal("create dynamic client: %w", err)
 	}
 
+	if err := run(ctx, k8sClient, dynamicClient, mainLogger); err != nil {
+		mainLogger.WithError(err).Fatal("error in run()")
+	}
+}
+
+func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, mainLogger *log.Entry) error {
 	verifyCmd := &verify.VerifyAttestationCommand{
 		RekorURL:   cfg.Cosign.RekorURL,
 		LocalImage: cfg.Cosign.LocalImage,
@@ -127,7 +142,7 @@ func main() {
 		cfg.Cosign.KeyRef,
 	)
 	if err != nil {
-		mainLogger.WithError(err).Fatal("failed to setup verify attestation opts")
+		return fmt.Errorf("failed to create attestation options: %w", err)
 	}
 
 	mainLogger.Info("setting up dtrack client")
@@ -139,18 +154,39 @@ func main() {
 		client.WithRetry(2, 2*time.Second),
 	)
 	if err != nil {
-		mainLogger.WithError(err).Fatal("failed to get teams")
+		return fmt.Errorf("failed to create dtrack client: %w", err)
 	}
 
 	slsaInformers := prepareInformers(k8sClient, dynamicClient, cfg.Namespace, mainLogger)
 	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
 	if err = startInformers(ctx, m, slsaInformers, mainLogger); err != nil {
-		mainLogger.WithError(err).Fatal("failed to setup informers")
+		return fmt.Errorf("start informers: %w", err)
 	}
-	defer runtime.HandleCrash()
 
-	<-ctx.Done()
-	mainLogger.Info("shutting down")
+	server := &http.Server{
+		Addr: ":8080",
+	}
+
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			mainLogger.WithError(err).Fatal("failed to start metrics server")
+		}
+		mainLogger.Info("Stopped serving new connections.")
+	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
+
+	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownRelease()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("shutdown server: %w", err)
+	}
+	mainLogger.Info("Graceful shutdown complete.")
+	return nil
 }
 
 func prepareInformers(k8sClient *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, namespace string, logger *log.Entry) SlsaInformers {

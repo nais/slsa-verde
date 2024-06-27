@@ -496,8 +496,8 @@ github.com/lestrrat-go/httprc v1.0.5 h1:bsTfiH8xaKOJPrg1R+E3iE/AWZr/x0Phj9PBTG/O
 github.com/lestrrat-go/httprc v1.0.5/go.mod h1:mwwz3JMTPBjHUkkDv/IGJ39aALInZLrhBp0X7KGUZlo=
 github.com/lestrrat-go/iter v1.0.2 h1:gMXo1q4c2pHmC3dn8LzRhJfP1ceCbgSiT9lUydIzltI=
 github.com/lestrrat-go/iter v1.0.2/go.mod h1:Momfcq3AnRlRjI5b5O8/G5/BvpzrhoFTZcn06fEOPt4=
-github.com/lestrrat-go/jwx/v2 v2.0.21 h1:jAPKupy4uHgrHFEdjVjNkUgoBKtVDgrQPB/h55FHrR0=
-github.com/lestrrat-go/jwx/v2 v2.0.21/go.mod h1:09mLW8zto6bWL9GbwnqAli+ArLf+5M33QLQPDggkUWM=
+github.com/lestrrat-go/jwx/v2 v2.1.0 h1:0zs7Ya6+39qoit7gwAf+cYm1zzgS3fceIdo7RmQ5lkw=
+github.com/lestrrat-go/jwx/v2 v2.1.0/go.mod h1:Xpw9QIaUGiIUD1Wx0NcY1sIHwFf8lDuZn/cmxtXYRys=
 github.com/lestrrat-go/option v1.0.1 h1:oAzP2fvZGQKWkvHa1/SAcFolBEca1oN+mQ7eooNBEYU=
 github.com/lestrrat-go/option v1.0.1/go.mod h1:5ZHFbivi4xwXxhxY9XHDe2FHo6/Z7WWmtT7T5nBBp3I=
 github.com/letsencrypt/boulder v0.0.0-20240521171313-5be3650e564e h1:AwE7/Zkou2OW8NGPmaahyD7zBCYoluufWnPhPjywe4o=
@@ -542,8 +542,8 @@ github.com/mozillazg/docker-credential-acr-helper v0.3.0 h1:DVWFZ3/O8BP6Ue3iS/Ol
 github.com/mozillazg/docker-credential-acr-helper v0.3.0/go.mod h1:cZlu3tof523ujmLuiNUb6JsjtHcNA70u1jitrrdnuyA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/nais/dependencytrack v0.0.0-20240612092415-1f763412e116 h1:Y+ZpEXDH8BA6RPrSojVjS9zf4RIBdWkpr+3L4imew0Y=
-github.com/nais/dependencytrack v0.0.0-20240612092415-1f763412e116/go.mod h1:BdPp1+tyE1hSMZigr7aGmhcTqaksf9Pxxbo4ZAi4On8=
+github.com/nais/dependencytrack v0.0.0-20240624100306-2a071230e7ac h1:Wuo19tFsn1EPDtbPa0+03Hs0Zo5kWqjKR6b2zGy0BjQ=
+github.com/nais/dependencytrack v0.0.0-20240624100306-2a071230e7ac/go.mod h1:KGfZetgXxh1AUEx1pgmIyJniZ85CkolG9RKGjucJ3vU=
 github.com/nais/liberator v0.0.0-20240604120701-30ca18330205 h1:X7hJ124pKQs6IyCQJq2tcL0U5NpGlPOmDkWcks0pCX8=
 github.com/nais/liberator v0.0.0-20240604120701-30ca18330205/go.mod h1:XKTg3yJM1diohS8cmdEDviRgrKMQFV6TtU9SNnMF6kM=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
@@ -583,6 +583,8 @@ github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/ory/dockertest/v3 v3.10.0 h1:4K3z2VMe8Woe++invjaTB7VRyQXQy5UY+loujO4aNE4=
 github.com/ory/dockertest/v3 v3.10.0/go.mod h1:nr57ZbRWMqfsdGdFNLHz5jjNdDb7VVFnzAeW1n5N1Lg=
+github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
+github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/pborman/uuid v1.2.1 h1:+ZZIw58t/ozdjRaXh/3awHfmWRbzYxJoAdNJxe/3pvw=
 github.com/pborman/uuid v1.2.1/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml/v2 v2.2.2 h1:aYUidT7k73Pcl9nb2gScu7NSrKCSHIDE89b3+6Wq+LM=

@@ -6,7 +6,8 @@ require (
 	github.com/google/go-containerregistry v0.19.2
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/joho/godotenv v1.5.1
-	github.com/nais/dependencytrack v0.0.0-20240612092415-1f763412e116
+	github.com/nais/dependencytrack v0.0.0-20240624100306-2a071230e7ac
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/secure-systems-lab/go-securesystemslib v0.8.0
 	github.com/sigstore/cosign/v2 v2.2.4
 	github.com/sigstore/rekor v1.3.6
@@ -169,7 +170,7 @@ require (
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc v1.0.5 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
-	github.com/lestrrat-go/jwx/v2 v2.0.21 // indirect
+	github.com/lestrrat-go/jwx/v2 v2.1.0 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -195,7 +196,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_golang v1.19.1 // indirect
+	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.53.0 // indirect
 	github.com/prometheus/procfs v0.15.0 // indirect

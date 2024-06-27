@@ -61,13 +61,22 @@ func TestArrangeByPrefix(t *testing.T) {
 		t.Errorf("addWorkloadTag() = %v, want 1 tags", workloadTags.WorkloadTags)
 	}
 
-	workloadTags.verifyTags()
-	if len(workloadTags.EnvironmentTags) != 1 {
-		t.Errorf("verifyTags() = %v, want 1 tags", workloadTags.EnvironmentTags)
+	workloadTags.addWorkloadTag("workload:my-cluster2|my-namespace2|app|my-app")
+	if len(workloadTags.WorkloadTags) != 2 {
+		t.Errorf("addWorkloadTag() = %v, want 2 tags", workloadTags.WorkloadTags)
 	}
 
-	if len(workloadTags.TeamTags) != 1 {
-		t.Errorf("verifyTags() = %v, want 1 tags", workloadTags.TeamTags)
+	workloadTags.verifyTags()
+	if len(workloadTags.EnvironmentTags) != 2 {
+		t.Errorf("verifyTags() = %v, want 2 tags", workloadTags.EnvironmentTags)
+	}
+
+	if len(workloadTags.TeamTags) != 2 {
+		t.Errorf("verifyTags() = %v, want 2 tags", workloadTags.TeamTags)
+	}
+
+	if len(workloadTags.OtherTags) != 1 {
+		t.Errorf("verifyTags() = %v, want 1 tags", workloadTags.OtherTags)
 	}
 }
 

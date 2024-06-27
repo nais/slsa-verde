@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
+
+	"slsa-verde/internal/observability"
 
 	"slsa-verde/internal/attestation"
 
 	"github.com/nais/dependencytrack/pkg/client"
+	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,6 +23,7 @@ type Config struct {
 	verifier attestation.Verifier
 	logger   *logrus.Entry
 	ctx      context.Context
+	cache    *cache.Cache
 }
 
 func NewMonitor(ctx context.Context, client client.Client, verifier attestation.Verifier, cluster string) *Config {
@@ -28,6 +33,7 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 		verifier: verifier,
 		logger:   logrus.WithField("package", "monitor"),
 		ctx:      ctx,
+		cache:    cache.New(cache.NoExpiration, 10*time.Minute),
 	}
 }
 
@@ -61,7 +67,7 @@ func (c *Config) OnDelete(obj any) {
 			"image":        image,
 		})
 
-		if err := c.cleanupWorkload(projects, workloadTag, ll); err != nil {
+		if err := c.cleanupWorkload(projects, workloadTag, image, ll); err != nil {
 			ll.Warnf("cleanup workload: %v", err)
 		}
 	}
@@ -151,14 +157,23 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 				ll := l.WithFields(logrus.Fields{
 					"project-uuid": project.Uuid,
 				})
+				c.count(workloadTag, projectName, image)
 				ll.Info("project tagged with workload")
 			} else {
-				l.Info("project already tagged with workload")
+				cacheKey := workloadTag + project.Name
+				if v, ok := c.cache.Get(cacheKey); ok {
+					if v.(bool) {
+						l.Debug("cache: project already tagged with workload")
+						continue
+					}
+				}
+				c.count(workloadTag, projectName, image)
+				l.Debug("project already tagged with workload")
 			}
 			// filter the current project from the slice of projects
 			projects = filterProjects(projects, project.Version)
 			// cleanup projects with the same workload tag
-			if err = c.cleanupWorkload(projects, workloadTag, l); err != nil {
+			if err = c.cleanupWorkload(projects, workloadTag, image, l); err != nil {
 				return err
 			}
 		} else {
@@ -187,7 +202,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 			if err != nil {
 				l.Warnf("retrieve project, skipping %v", err)
 			}
-			if err = c.cleanupWorkload(projects, workloadTag, l); err != nil {
+			if err = c.cleanupWorkload(projects, workloadTag, image, l); err != nil {
 				return err
 			}
 
@@ -210,10 +225,29 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 			ll := l.WithFields(logrus.Fields{
 				"project-uuid": createdP.Uuid,
 			})
-			ll.Info("project created with workload tag")
+			ll.Debug("project created with workload tag")
+			c.count(workloadTag, projectName, image)
 		}
 	}
 	return nil
+}
+
+func (c *Config) count(workloadTag, projectName, image string) {
+	if getRegistryNamespace(image) != "nais-io" {
+		namespace := getTeamFromWorkloadTag(workloadTag)
+		registry := getRegistry(image)
+		workloadType := getTypeFromWorkloadTag(workloadTag)
+		observability.WorkloadTotalGauge.WithLabelValues(c.Cluster, namespace, workloadType, registry).Inc()
+		c.cache.Set(workloadTag+projectName, true, cache.DefaultExpiration)
+	}
+}
+
+func getRegistry(image string) string {
+	return strings.Split(image, "/")[0]
+}
+
+func getRegistryNamespace(image string) string {
+	return strings.Split(image, "/")[1]
 }
 
 func getProjectName(containerImage string) string {
@@ -270,7 +304,7 @@ func isThisWorkload(tags *Tags, workload string) bool {
 	return len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workload
 }
 
-func (c *Config) cleanupWorkload(projects []*client.Project, workloadTag string, log *logrus.Entry) error {
+func (c *Config) cleanupWorkload(projects []*client.Project, workloadTag, image string, log *logrus.Entry) error {
 	var err error
 	for _, p := range projects {
 		tags := NewTags()
@@ -281,7 +315,7 @@ func (c *Config) cleanupWorkload(projects []*client.Project, workloadTag string,
 				log.Warnf("delete project: %v", err)
 				continue
 			}
-			log.Debug("project deleted with workload tag")
+			log.Debug("project deleted")
 		} else if tags.hasWorkload(workloadTag) {
 			tags.deleteWorkloadTag(workloadTag)
 			_, err = c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
@@ -289,7 +323,7 @@ func (c *Config) cleanupWorkload(projects []*client.Project, workloadTag string,
 				log.Warnf("remove tags project: %v", err)
 				continue
 			}
-			log.Debug("project tagged with workload tag for project")
+			log.Debug("project tags removed")
 		}
 	}
 	return err

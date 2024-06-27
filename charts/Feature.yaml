@@ -65,3 +65,11 @@ values:
     displayName: Image tag
     config:
       type: string
+  resources.requests.cpu:
+    displayName: CPU request
+    config:
+      type: string
+  resources.requests.memory:
+    displayName: Memory request
+    config:
+      type: string

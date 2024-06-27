@@ -110,6 +110,11 @@ func getTeamFromWorkloadTag(tag string) string {
 	return s[1]
 }
 
+func getTypeFromWorkloadTag(tag string) string {
+	s := strings.Split(strings.Replace(tag, client.WorkloadTagPrefix.String(), "", 1), "|")
+	return s[2]
+}
+
 func containsAllTags(tags []client.Tag, s ...string) bool {
 	found := 0
 	for _, t := range s {

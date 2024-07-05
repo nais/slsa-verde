@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -60,6 +61,9 @@ func (c *Config) OnDelete(obj any) {
 			l.Warnf("retrieve projects: %v", err)
 			return
 		}
+
+		hasAttestation := len(projects) > 0
+		observability.WorkloadWithAttestation.DeleteLabelValues(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(hasAttestation), image)
 
 		ll := l.WithFields(logrus.Fields{
 			"project":      projectName,
@@ -125,104 +129,120 @@ func (c *Config) OnAdd(obj any) {
 }
 
 func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workload, log *logrus.Entry) error {
-	workloadTag := workload.getTag(c.Cluster)
 	for _, image := range workload.Images {
-		projectName := getProjectName(image)
-		projectVersion := getProjectVersion(image)
-		project, err := c.Client.GetProject(ctx, projectName, projectVersion)
+		hasAttestation, err := c.verifyImage(ctx, workload, image, log)
 		if err != nil {
 			return err
 		}
-
-		l := log.WithFields(logrus.Fields{
-			"project":         projectName,
-			"project-version": projectVersion,
-			"container":       image,
-			"workload-tag":    workloadTag,
-		})
-		if project != nil {
-			l.Debug("project found, updating workload...")
-			tags := NewTags()
-			tags.ArrangeByPrefix(project.Tags)
-
-			projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(project.Name))
-			if err != nil {
-				l.Warnf("retrieve project, skipping %v", err)
-			}
-			if tags.addWorkloadTag(workloadTag) {
-				_, err := c.Client.UpdateProject(ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
-				if err != nil {
-					return err
-				}
-				ll := l.WithFields(logrus.Fields{
-					"project-uuid": project.Uuid,
-				})
-				c.count(workloadTag, projectName, image)
-				ll.Info("project tagged with workload")
-			} else {
-				c.count(workloadTag, projectName, image)
-				l.Debug("project already tagged with workload")
-			}
-			// filter the current project from the slice of projects
-			projects = filterProjects(projects, project.Version)
-			// cleanup projects with the same workload tag
-			if err = c.cleanupWorkload(projects, workloadTag, image, l); err != nil {
-				return err
-			}
-		} else {
-			metadata, err := c.verifier.Verify(c.ctx, image)
-			if err != nil {
-				if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
-					l.Debugf("skipping, %v", err)
-					continue
-				}
-				l.Warnf("verify attestation error, skipping: %v", err)
-				continue
-			}
-
-			if metadata.Statement == nil {
-				l.Warn("metadata is empty, skipping")
-				continue
-			}
-
-			log.WithFields(logrus.Fields{
-				"digest": metadata.Digest,
-			})
-
-			l.Debug("project does not exist, updating workload ...")
-
-			projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
-			if err != nil {
-				l.Warnf("retrieve project, skipping %v", err)
-			}
-			if err = c.cleanupWorkload(projects, workloadTag, image, l); err != nil {
-				return err
-			}
-
-			// if we do not find the new digest in any of projects, create a new project
-			if !workloadDigestHasChanged(projects, metadata.Digest) {
-				l.Info("digest has not changed, skipping")
-				continue
-			}
-
-			tags := workload.initWorkloadTags(metadata, c.Cluster, projectName, projectVersion)
-			group := getGroup(projectName)
-			createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, group, tags)
-			if err != nil {
-				return err
-			}
-
-			if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
-				return err
-			}
-			ll := l.WithFields(logrus.Fields{
-				"project-uuid": createdP.Uuid,
-			})
-			ll.Debug("project created with workload tag")
-			c.count(workloadTag, projectName, image)
-		}
+		observability.WorkloadWithAttestation.WithLabelValues(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(hasAttestation), image).Set(1)
 	}
 	return nil
+}
+
+func (c *Config) verifyImage(ctx context.Context, workload *Workload, image string, log *logrus.Entry) (bool, error) {
+	workloadTag := workload.getTag(c.Cluster)
+	projectName := getProjectName(image)
+	projectVersion := getProjectVersion(image)
+	project, err := c.Client.GetProject(ctx, projectName, projectVersion)
+	if err != nil {
+		return false, err
+	}
+
+	l := log.WithFields(logrus.Fields{
+		"project":         projectName,
+		"project-version": projectVersion,
+		"container":       image,
+		"workload-tag":    workloadTag,
+	})
+
+	if project != nil {
+		l.Debug("project found, updating workload...")
+		tags := NewTags()
+		tags.ArrangeByPrefix(project.Tags)
+
+		projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(project.Name))
+		if err != nil {
+			l.Warnf("retrieve project, skipping %v", err)
+		}
+		if tags.addWorkloadTag(workloadTag) {
+			_, err := c.Client.UpdateProject(ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
+			if err != nil {
+				return false, err
+			}
+			ll := l.WithFields(logrus.Fields{
+				"project-uuid": project.Uuid,
+			})
+			c.count(workloadTag, projectName, image)
+			ll.Info("project tagged with workload")
+		} else {
+			c.count(workloadTag, projectName, image)
+			l.Debug("project already tagged with workload")
+		}
+		// filter the current project from the slice of projects
+		projects = filterProjects(projects, project.Version)
+		// cleanup projects with the same workload tag
+		if err = c.cleanupWorkload(projects, workloadTag, image, l); err != nil {
+			return false, err
+		}
+	} else {
+		metadata, err := c.verifier.Verify(c.ctx, image)
+		if err != nil {
+			if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
+				l.Debugf("skipping, %v", err)
+				return false, nil
+				//continue
+
+			}
+			l.Warnf("verify attestation error, skipping: %v", err)
+			return false, err
+			//continue
+		}
+
+		if metadata.Statement == nil {
+			l.Warn("metadata is empty, skipping")
+			return false, nil
+			//continue
+		}
+
+		log.WithFields(logrus.Fields{
+			"digest": metadata.Digest,
+		})
+
+		l.Debug("project does not exist, updating workload ...")
+
+		projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
+		if err != nil {
+			l.Warnf("retrieve project, skipping %v", err)
+		}
+		if err = c.cleanupWorkload(projects, workloadTag, image, l); err != nil {
+			return false, err
+		}
+
+		// if we do not find the new digest in any of projects, create a new project
+		if !workloadDigestHasChanged(projects, metadata.Digest) {
+			l.Info("digest has not changed, skipping")
+			// TODO:verify that this is correct behaviour
+			return true, nil
+			//continue
+		}
+
+		tags := workload.initWorkloadTags(metadata, c.Cluster, projectName, projectVersion)
+		group := getGroup(projectName)
+		createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, group, tags)
+		if err != nil {
+			return false, err
+		}
+
+		if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
+			return false, err
+		}
+		ll := l.WithFields(logrus.Fields{
+			"project-uuid": createdP.Uuid,
+		})
+		ll.Debug("project created with workload tag")
+		c.count(workloadTag, projectName, image)
+	}
+	return true, nil
 }
 
 func (c *Config) count(workloadTag, projectName, image string) {

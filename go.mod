@@ -3,7 +3,7 @@ module slsa-verde
 go 1.22.5
 
 require (
-	github.com/google/go-containerregistry v0.19.2
+	github.com/google/go-containerregistry v0.20.0
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/joho/godotenv v1.5.1
 	github.com/nais/dependencytrack v0.0.0-20240624100306-2a071230e7ac

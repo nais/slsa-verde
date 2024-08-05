@@ -71,7 +71,7 @@ func (c *Config) OnDelete(obj any) {
 			"image":        image,
 		})
 
-		if err := c.cleanupWorkload(projects, workloadTag, image, ll); err != nil {
+		if err := c.cleanupWorkload(projects, workloadTag, ll); err != nil {
 			ll.Warnf("cleanup workload: %v", err)
 		}
 	}
@@ -153,6 +153,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		"project-version": projectVersion,
 		"container":       image,
 		"workload-tag":    workloadTag,
+		"cluster":         c.Cluster,
 	})
 
 	if project != nil {
@@ -181,7 +182,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		// filter the current project from the slice of projects
 		projects = filterProjects(projects, project.Version)
 		// cleanup projects with the same workload tag
-		if err = c.cleanupWorkload(projects, workloadTag, image, l); err != nil {
+		if err = c.cleanupWorkload(projects, workloadTag, l); err != nil {
 			return false, err
 		}
 	} else {
@@ -190,18 +191,18 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
 				l.Debugf("skipping, %v", err)
 				return false, nil
-				//continue
+				// continue
 
 			}
 			l.Warnf("verify attestation error, skipping: %v", err)
 			return false, err
-			//continue
+			// continue
 		}
 
 		if metadata.Statement == nil {
 			l.Warn("metadata is empty, skipping")
 			return false, nil
-			//continue
+			// continue
 		}
 
 		log.WithFields(logrus.Fields{
@@ -214,7 +215,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		if err != nil {
 			l.Warnf("retrieve project, skipping %v", err)
 		}
-		if err = c.cleanupWorkload(projects, workloadTag, image, l); err != nil {
+		if err = c.cleanupWorkload(projects, workloadTag, l); err != nil {
 			return false, err
 		}
 
@@ -223,7 +224,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			l.Info("digest has not changed, skipping")
 			// TODO:verify that this is correct behaviour
 			return true, nil
-			//continue
+			// continue
 		}
 
 		tags := workload.initWorkloadTags(metadata, c.Cluster, projectName, projectVersion)
@@ -323,7 +324,7 @@ func isThisWorkload(tags *Tags, workload string) bool {
 	return len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workload
 }
 
-func (c *Config) cleanupWorkload(projects []*client.Project, workloadTag, image string, log *logrus.Entry) error {
+func (c *Config) cleanupWorkload(projects []*client.Project, workloadTag string, log *logrus.Entry) error {
 	var err error
 	for _, p := range projects {
 		tags := NewTags()
@@ -343,6 +344,15 @@ func (c *Config) cleanupWorkload(projects []*client.Project, workloadTag, image 
 				continue
 			}
 			log.Debug("project tags removed")
+		}
+
+		if len(p.Tags) < 10 {
+			// TODO: figure out why some projects remains with tags only containing workload, team, and environment
+			log.Warnf("###### project %s has less than 10 tags", p.Name)
+			//if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
+			//	log.Warnf("delete project: %v", err)
+			//	continue
+			//}
 		}
 	}
 	return err

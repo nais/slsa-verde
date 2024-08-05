@@ -54,9 +54,9 @@ func (t *Tags) getAllTags() []string {
 
 func (t *Tags) deleteWorkloadTag(tag string) {
 	var tmp []string
-	for _, t := range t.WorkloadTags {
-		if t != tag {
-			tmp = append(tmp, t)
+	for _, tt := range t.WorkloadTags {
+		if tt != tag {
+			tmp = append(tmp, tt)
 		}
 	}
 	t.WorkloadTags = tmp

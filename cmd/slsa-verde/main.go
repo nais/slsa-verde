@@ -157,7 +157,7 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 		return fmt.Errorf("failed to create dtrack client: %w", err)
 	}
 
-	slsaInformers := prepareInformers(k8sClient, dynamicClient, cfg.Namespace, mainLogger)
+	slsaInformers := prepareInformers(ctx, k8sClient, dynamicClient, cfg.Namespace, mainLogger)
 	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
 	if err = startInformers(ctx, m, slsaInformers, mainLogger); err != nil {
 		return fmt.Errorf("start informers: %w", err)
@@ -189,7 +189,7 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 	return nil
 }
 
-func prepareInformers(k8sClient *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, namespace string, logger *log.Entry) SlsaInformers {
+func prepareInformers(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, namespace string, logger *log.Entry) SlsaInformers {
 	logger.Info("prepare informer(s)")
 	// default ignore system namespaces
 	switch namespace {
@@ -214,10 +214,18 @@ func prepareInformers(k8sClient *kubernetes.Clientset, dynamicClient *dynamic.Dy
 	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 4*time.Hour, tweakListOpts)
 	dinf := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, 4*time.Hour, "", dynTweakListOpts)
 
-	return SlsaInformers{
+	infs := SlsaInformers{
 		"deployment": factory.Apps().V1().Deployments().Informer(),
-		"naisjob":    dinf.ForResource(nais_io_v1.GroupVersion.WithResource("naisjobs")).Informer(),
 	}
+
+	_, err := dynamicClient.Resource(nais_io_v1.GroupVersion.WithResource("naisjobs")).List(ctx, v1.ListOptions{})
+	if err != nil {
+		logger.WithError(err).Error("failed to list naisjobs, skipping informer setup for naisjobs")
+	} else {
+		infs["naisjobs"] = dinf.ForResource(nais_io_v1.GroupVersion.WithResource("naisjobs")).Informer()
+	}
+
+	return infs
 }
 
 func setupKubeConfig() *rest.Config {

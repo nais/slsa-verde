@@ -7,14 +7,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"slsa-verde/internal/observability"
 
 	"slsa-verde/internal/attestation"
 
 	"github.com/nais/dependencytrack/pkg/client"
-	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,7 +22,6 @@ type Config struct {
 	verifier attestation.Verifier
 	logger   *logrus.Entry
 	ctx      context.Context
-	cache    *cache.Cache
 }
 
 func NewMonitor(ctx context.Context, client client.Client, verifier attestation.Verifier, cluster string) *Config {
@@ -34,7 +31,6 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 		verifier: verifier,
 		logger:   logrus.WithField("package", "monitor"),
 		ctx:      ctx,
-		cache:    cache.New(cache.NoExpiration, 10*time.Minute),
 	}
 }
 
@@ -173,10 +169,8 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			ll := l.WithFields(logrus.Fields{
 				"project-uuid": project.Uuid,
 			})
-			c.count(workloadTag, projectName, image)
 			ll.Info("project tagged with workload")
 		} else {
-			c.count(workloadTag, projectName, image)
 			l.Debug("project already tagged with workload")
 		}
 		// filter the current project from the slice of projects
@@ -241,33 +235,8 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			"project-uuid": createdP.Uuid,
 		})
 		ll.Debug("project created with workload tag")
-		c.count(workloadTag, projectName, image)
 	}
 	return true, nil
-}
-
-func (c *Config) count(workloadTag, projectName, image string) {
-	cacheKey := workloadTag + projectName
-	if v, ok := c.cache.Get(cacheKey); ok {
-		if v.(bool) {
-			return
-		}
-	}
-	if getRegistryNamespace(image) != "nais-io" {
-		namespace := getTeamFromWorkloadTag(workloadTag)
-		registry := getRegistry(image)
-		workloadType := getTypeFromWorkloadTag(workloadTag)
-		observability.WorkloadTotalGauge.WithLabelValues(c.Cluster, namespace, workloadType, registry).Inc()
-		c.cache.Set(cacheKey, true, cache.DefaultExpiration)
-	}
-}
-
-func getRegistry(image string) string {
-	return strings.Split(image, "/")[0]
-}
-
-func getRegistryNamespace(image string) string {
-	return strings.Split(image, "/")[1]
 }
 
 func getProjectName(containerImage string) string {
@@ -344,15 +313,14 @@ func (c *Config) cleanupWorkload(projects []*client.Project, workloadTag string,
 				continue
 			}
 			log.Debug("project tags removed")
-		}
-
-		if len(p.Tags) < 10 {
-			// TODO: figure out why some projects remains with tags only containing workload, team, and environment
-			log.Warnf("###### project %s has less than 10 tags", p.Name)
-			//if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
-			//	log.Warnf("delete project: %v", err)
-			//	continue
-			//}
+			if len(p.Tags) < 10 {
+				// TODO: figure out why some projects remains with tags only containing workload, team, and environment
+				log.Warnf("###### project %s has less than 10 tags", p.Name)
+				//if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
+				//	log.Warnf("delete project: %v", err)
+				//	continue
+				//}
+			}
 		}
 	}
 	return err

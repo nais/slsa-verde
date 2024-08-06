@@ -157,7 +157,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		tags := NewTags()
 		tags.ArrangeByPrefix(project.Tags)
 
-		projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(project.Name))
+		projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
 		if err != nil {
 			l.Warnf("retrieve project, skipping %v", err)
 		}
@@ -173,8 +173,8 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		} else {
 			l.Debug("project already tagged with workload")
 		}
-		// filter the current project from the slice of projects
-		projects = filterProjects(projects, project.Version)
+		// filter projects with the same workload tag and different version
+		projects = filterProjects(projects, project, tags)
 		// cleanup projects with the same workload tag
 		if err = c.cleanupWorkload(projects, workloadTag, l); err != nil {
 			return false, err
@@ -266,11 +266,15 @@ func handleImageDigest(image string) string {
 	return imageArray[1]
 }
 
-func filterProjects(projects []*client.Project, version string) []*client.Project {
+func filterProjects(projects []*client.Project, project *client.Project, tags *Tags) []*client.Project {
 	var filteredProjects []*client.Project
 	for _, p := range projects {
-		if p.Version != version {
+		if p.Version != project.Version {
 			filteredProjects = append(filteredProjects, p)
+		}
+		// TODO: fix this hack
+		if len(tags.OtherTags) == 0 {
+			filteredProjects = append(filteredProjects, project)
 		}
 	}
 	return filteredProjects
@@ -313,14 +317,6 @@ func (c *Config) cleanupWorkload(projects []*client.Project, workloadTag string,
 				continue
 			}
 			log.Debug("project tags removed")
-			if len(p.Tags) < 10 {
-				// TODO: figure out why some projects remains with tags only containing workload, team, and environment
-				log.Warnf("###### project %s has less than 10 tags", p.Name)
-				//if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
-				//	log.Warnf("delete project: %v", err)
-				//	continue
-				//}
-			}
 		}
 	}
 	return err

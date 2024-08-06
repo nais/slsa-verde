@@ -269,7 +269,7 @@ func TestConfigOnAddExists(t *testing.T) {
 			Group:               "test",
 			Name:                "test/nginx",
 			Publisher:           "Team",
-			Tags:                []client.Tag{{Name: workload.getTag(cluster)}},
+			Tags:                []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
@@ -679,7 +679,7 @@ func TestConfigOnUpdate(t *testing.T) {
 			Group:               "testns",
 			Name:                "test/nginx",
 			Publisher:           "Team",
-			Tags:                []client.Tag{{Name: workload.getTag(cluster)}},
+			Tags:                []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
@@ -817,6 +817,13 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 			Tags: []client.Tag{
 				{Name: workload.getTag(cluster)},
 				{Name: client.WorkloadTagPrefix.String() + cluster + "|testns|app|app2"},
+				{Name: "team:testns"},
+				{Name: "env:test"},
+				{Name: "project:test/nginx"},
+				{Name: "image:test/nginx:latest2"},
+				{Name: "version:latest"},
+				{Name: "digest:123"},
+				{Name: "rekor:1234"},
 			},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",

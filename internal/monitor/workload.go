@@ -21,6 +21,7 @@ type Workload struct {
 
 type Status struct {
 	LastSuccessful bool
+	ScaledDown     bool
 }
 
 func NewWorkload(obj any) *Workload {
@@ -48,6 +49,9 @@ func NewWorkload(obj any) *Workload {
 			desiredReplicas == deployment.Status.ReadyReplicas &&
 			desiredReplicas == deployment.Status.AvailableReplicas {
 			workload.Status.LastSuccessful = true
+			if desiredReplicas == 0 {
+				workload.Status.ScaledDown = true
+			}
 		}
 		return workload
 	case *unstructured.Unstructured:

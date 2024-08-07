@@ -126,13 +126,58 @@ func (c *Config) OnAdd(obj any) {
 
 func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workload, log *logrus.Entry) error {
 	for _, image := range workload.Images {
-		hasAttestation, err := c.verifyImage(ctx, workload, image, log)
+		var err error
+		var scaled bool
+		var hasAttestation bool
+
+		if scaled, err = c.scaledDown(ctx, workload, log); err != nil {
+			return err
+		}
+
+		if scaled {
+			// if the workload is scaled down, we do not need to verify the image
+			// as we have already cleaned up the projects
+			observability.WorkloadWithAttestation.DeleteLabelValues(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(scaled), image)
+			continue
+		}
+
+		hasAttestation, err = c.verifyImage(ctx, workload, image, log)
 		if err != nil {
 			return err
 		}
 		observability.WorkloadWithAttestation.WithLabelValues(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(hasAttestation), image).Set(1)
 	}
 	return nil
+}
+
+func (c *Config) scaledDown(ctx context.Context, workload *Workload, log *logrus.Entry) (bool, error) {
+	if workload.Status.ScaledDown {
+		l := log.WithFields(logrus.Fields{
+			"event":     "scale-down",
+			"workload":  workload.Name,
+			"namespace": workload.Namespace,
+			"type":      workload.Type,
+		})
+		workloadTag := workload.getTag(c.Cluster)
+		// Deployment is scaled down, we need to look for the workload tag in all found projects
+		p, err := c.retrieveProjects(ctx, workloadTag)
+		if err != nil {
+			return false, err
+		}
+
+		if len(p) == 0 {
+			l.Debug("no projects found for workload tag")
+			return false, nil
+		}
+
+		if err = c.cleanupWorkload(p, workloadTag, log); err != nil {
+			return false, err
+		}
+
+		l.Infof("workload tag removed or project deleted from %d project", len(p))
+		return true, nil
+	}
+	return false, nil
 }
 
 func (c *Config) verifyImage(ctx context.Context, workload *Workload, image string, log *logrus.Entry) (bool, error) {
@@ -204,7 +249,6 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		})
 
 		l.Debug("project does not exist, updating workload ...")
-
 		projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
 		if err != nil {
 			l.Warnf("retrieve project, skipping %v", err)

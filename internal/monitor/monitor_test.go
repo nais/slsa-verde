@@ -655,12 +655,6 @@ func TestConfigOnUpdate(t *testing.T) {
 	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(newDeployment)
 
-	var statement in_toto.CycloneDXStatement
-	file, err := os.ReadFile("testdata/sbom.json")
-	assert.NoError(t, err)
-	err = json.Unmarshal(file, &statement)
-	assert.NoError(t, err)
-
 	t.Run("should ignore none deployment", func(t *testing.T) {
 		m.OnUpdate(nil, nil)
 	})
@@ -716,12 +710,6 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 	newDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "test/nginx:latest")
 	oldDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(newDeployment)
-
-	var statement in_toto.CycloneDXStatement
-	file, err := os.ReadFile("testdata/sbom.json")
-	assert.NoError(t, err)
-	err = json.Unmarshal(file, &statement)
-	assert.NoError(t, err)
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
@@ -793,12 +781,6 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 	oldDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(newDeployment)
 
-	var statement in_toto.CycloneDXStatement
-	file, err := os.ReadFile("testdata/sbom.json")
-	assert.NoError(t, err)
-	err = json.Unmarshal(file, &statement)
-	assert.NoError(t, err)
-
 	t.Run("should ignore deployment if the condition not fulfilled", func(t *testing.T) {
 		replicas := int32(2)
 		newDeployment.Spec.Replicas = &replicas
@@ -852,6 +834,75 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 		}, nil)
 
 		m.OnUpdate(oldDeployment, newDeployment)
+	})
+}
+
+func TestConfigOnUpdateDeploymentScaledDown(t *testing.T) {
+	c := mockmonitor.NewClient(t)
+	v := mockattestation.NewVerifier(t)
+	m := NewMonitor(context.Background(), c, v, "test")
+	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
+
+	t.Run("should identify a scale down, where the workload is removed from/ or delete all found projects", func(t *testing.T) {
+		replicas := int32(0)
+		newDeployment.Spec.Replicas = &replicas
+		newDeployment.Status.ReadyReplicas = 0
+		newDeployment.Status.AvailableReplicas = 0
+
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.WorkloadTagPrefix.With(cluster+"|testns|app|testapp"))).Return([]*client.Project{
+			{
+				Classifier: "APPLICATION",
+				Group:      "testns",
+				Uuid:       "uuid1",
+				Name:       "test/nginx",
+				Version:    "latest",
+				Publisher:  "Team",
+				Tags: []client.Tag{
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp"},
+					{Name: "team:testns"},
+					{Name: "env:test"},
+					{Name: "project:test/nginx"},
+					{Name: "image:test/nginx:latest"},
+					{Name: "version:latest"},
+					{Name: "digest:123"},
+					{Name: "rekor:1234"},
+				},
+			},
+			{
+				Classifier: "APPLICATION",
+				Group:      "testns",
+				Uuid:       "uuid2",
+				Name:       "test/nginx",
+				Version:    "latest2",
+				Publisher:  "Team",
+				Tags: []client.Tag{
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp2"},
+					{Name: client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp"},
+					{Name: "team:testns"},
+					{Name: "env:test"},
+					{Name: "project:test/nginx"},
+					{Name: "image:test/nginx:latest"},
+					{Name: "version:latest2"},
+					{Name: "digest:123"},
+					{Name: "rekor:1234"},
+				},
+			},
+		}, nil)
+
+		c.On("DeleteProject", mock.Anything, "uuid1").Return(nil)
+
+		c.On("UpdateProject", mock.Anything, "uuid2", "test/nginx", "latest2", "testns", []string{
+			client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp2",
+			"team:testns",
+			"env:test",
+			"project:test/nginx",
+			"image:test/nginx:latest",
+			"version:latest2",
+			"digest:123",
+			"rekor:1234",
+		}).Return(nil, nil)
+
+		m.OnUpdate(nil, newDeployment)
 	})
 }
 

@@ -47,7 +47,8 @@ func NewWorkload(obj any) *Workload {
 		if deployment.Spec.Replicas != nil &&
 			deployment.Generation == deployment.Status.ObservedGeneration &&
 			desiredReplicas == deployment.Status.ReadyReplicas &&
-			desiredReplicas == deployment.Status.AvailableReplicas {
+			desiredReplicas == deployment.Status.AvailableReplicas &&
+			deployment.Status.UnavailableReplicas == 0 {
 			workload.Status.LastSuccessful = true
 			if desiredReplicas == 0 {
 				workload.Status.ScaledDown = true

@@ -653,6 +653,7 @@ func TestConfigOnUpdate(t *testing.T) {
 	v := mockattestation.NewVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
 	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
+	pastDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(newDeployment)
 
 	t.Run("should ignore none deployment", func(t *testing.T) {
@@ -667,7 +668,9 @@ func TestConfigOnUpdate(t *testing.T) {
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
 		replicas := int32(1)
+		pastReplicas := int32(2)
 		newDeployment.Spec.Replicas = &replicas
+		pastDeployment.Spec.Replicas = &pastReplicas
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
 			Classifier:          "APPLICATION",
 			Group:               "testns",
@@ -699,7 +702,7 @@ func TestConfigOnUpdate(t *testing.T) {
 				},
 			},
 		}, nil)
-		m.OnUpdate(nil, newDeployment)
+		m.OnUpdate(pastDeployment, newDeployment)
 	})
 }
 
@@ -708,10 +711,12 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 	v := mockattestation.NewVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
 	newDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "test/nginx:latest")
-	oldDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "test/nginx:latest")
+	pastDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(newDeployment)
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
+		replicas := int32(2)
+		pastDeployment.Spec.Replicas = &replicas
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
 			Classifier: "APPLICATION",
 			Uuid:       "uuid1",
@@ -769,7 +774,7 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 			},
 		}, nil)
 
-		m.OnUpdate(oldDeployment, newDeployment)
+		m.OnUpdate(pastDeployment, newDeployment)
 	})
 }
 
@@ -778,18 +783,20 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 	v := mockattestation.NewVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
 	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest2")
-	oldDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
+	pastDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(newDeployment)
 
 	t.Run("should ignore deployment if the condition not fulfilled", func(t *testing.T) {
 		replicas := int32(2)
 		newDeployment.Spec.Replicas = &replicas
-		m.OnUpdate(oldDeployment, newDeployment)
+		m.OnUpdate(pastDeployment, newDeployment)
 	})
 
 	t.Run("should verify deployment if conditions changed and matches", func(t *testing.T) {
 		replicas := int32(1)
 		newDeployment.Spec.Replicas = &replicas
+		pastReplicas := int32(2)
+		pastDeployment.Spec.Replicas = &pastReplicas
 
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(&client.Project{
 			Classifier: "APPLICATION",
@@ -833,7 +840,7 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 			},
 		}, nil)
 
-		m.OnUpdate(oldDeployment, newDeployment)
+		m.OnUpdate(pastDeployment, newDeployment)
 	})
 }
 
@@ -842,12 +849,16 @@ func TestConfigOnUpdateDeploymentScaledDown(t *testing.T) {
 	v := mockattestation.NewVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
 	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
+	pastDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 	t.Run("should identify a scale down, where the workload is removed from/ or delete all found projects", func(t *testing.T) {
 		replicas := int32(0)
+		newDeployment.Status.Replicas = 0
 		newDeployment.Spec.Replicas = &replicas
 		newDeployment.Status.ReadyReplicas = 0
 		newDeployment.Status.AvailableReplicas = 0
+		pastReplicas := int32(2)
+		pastDeployment.Spec.Replicas = &pastReplicas
 
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.WorkloadTagPrefix.With(cluster+"|testns|app|testapp"))).Return([]*client.Project{
 			{
@@ -902,7 +913,7 @@ func TestConfigOnUpdateDeploymentScaledDown(t *testing.T) {
 			"rekor:1234",
 		}).Return(nil, nil)
 
-		m.OnUpdate(nil, newDeployment)
+		m.OnUpdate(pastDeployment, newDeployment)
 	})
 }
 

@@ -104,6 +104,42 @@ func TestInitWorkloadTags(t *testing.T) {
 	}
 }
 
+func TestLastSuccessfulDeployment(t *testing.T) {
+	d := test.CreateDeployment("my-namespace", "my-app", nil, nil, "")
+	d.Status.Replicas = 1 // update, fulfilling the running deployment condition
+	d.Status.ReadyReplicas = 1
+	d.Status.AvailableReplicas = 1
+	d.Status.UnavailableReplicas = 0
+	workload := NewWorkload(d)
+	if !workload.Status.LastSuccessful {
+		t.Errorf("NewWorkload() = %v, want true", workload.Status.LastSuccessful)
+	}
+
+	r := int32(0)
+	d.Spec.Replicas = &r // scale down to 0
+	d.Status.Replicas = 0
+	d.Status.ReadyReplicas = 0
+	d.Status.AvailableReplicas = 0
+	d.Status.UnavailableReplicas = 0
+	workload = NewWorkload(d)
+	if !workload.Status.LastSuccessful {
+		t.Errorf("NewWorkload() = %v, want true", workload.Status.LastSuccessful)
+	}
+	if !workload.Status.ScaledDown {
+		t.Errorf("NewWorkload() = %v, want true", workload.Status.ScaledDown)
+	}
+
+	// update, fulfilling the running deployment condition
+	d.Status.Replicas = 2
+	d.Status.ReadyReplicas = 1
+	d.Status.AvailableReplicas = 1
+	d.Status.UnavailableReplicas = 1
+	workload = NewWorkload(d)
+	if workload.Status.LastSuccessful {
+		t.Errorf("NewWorkload() = %v, want false", workload.Status.LastSuccessful)
+	}
+}
+
 func TestJobName(t *testing.T) {
 	obj := test.CreateJob("my-namespace", "my-job", map[string]string{"app": "my-job"})
 	job := &nais_io_v1.Naisjob{}

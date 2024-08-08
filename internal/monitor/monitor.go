@@ -73,11 +73,17 @@ func (c *Config) OnDelete(obj any) {
 	}
 }
 
-func (c *Config) OnUpdate(_ any, new any) {
+func (c *Config) OnUpdate(past any, present any) {
 	log := c.logger.WithField("event", "update")
 
-	workload := NewWorkload(new)
+	workload := NewWorkload(present)
 	if workload == nil {
+		log.Debug("not verified workload")
+		return
+	}
+
+	pastWorkload := NewWorkload(past)
+	if pastWorkload == nil {
 		log.Debug("not verified workload")
 		return
 	}
@@ -88,13 +94,10 @@ func (c *Config) OnUpdate(_ any, new any) {
 		"type":      workload.Type,
 	})
 
-	if !workload.Status.LastSuccessful {
-		l.Debug("workload not successful")
-		return
-	}
-
-	if err := c.verifyWorkloadContainers(c.ctx, workload, l); err != nil {
-		l.Warnf("verify attestation: %v", err)
+	if workload.Status.LastSuccessful && !pastWorkload.Status.LastSuccessful {
+		if err := c.verifyWorkloadContainers(c.ctx, workload, l); err != nil {
+			l.Warnf("verify attestation: %v", err)
+		}
 	}
 }
 

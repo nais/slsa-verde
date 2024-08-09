@@ -43,6 +43,15 @@ func (t *Tags) ArrangeByPrefix(tags []client.Tag) {
 	t.OtherTags = other
 }
 
+func (t *Tags) GetImageTag() string {
+	for _, tag := range t.OtherTags {
+		if strings.HasPrefix(tag, client.ImageTagPrefix.String()) {
+			return strings.Replace(tag, client.ImageTagPrefix.String(), "", 1)
+		}
+	}
+	return ""
+}
+
 func (t *Tags) getAllTags() []string {
 	var allTags []string
 	allTags = append(allTags, t.WorkloadTags...)

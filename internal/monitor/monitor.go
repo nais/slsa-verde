@@ -197,10 +197,10 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 				"project-uuid": project.Uuid,
 			})
 			ll.Info("project tagged with workload")
-			observability.WorkloadWithAttestation.WithLabelValues(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image).Set(1)
+			observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image, projectName, project)
 		} else {
 			l.Debug("project already tagged with workload")
-			observability.WorkloadWithAttestation.WithLabelValues(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image).Set(1)
+			observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image, projectName, project)
 		}
 		// filter projects with the same workload tag and different version
 		projects = filterProjects(projects, project)
@@ -262,7 +262,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			"project-uuid": createdP.Uuid,
 		})
 		ll.Debug("project created with workload tag")
-		observability.WorkloadWithAttestation.WithLabelValues(workload.Namespace, workload.Name, workload.Type, "true", image).Set(1)
+		observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, "true", image, projectName, createdP)
 	}
 	return nil
 }

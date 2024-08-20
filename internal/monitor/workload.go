@@ -3,7 +3,6 @@ package monitor
 import (
 	dptrack "github.com/nais/dependencytrack/pkg/client"
 	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-
 	"slsa-verde/internal/attestation"
 
 	v1 "k8s.io/api/apps/v1"
@@ -105,6 +104,10 @@ func (w *Workload) initWorkloadTags(metadata *attestation.ImageMetadata, cluster
 		tags = append(tags, dptrack.RekorIntegratedTimeTagPrefix.With(metadata.RekorMetadata.IntegratedTime))
 	}
 	return tags
+}
+
+func (w *Workload) LastSuccessfulResource() bool {
+	return w.Status.LastSuccessful
 }
 
 func jobName(job *nais_io_v1.Naisjob) string {

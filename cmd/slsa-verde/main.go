@@ -220,7 +220,7 @@ func prepareInformers(ctx context.Context, k8sClient *kubernetes.Clientset, dyna
 
 	_, err := dynamicClient.Resource(nais_io_v1.GroupVersion.WithResource("naisjobs")).List(ctx, v1.ListOptions{})
 	if err != nil {
-		logger.Warn("could not list naisjobs, skipping informer setup for naisjobs")
+		logger.Warn("could not list naisjobs, skipping informer setup for naisjobs, " + err.Error())
 	} else {
 		infs["naisjobs"] = dinf.ForResource(nais_io_v1.GroupVersion.WithResource("naisjobs")).Informer()
 	}

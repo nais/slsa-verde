@@ -549,8 +549,8 @@ github.com/mozillazg/docker-credential-acr-helper v0.3.0 h1:DVWFZ3/O8BP6Ue3iS/Ol
 github.com/mozillazg/docker-credential-acr-helper v0.3.0/go.mod h1:cZlu3tof523ujmLuiNUb6JsjtHcNA70u1jitrrdnuyA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/nais/dependencytrack v0.0.0-20240805082600-461db1432397 h1:4wX8kPy7JfDAttWt2k05uOTgs7FpUJ5NAxDE39uR94E=
-github.com/nais/dependencytrack v0.0.0-20240805082600-461db1432397/go.mod h1:YwOg7QqaoxTfkTgyFPUpCWXrQFA1L1seqmkw9IdAEh4=
+github.com/nais/dependencytrack v0.0.0-20240819043638-e01dc2761d37 h1:rnv6TZpPn5h2i3OJgzxjmKXECReGtPi3k8Vhums1QJ8=
+github.com/nais/dependencytrack v0.0.0-20240819043638-e01dc2761d37/go.mod h1:4yKuzLFM++n2h3Xxrsft7P1s8u5LUCvXXEx/f1oDUaw=
 github.com/nais/liberator v0.0.0-20240708090958-0067dec8b945 h1:phufTmtWtNeQW9cjDLqlL0UCb0rkwYNuKhN1VUdPp0w=
 github.com/nais/liberator v0.0.0-20240708090958-0067dec8b945/go.mod h1:bgMXRBuJtuEgSQlSCgjbUh58Jy93f2Zl4LH1iuIIm0w=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
@@ -584,12 +584,12 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQb2IpWsCzug=
 github.com/opencontainers/image-spec v1.1.0/go.mod h1:W4s4sFTMaBeK1BQLXbG4AdM2szdn85PY75RI83NrTrM=
-github.com/opencontainers/runc v1.1.12 h1:BOIssBaW1La0/qbNZHXOOa71dZfZEQOzW7dqQf3phss=
-github.com/opencontainers/runc v1.1.12/go.mod h1:S+lQwSfncpBha7XTy/5lBwWgm5+y5Ma/O44Ekby9FK8=
+github.com/opencontainers/runc v1.1.13 h1:98S2srgG9vw0zWcDpFMn5TRrh8kLxa/5OFUstuUhmRs=
+github.com/opencontainers/runc v1.1.13/go.mod h1:R016aXacfp/gwQBYw2FDGa9m+n6atbLWrYY8hNMT/sA=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
-github.com/ory/dockertest/v3 v3.10.0 h1:4K3z2VMe8Woe++invjaTB7VRyQXQy5UY+loujO4aNE4=
-github.com/ory/dockertest/v3 v3.10.0/go.mod h1:nr57ZbRWMqfsdGdFNLHz5jjNdDb7VVFnzAeW1n5N1Lg=
+github.com/ory/dockertest/v3 v3.11.0 h1:OiHcxKAvSDUwsEVh2BjxQQc/5EHz9n0va9awCtNGuyA=
+github.com/ory/dockertest/v3 v3.11.0/go.mod h1:VIPxS1gwT9NpPOrfD3rACs8Y9Z7yhzO4SB194iUDnUI=
 github.com/pborman/uuid v1.2.1 h1:+ZZIw58t/ozdjRaXh/3awHfmWRbzYxJoAdNJxe/3pvw=
 github.com/pborman/uuid v1.2.1/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml/v2 v2.2.2 h1:aYUidT7k73Pcl9nb2gScu7NSrKCSHIDE89b3+6Wq+LM=

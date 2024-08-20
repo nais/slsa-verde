@@ -78,7 +78,7 @@ func TestConfigOnAdd(t *testing.T) {
 	t.Run("should attest image and create project", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
 		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0].Image).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{}, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{}, nil)
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(&client.Project{
 			Uuid: "uuid1",
 		}, nil)
@@ -124,7 +124,7 @@ func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
 	t.Run("should attest images 2 containers and create 2 projects", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
 		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0].Image).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{}, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{}, nil)
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(&client.Project{Uuid: "uuid1"}, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
@@ -158,7 +158,6 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 	v := mockattestation.NewVerifier(t)
 	m := NewMonitor(context.Background(), c, v, cluster)
 	job := test.CreateJobWithImage("testns", "testjob", nil, "test/nginx:latest")
-
 	workload := NewWorkload(job)
 
 	var statement in_toto.CycloneDXStatement
@@ -167,35 +166,47 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 	err = json.Unmarshal(file, &statement)
 	assert.NoError(t, err)
 
-	t.Run("should delete project if this workload(job) is the last workload", func(t *testing.T) {
+	t.Run("should not delete project if this workload(job) is the last successful workload and the version is the same", func(t *testing.T) {
 		var statement in_toto.CycloneDXStatement
 		file, err := os.ReadFile("testdata/sbom.json")
 		assert.NoError(t, err)
 		err = json.Unmarshal(file, &statement)
 		assert.NoError(t, err)
 
-		att := &attestation.ImageMetadata{
-			BundleVerified: false,
-			Image:          "test/nginx:latest",
-			Statement:      &statement,
-			ContainerName:  "pod1",
-			Digest:         "123",
-			RekorMetadata:  rekor,
-		}
-		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
-		v.On("Verify", mock.Anything, mock.Anything).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
+			Classifier: "APPLICATION",
+			Group:      "test",
+			Uuid:       "uuid1",
+			Name:       "test/nginx",
+			Publisher:  "Team",
+			Tags: []client.Tag{
+				{Name: workload.getTag(cluster)},
+				{Name: "project:test/nginx"},
+				{Name: "image:test/nginx:latest"},
+				{Name: "version:latest"},
+				{Name: "digest:123"},
+				{Name: "rekor:1234"},
+			},
+			Version: "latest",
+		}, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "test",
 				Uuid:       "uuid1",
 				Name:       "test/nginx",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
-				Version:    "latest",
+				Tags: []client.Tag{
+					{Name: workload.getTag(cluster)},
+					{Name: "project:test/nginx"},
+					{Name: "image:test/nginx:latest"},
+					{Name: "version:latest"},
+					{Name: "digest:123"},
+					{Name: "rekor:1234"},
+				},
+				Version: "latest",
 			},
 		}, nil)
-		c.On("DeleteProject", mock.Anything, "uuid1").Return(nil)
 		m.OnAdd(job)
 	})
 
@@ -229,7 +240,7 @@ func TestConfigOnAddExistsJobWithNewVersion(t *testing.T) {
 		}
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
 		v.On("Verify", mock.Anything, mock.Anything).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "test",
@@ -311,7 +322,7 @@ func TestConfigOnAddExists(t *testing.T) {
 		}
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
 		v.On("Verify", mock.Anything, mock.Anything).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "test",
@@ -343,18 +354,51 @@ func TestConfigOnAddExists(t *testing.T) {
 		err = json.Unmarshal(file, &statement)
 		assert.NoError(t, err)
 
-		att := &attestation.ImageMetadata{
-			BundleVerified: false,
-			Image:          "test/nginx:latest",
-			Statement:      &statement,
-			ContainerName:  "pod1",
-			Digest:         "123",
-			RekorMetadata:  rekor,
-		}
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
+			Classifier: "APPLICATION",
+			Group:      "testns",
+			Uuid:       "uuid1",
+			Name:       "test/nginx",
+			Publisher:  "Team",
+			Tags: []client.Tag{
+				{Name: client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp2"},
+				// {Name: workload.getTag(cluster)},
+				{Name: "project:test/nginx"},
+				{Name: "image:test/nginx:latest2"},
+				{Name: "version:latest2"},
+				{Name: "digest:123"},
+				{Name: "rekor:1234"},
+				{Name: "env:test"},
+				{Name: "team:testns"},
+				{Name: "build-trigger:push"},
+				{Name: "oidc-issuer:my-iss"},
+				{Name: "workflow-name:http://localhost"},
+				{Name: "workflow-ref:refs/heads/main"},
+				{Name: "workflow-sha:1234567890"},
+				{Name: "source-repo-owner-uri:http://localhost"},
+				{Name: "build-config-uri:http://localhost"},
+				{Name: "run-invocation-uri:http://localhost"},
+				{Name: "integrated-time:1629780000"},
+			},
+			Version: "latest2",
+		}, nil)
 
-		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
-		v.On("Verify", mock.Anything, mock.Anything).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape("project:test/nginx")).Return([]*client.Project{
+		updateRetTags := []string{
+			client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp2",
+			workload.getTag(cluster),
+			"team:testns",
+			"env:test",
+			"project:test/nginx",
+			"image:test/nginx:latest2",
+			"version:latest2",
+			"digest:123",
+		}
+		updateRetTags = append(updateRetTags, toRekorTags(rekor)...)
+		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest2", "testns", updateRetTags).Return(&client.Project{
+			Uuid: "uuid1",
+		}, nil)
+
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "testns",
@@ -385,20 +429,6 @@ func TestConfigOnAddExists(t *testing.T) {
 			},
 		}, nil)
 
-		updateRetTags := []string{
-			client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp2",
-			"team:testns",
-			"env:test",
-			"project:test/nginx",
-			"image:test/nginx:latest2",
-			"version:latest2",
-			"digest:123",
-		}
-		updateRetTags = append(updateRetTags, toRekorTags(rekor)...)
-		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest2", "testns", updateRetTags).Return(&client.Project{
-			Uuid: "uuid1",
-		}, nil)
-
 		m.OnAdd(deployment)
 	})
 }
@@ -419,10 +449,11 @@ func TestConfigOnDeleteProjectIsNil(t *testing.T) {
 	v := mockattestation.NewVerifier(t)
 	m := NewMonitor(context.Background(), c, v, "test")
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
+	workload := NewWorkload(deployment)
 
 	// ok
 	t.Run("project is nil, should ignore", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return(nil, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return(nil, nil)
 		m.OnDelete(deployment)
 	})
 }
@@ -433,8 +464,8 @@ func TestConfigOnDeleteRemoveTag(t *testing.T) {
 	m := NewMonitor(context.Background(), c, v, "dev")
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
-	t.Run("project exists with more than 1 getTag, remove this getTag from project", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
+	t.Run("project exists with more than 1 tag, remove this tag from project", func(t *testing.T) {
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.WorkloadTagPrefix.String()+"dev|testns|app|testapp")).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "test",
@@ -479,8 +510,8 @@ func TestConfigOnDeleteDeleteProject(t *testing.T) {
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(deployment)
 
-	t.Run("project with only this workload getTag, delete project", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
+	t.Run("project with only this workload tag, delete project", func(t *testing.T) {
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "test",
@@ -515,7 +546,7 @@ func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 	workload := NewWorkload(deployment)
 
 	t.Run("project with only this workload tag, delete project and update if other container ad workload is present", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "test",
@@ -578,7 +609,7 @@ func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest", "test/nginx:latest2")
 
 	t.Run("project exists with more than 1 getTag, remove this tag from project and for all containers in the resource", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.ProjectTagPrefix.With("test/nginx"))).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.WorkloadTagPrefix.String()+"dev|testns|app|testapp")).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "test",

@@ -49,21 +49,18 @@ func (c *Config) OnDelete(obj any) {
 		"type":      workload.Type,
 	})
 
-	for _, image := range workload.Images {
-		projectName := getProjectName(image)
-		projects, err := c.retrieveProjects(c.ctx, client.ProjectTagPrefix.With(projectName))
-		if err != nil {
-			l.Warnf("retrieve projects: %v", err)
-			return
-		}
+	projects, err := c.retrieveProjects(workload.getTag(c.Cluster))
+	if err != nil {
+		l.Warnf("retrieve projects: %v", err)
+		return
+	}
 
-		ll := l.WithFields(logrus.Fields{
-			"project": projectName,
-		})
+	ll := l.WithFields(logrus.Fields{
+		"workload-tag": workload.getTag(c.Cluster),
+	})
 
-		if err := c.cleanupWorkload(projects, workload, ll); err != nil {
-			ll.Warnf("cleanup workload: %v", err)
-		}
+	if err := c.tidyWorkloadProjects(projects, workload, ll); err != nil {
+		l.Warnf("cleanup workload: %v", err)
 	}
 }
 
@@ -88,7 +85,7 @@ func (c *Config) OnUpdate(past any, present any) {
 		"type":      workload.Type,
 	})
 
-	if workload.Status.LastSuccessful && !pastWorkload.Status.LastSuccessful {
+	if workload.LastSuccessfulResource() && !pastWorkload.LastSuccessfulResource() {
 		if err := c.verifyWorkloadContainers(c.ctx, workload, l); err != nil {
 			l.Warnf("verify attestation: %v", err)
 		}
@@ -110,7 +107,7 @@ func (c *Config) OnAdd(obj any) {
 		"type":      workload.Type,
 	})
 
-	if !workload.Status.LastSuccessful {
+	if !workload.LastSuccessfulResource() {
 		l.Debug("workload not successful")
 		return
 	}
@@ -125,7 +122,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 	for _, image := range workload.Images {
 		var err error
 		if workload.Status.ScaledDown {
-			if err = c.scaledDown(ctx, workload, log); err != nil {
+			if err = c.scaledDown(workload, log); err != nil {
 				return err
 			}
 			continue
@@ -137,7 +134,7 @@ func (c *Config) verifyWorkloadContainers(ctx context.Context, workload *Workloa
 	return nil
 }
 
-func (c *Config) scaledDown(ctx context.Context, workload *Workload, log *logrus.Entry) error {
+func (c *Config) scaledDown(workload *Workload, log *logrus.Entry) error {
 	l := log.WithFields(logrus.Fields{
 		"event":     "scale-down",
 		"workload":  workload.Name,
@@ -145,7 +142,7 @@ func (c *Config) scaledDown(ctx context.Context, workload *Workload, log *logrus
 		"type":      workload.Type,
 	})
 	// Deployment is scaled down, we need to look for the workload tag in all found projects
-	p, err := c.retrieveProjects(ctx, workload.getTag(c.Cluster))
+	p, err := c.retrieveProjects(workload.getTag(c.Cluster))
 	if err != nil {
 		return err
 	}
@@ -155,7 +152,7 @@ func (c *Config) scaledDown(ctx context.Context, workload *Workload, log *logrus
 		return nil
 	}
 
-	if err := c.cleanupWorkload(p, workload, log); err != nil {
+	if err := c.tidyWorkloadProjects(p, workload, log); err != nil {
 		return err
 	}
 	return nil
@@ -184,10 +181,6 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		tags.ArrangeByPrefix(project.Tags)
 		attest := hasAttestation(project)
 
-		projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
-		if err != nil {
-			l.Warnf("retrieve project, skipping %v", err)
-		}
 		if tags.addWorkloadTag(workloadTag) {
 			_, err := c.Client.UpdateProject(ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
 			if err != nil {
@@ -203,9 +196,9 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image, projectName, project)
 		}
 		// filter projects with the same workload tag and different version
-		projects = filterProjects(projects, project)
+		projects := c.filterProjects(client.ProjectTagPrefix.With(projectName), project)
 		// cleanup projects with the same workload tag
-		if err := c.cleanupWorkload(projects, workload, l); err != nil {
+		if err := c.tidyWorkloadProjects(projects, workload, l); err != nil {
 			return err
 		}
 	} else {
@@ -232,18 +225,18 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		})
 
 		l.Debug("project does not exist, updating workload ...")
-		projects, err := c.retrieveProjects(ctx, client.ProjectTagPrefix.With(projectName))
+		projects, err := c.retrieveProjects(workloadTag)
 		if err != nil {
 			l.Warnf("retrieve project, skipping %v", err)
 		}
-		if err = c.cleanupWorkload(projects, workload, l); err != nil {
+		if err = c.tidyWorkloadProjects(projects, workload, l); err != nil {
 			return err
 		}
 
 		// if we do not find the new digest in any of projects, create a new project
+		// this is to avoid creating a project created by another slsa-verde instance
 		if !workloadDigestHasChanged(projects, metadata.Digest) {
 			l.Info("digest has not changed, skipping")
-			// TODO:verify that this is correct behaviour
 			return nil
 			// continue
 		}
@@ -294,7 +287,12 @@ func handleImageDigest(image string) string {
 	return imageArray[1]
 }
 
-func filterProjects(projects []*client.Project, project *client.Project) []*client.Project {
+func (c *Config) filterProjects(tag string, project *client.Project) []*client.Project {
+	projects, err := c.retrieveProjects(tag)
+	if err != nil {
+		c.logger.Warnf("retrieve projects: %v", err)
+		return nil
+	}
 	var filteredProjects []*client.Project
 	for _, p := range projects {
 		if p.Version != project.Version {
@@ -304,9 +302,9 @@ func filterProjects(projects []*client.Project, project *client.Project) []*clie
 	return filteredProjects
 }
 
-func (c *Config) retrieveProjects(ctx context.Context, projectName string) ([]*client.Project, error) {
+func (c *Config) retrieveProjects(projectName string) ([]*client.Project, error) {
 	tag := url.QueryEscape(projectName)
-	projects, err := c.Client.GetProjectsByTag(ctx, tag)
+	projects, err := c.Client.GetProjectsByTag(c.ctx, tag)
 	if err != nil {
 		return nil, fmt.Errorf("getting projects from DependencyTrack: %w", err)
 	}
@@ -321,7 +319,7 @@ func isThisWorkload(tags *Tags, workload string) bool {
 	return len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workload
 }
 
-func (c *Config) cleanupWorkload(projects []*client.Project, workload *Workload, log *logrus.Entry) error {
+func (c *Config) tidyWorkloadProjects(projects []*client.Project, workload *Workload, log *logrus.Entry) error {
 	var err error
 	workloadTag := workload.getTag(c.Cluster)
 	for _, p := range projects {

@@ -8,12 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"slsa-verde/internal/observability"
-
-	"slsa-verde/internal/attestation"
-
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/sirupsen/logrus"
+
+	"slsa-verde/internal/attestation"
+	"slsa-verde/internal/observability"
 )
 
 type Config struct {
@@ -204,6 +203,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 	} else {
 		metadata, err := c.verifier.Verify(c.ctx, image)
 		if err != nil {
+			observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, "false", image, projectName, nil)
 			if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
 				l.Debugf("skipping, %v", err)
 				return nil
@@ -228,17 +228,11 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		projects, err := c.retrieveProjects(workloadTag)
 		if err != nil {
 			l.Warnf("retrieve project, skipping %v", err)
-		}
-		if err = c.tidyWorkloadProjects(projects, workload, l); err != nil {
 			return err
 		}
 
-		// if we do not find the new digest in any of projects, create a new project
-		// this is to avoid creating a project created by another slsa-verde instance
-		if !workloadDigestHasChanged(projects, metadata.Digest) {
-			l.Info("digest has not changed, skipping")
-			return nil
-			// continue
+		if err = c.tidyWorkloadProjects(projects, workload, l); err != nil {
+			return err
 		}
 
 		tags := workload.initWorkloadTags(metadata, c.Cluster, projectName, projectVersion)
@@ -356,17 +350,6 @@ func (c *Config) tidyWorkloadProjects(projects []*client.Project, workload *Work
 
 func hasAttestation(p *client.Project) bool {
 	return p.LastBomImportFormat != "" || p.Metrics != nil && p.Metrics.Components > 0
-}
-
-func workloadDigestHasChanged(projects []*client.Project, digest string) bool {
-	for _, p := range projects {
-		for _, tag := range p.Tags {
-			if tag.Name == client.DigestTagPrefix.With(digest) {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 func getGroup(projectName string) string {

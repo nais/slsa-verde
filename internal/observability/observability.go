@@ -18,7 +18,7 @@ var WorkloadWithAttestationRiskScore = prometheus.NewGaugeVec(
 		Name: "slsa_workload_riskscore",
 		Help: "Information about the riskscore of a workload",
 	},
-	[]string{"workload_namespace", "workload_type", "has_attestation", "project"},
+	[]string{"workload_namespace", "workload", "workload_type", "project"},
 )
 
 var WorkloadWithAttestationCritical = prometheus.NewGaugeVec(
@@ -26,7 +26,7 @@ var WorkloadWithAttestationCritical = prometheus.NewGaugeVec(
 		Name: "slsa_workload_critical",
 		Help: "Information about the criticality of a workload",
 	},
-	[]string{"workload_namespace", "workload_type", "has_attestation", "project"},
+	[]string{"workload_namespace", "workload", "workload_type", "project"},
 )
 
 func init() {
@@ -37,8 +37,8 @@ func init() {
 
 func SetWorkloadVulnerabilityCounter(workloadNamespace, workload, workloadType, hasAttestation, image, project string, p *client.Project) {
 	WorkloadWithAttestation.WithLabelValues(workloadNamespace, workload, workloadType, hasAttestation, image).Set(1)
-	if p.Metrics != nil {
-		WorkloadWithAttestationRiskScore.WithLabelValues(workloadNamespace, workloadType, hasAttestation, project).Set(p.Metrics.InheritedRiskScore)
-		WorkloadWithAttestationCritical.WithLabelValues(workloadNamespace, workloadType, hasAttestation, project).Set(float64(p.Metrics.Critical))
+	if p != nil && p.Metrics != nil {
+		WorkloadWithAttestationRiskScore.WithLabelValues(workloadNamespace, workload, workloadType, project).Set(p.Metrics.InheritedRiskScore)
+		WorkloadWithAttestationCritical.WithLabelValues(workloadNamespace, workload, workloadType, project).Set(float64(p.Metrics.Critical))
 	}
 }

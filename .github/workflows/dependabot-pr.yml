@@ -16,7 +16,7 @@ jobs:
     outputs:
       go_version: ${{ steps.go_version.outputs.GO_VERSION }}
     runs-on: ubuntu-22.04
-    if: ${{ github.actor == 'dependabot[bot]' }}
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@v4
       - name: Find Go version
@@ -36,7 +36,7 @@ jobs:
 
   dependabot_pr:
     runs-on: ubuntu-latest
-    if: ${{ github.actor == 'dependabot[bot]' }}
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
     needs: test-pr
     steps:
       - name: Dependabot metadata

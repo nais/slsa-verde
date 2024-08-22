@@ -24,7 +24,6 @@ import (
 	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/dynamic"
@@ -311,7 +310,7 @@ func setupLogger() error {
 }
 
 func logLevel() log.Level {
-	l, err := log.ParseLevel(viper.GetString(cfg.LogLevel))
+	l, err := log.ParseLevel(cfg.LogLevel)
 	if err != nil {
 		l = log.InfoLevel
 	}

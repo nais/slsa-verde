@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/url"
 	"os"
 	"testing"
@@ -96,6 +97,72 @@ func TestConfigOnAdd(t *testing.T) {
 
 	t.Run("should ignore nil workload object", func(t *testing.T) {
 		m.OnAdd(nil)
+	})
+}
+
+func TestConfigOnAddWereProjectCreatedWithOtherInstance(t *testing.T) {
+	c := mockmonitor.NewClient(t)
+	v := mockattestation.NewVerifier(t)
+	m := NewMonitor(context.Background(), c, v, cluster)
+	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
+	workload := NewWorkload(deployment)
+
+	var statement in_toto.CycloneDXStatement
+	file, err := os.ReadFile("testdata/sbom.json")
+	assert.NoError(t, err)
+	err = json.Unmarshal(file, &statement)
+	assert.NoError(t, err)
+
+	att := &attestation.ImageMetadata{
+		BundleVerified: false,
+		Image:          "test/nginx:latest",
+		Statement:      &statement,
+		ContainerName:  "test/nginx",
+		Digest:         "123",
+		RekorMetadata:  rekor,
+	}
+
+	tags := workload.initWorkloadTags(att, cluster, "test/nginx", "latest")
+
+	t.Run("should check attested image and tag project if already created", func(t *testing.T) {
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil).Once()
+		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0].Image).Return(att, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{}, nil)
+		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(
+			nil,
+			errors.New("verify attestation: creating request: status 409: err A project with the specified name already exists."),
+		)
+
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{
+			Uuid:    "uuid1",
+			Name:    "test/nginx",
+			Group:   "test",
+			Version: "latest",
+			Tags: []client.Tag{
+				{Name: client.WorkloadTagPrefix.String() + "test2|testns|app|testapp"},
+				{Name: "project:test/nginx"},
+				{Name: "image:test/nginx:latest"},
+				{Name: "version:latest"},
+				{Name: "digest:123"},
+				{Name: "rekor:1234"},
+			},
+		}, nil).Once()
+
+		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest", "test", []string{
+			client.WorkloadTagPrefix.String() + "test2|testns|app|testapp",
+			workload.getTag(cluster),
+			"team:testns",
+			"env:test2",
+			"env:test",
+			"project:test/nginx",
+			"image:test/nginx:latest",
+			"version:latest",
+			"digest:123",
+			"rekor:1234",
+		}).Return(&client.Project{
+			Uuid: "uuid1",
+		}, nil)
+		m.OnAdd(deployment)
 	})
 }
 

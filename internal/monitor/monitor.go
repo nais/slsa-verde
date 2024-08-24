@@ -15,6 +15,10 @@ import (
 	"slsa-verde/internal/observability"
 )
 
+const (
+	ErrProjectAlreadyExists = "status 409"
+)
+
 type Config struct {
 	Client   client.Client
 	Cluster  string
@@ -175,24 +179,8 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 	})
 
 	if project != nil {
-		l.Debug("project found, updating workload...")
-		tags := NewTags()
-		tags.ArrangeByPrefix(project.Tags)
-		attest := hasAttestation(project)
-
-		if tags.addWorkloadTag(workloadTag) {
-			_, err := c.Client.UpdateProject(ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
-			if err != nil {
-				return err
-			}
-			ll := l.WithFields(logrus.Fields{
-				"project-uuid": project.Uuid,
-			})
-			ll.Info("project tagged with workload")
-			observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image, projectName, project)
-		} else {
-			l.Debug("project already tagged with workload")
-			observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image, projectName, project)
+		if err = c.updateExistingProjectTags(workload, project, image, l); err != nil {
+			l.Warnf("update project tags: %v)", err)
 		}
 		// filter projects with the same workload tag and different version
 		projects := c.filterProjects(client.ProjectTagPrefix.With(projectName), project)
@@ -239,7 +227,15 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		group := getGroup(projectName)
 		createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, group, tags)
 		if err != nil {
-			return err
+			// This is to handle the case when another slsa-verde instance has created the same project
+			// before this instance could create it. In this case, we update the existing project with the
+			// workload tag.
+			if strings.Contains(err.Error(), ErrProjectAlreadyExists) {
+				if err = c.updateExistingProjectTags(workload, createdP, image, l); err != nil {
+					return err
+				}
+				return err
+			}
 		}
 
 		if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
@@ -251,6 +247,41 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		ll.Debug("project created with workload tag")
 		observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, "true", image, projectName, createdP)
 	}
+	return nil
+}
+
+func (c *Config) updateExistingProjectTags(workload *Workload, project *client.Project, image string, log *logrus.Entry) error {
+	var err error
+	projectName := getProjectName(image)
+	projectVerion := getProjectVersion(image)
+	if project == nil {
+		project, err = c.Client.GetProject(c.ctx, projectName, projectVerion)
+		if err != nil {
+			return err
+		}
+	}
+
+	if project == nil {
+		return fmt.Errorf("project not found")
+	}
+
+	log.Debug("project found, updating workload...")
+	workloadTag := workload.getTag(c.Cluster)
+	tags := NewTags()
+	tags.ArrangeByPrefix(project.Tags)
+	attest := hasAttestation(project)
+
+	if tags.addWorkloadTag(workloadTag) {
+		_, err := c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
+		if err != nil {
+			return err
+		}
+		ll := log.WithFields(logrus.Fields{
+			"project-uuid": project.Uuid,
+		})
+		ll.Info("project tagged with workload")
+	}
+	observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image, projectName, project)
 	return nil
 }
 
@@ -309,10 +340,6 @@ func (c *Config) retrieveProjects(projectName string) ([]*client.Project, error)
 	return projects, nil
 }
 
-func isThisWorkload(tags *Tags, workload string) bool {
-	return len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workload
-}
-
 func (c *Config) tidyWorkloadProjects(projects []*client.Project, workload *Workload, log *logrus.Entry) error {
 	var err error
 	workloadTag := workload.getTag(c.Cluster)
@@ -346,6 +373,10 @@ func (c *Config) tidyWorkloadProjects(projects []*client.Project, workload *Work
 		}
 	}
 	return err
+}
+
+func isThisWorkload(tags *Tags, workload string) bool {
+	return len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workload
 }
 
 func hasAttestation(p *client.Project) bool {

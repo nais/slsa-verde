@@ -1,7 +1,6 @@
 package observability
 
 import (
-	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -33,12 +32,4 @@ func init() {
 	prometheus.MustRegister(WorkloadWithAttestation)
 	prometheus.MustRegister(WorkloadWithAttestationRiskScore)
 	prometheus.MustRegister(WorkloadWithAttestationCritical)
-}
-
-func SetWorkloadVulnerabilityCounter(workloadNamespace, workload, workloadType, hasAttestation, image, project string, p *client.Project) {
-	WorkloadWithAttestation.WithLabelValues(workloadNamespace, workload, workloadType, hasAttestation, image).Set(1)
-	if p != nil && p.Metrics != nil {
-		WorkloadWithAttestationRiskScore.WithLabelValues(workloadNamespace, workload, workloadType, project).Set(p.Metrics.InheritedRiskScore)
-		WorkloadWithAttestationCritical.WithLabelValues(workloadNamespace, workload, workloadType, project).Set(float64(p.Metrics.Critical))
-	}
 }

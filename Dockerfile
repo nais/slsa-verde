@@ -1,4 +1,4 @@
-FROM golang:1.23.0 as builder
+FROM cgr.dev/chainguard/go:latest as builder
 ENV GOOS=linux
 ENV CGO_ENABLED=0
 ENV GO111MODULE=on
@@ -8,7 +8,7 @@ WORKDIR /src
 RUN go mod download
 RUN go build -a -installsuffix cgo -o /bin/slsa-verde cmd/slsa-verde/main.go
 
-FROM cgr.dev/chainguard/go
+FROM cgr.dev/chainguard/static:latest
 WORKDIR /app
-COPY --from=builder /bin/slsa-verde /app/slsa-verde
-ENTRYPOINT ["/app/slsa-verde"]
+COPY --from=builder /bin/slsa-verde /slsa-verde
+ENTRYPOINT ["/slsa-verde"]

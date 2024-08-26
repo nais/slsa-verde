@@ -191,7 +191,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 	} else {
 		metadata, err := c.verifier.Verify(c.ctx, image)
 		if err != nil {
-			observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, "false", image, projectName, nil)
+			workload.SetVulnerabilityCounter("false", image, projectName, nil)
 			if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
 				l.Debugf("skipping, %v", err)
 				return nil
@@ -244,8 +244,8 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		ll := l.WithFields(logrus.Fields{
 			"project-uuid": createdP.Uuid,
 		})
-		ll.Debug("project created with workload tag")
-		observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, "true", image, projectName, createdP)
+		ll.Info("project created with workload tag")
+		workload.SetVulnerabilityCounter("true", image, projectName, createdP)
 	}
 	return nil
 }
@@ -281,7 +281,7 @@ func (c *Config) updateExistingProjectTags(workload *Workload, project *client.P
 		})
 		ll.Info("project tagged with workload")
 	}
-	observability.SetWorkloadVulnerabilityCounter(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image, projectName, project)
+	workload.SetVulnerabilityCounter(strconv.FormatBool(attest), image, projectName, project)
 	return nil
 }
 
@@ -359,7 +359,7 @@ func (c *Config) tidyWorkloadProjects(projects []*client.Project, workload *Work
 				l.Warnf("delete project: %v", err)
 				continue
 			}
-			l.Debug("project deleted")
+			l.Info("project deleted")
 			observability.WorkloadWithAttestation.DeleteLabelValues(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image)
 		} else if tags.hasWorkload(workloadTag) {
 			tags.deleteWorkloadTag(workloadTag)
@@ -368,7 +368,7 @@ func (c *Config) tidyWorkloadProjects(projects []*client.Project, workload *Work
 				l.Warnf("remove tags project: %v", err)
 				continue
 			}
-			l.Debug("project tags removed")
+			l.Info("project tags removed")
 			observability.WorkloadWithAttestation.DeleteLabelValues(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image)
 		}
 	}

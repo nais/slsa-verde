@@ -4,6 +4,7 @@ import (
 	dptrack "github.com/nais/dependencytrack/pkg/client"
 	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"slsa-verde/internal/attestation"
+	"slsa-verde/internal/observability"
 
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -108,6 +109,14 @@ func (w *Workload) initWorkloadTags(metadata *attestation.ImageMetadata, cluster
 
 func (w *Workload) LastSuccessfulResource() bool {
 	return w.Status.LastSuccessful
+}
+
+func (w *Workload) SetVulnerabilityCounter(hasAttestation, image, project string, p *dptrack.Project) {
+	observability.WorkloadWithAttestation.WithLabelValues(w.Namespace, w.Name, w.Type, hasAttestation, image).Set(1)
+	if p != nil && p.Metrics != nil {
+		observability.WorkloadWithAttestationRiskScore.WithLabelValues(w.Namespace, w.Name, w.Type, project).Set(p.Metrics.InheritedRiskScore)
+		observability.WorkloadWithAttestationCritical.WithLabelValues(w.Namespace, w.Name, w.Type, project).Set(float64(p.Metrics.Critical))
+	}
 }
 
 func jobName(job *nais_io_v1.Naisjob) string {

@@ -186,12 +186,6 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, image string) (*Im
 	if err != nil {
 		return nil, fmt.Errorf("parse payload: %v", err)
 	}
-
-	digest, err := att.Digest()
-	if err != nil {
-		return nil, fmt.Errorf("get digest: %v", err)
-	}
-
 	vao.Logger.WithFields(log.Fields{
 		"predicate-type": statement.PredicateType,
 		"statement-type": statement.Type,
@@ -203,7 +197,13 @@ func (vao *VerifyAttestationOpts) Verify(ctx context.Context, image string) (*Im
 		Image:          ref.String(),
 		BundleVerified: bVerified,
 		ContainerName:  image,
-		Digest:         digest.String(),
+	}
+
+	// Find the digest of the image that was attested
+	for _, s := range statement.Subject {
+		if s.Name == ref.Context().Name() {
+			imageMetadata.Digest = s.Digest["sha256"]
+		}
 	}
 
 	rekorBundle, err := att.Bundle()

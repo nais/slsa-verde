@@ -234,8 +234,8 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 				if err = c.updateExistingProjectTags(workload, createdP, image, l); err != nil {
 					return err
 				}
-				return err
 			}
+			return err
 		}
 
 		if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {

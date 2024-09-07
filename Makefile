@@ -2,7 +2,7 @@
 slsa-verde:
 	go build -o bin/slsa-verde cmd/slsa-verde/*.go
 
-test: check fmt vet
+test: fmt vet
 	go test ./... -coverprofile cover.out -short
 fmt:
 	go run mvdan.cc/gofumpt -w ./
@@ -28,11 +28,16 @@ generate-mocks:
 	go run github.com/vektra/mockery/v2 --keeptree --case snake --srcpkg ./internal/monitor --name Client
 	go run github.com/vektra/mockery/v2 --keeptree --case snake --srcpkg ./internal/attestation --name Verifier
 
-check:
-	go version
-	go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+vuln:
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+static:
+	go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+
+deadcode:
 	go run golang.org/x/tools/cmd/deadcode@latest -filter "internal/test/client.go" -filter "internal/test/test.go" -test ./...
+
+check: static deadcode vuln
 
 helm-lint:
 	helm lint --strict ./charts

@@ -1,5 +1,6 @@
 apiVersion: v2
 name: slsa-verde
+icon: https://slsa.dev/images/slsa-dancing-goose-logo.svg
 sources:
   - https://github.com/nais/slsa-verde/tree/main/charts
 description: Informer to update salsa storage (dependency-track) with attestation metadata (sbom)

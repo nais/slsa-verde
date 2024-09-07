@@ -71,14 +71,6 @@ func CreateDeployment(namespace, name string, labels map[string]string, annotati
 }
 
 func CreateJob(namespace, name string, labels map[string]string) *unstructured.Unstructured {
-	/*return &nais_io_v1.Naisjob{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:    labels,
-			Name:      name,
-			Namespace: namespace,
-		},
-	}*/
-
 	ret := &unstructured.Unstructured{}
 	ret.SetAPIVersion("nais.io/v1")
 	ret.SetKind("Naisjob")
@@ -89,14 +81,6 @@ func CreateJob(namespace, name string, labels map[string]string) *unstructured.U
 }
 
 func CreateJobWithImage(namespace, name string, labels map[string]string, images ...string) *unstructured.Unstructured {
-	/*job := CreateJob(namespace, name, labels)
-
-	job.Spec = nais_io_v1.NaisjobSpec{
-		Image: images[0],
-	}
-	job.Status.DeploymentRolloutStatus = "complete"
-
-	return job*/
 	ret := &unstructured.Unstructured{}
 	ret.SetAPIVersion("nais.io/v1")
 	ret.SetKind("Naisjob")

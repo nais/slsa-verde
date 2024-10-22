@@ -3,6 +3,7 @@ package monitor
 import (
 	dptrack "github.com/nais/dependencytrack/pkg/client"
 	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	log "github.com/sirupsen/logrus"
 	"slsa-verde/internal/attestation"
 	"slsa-verde/internal/observability"
 
@@ -113,6 +114,10 @@ func (w *Workload) LastSuccessfulResource() bool {
 
 func (w *Workload) SetVulnerabilityCounter(hasAttestation, image, project string, p *dptrack.Project) {
 	observability.WorkloadWithAttestation.WithLabelValues(w.Namespace, w.Name, w.Type, hasAttestation, image).Set(1)
+
+	if p != nil && p.Metrics == nil {
+		log.Warnf("project metrics not found for project %s while updating metrics", project)
+	}
 	if p != nil && p.Metrics != nil {
 		observability.WorkloadWithAttestationRiskScore.WithLabelValues(w.Namespace, w.Name, w.Type, project).Set(p.Metrics.InheritedRiskScore)
 		observability.WorkloadWithAttestationCritical.WithLabelValues(w.Namespace, w.Name, w.Type, project).Set(float64(p.Metrics.Critical))

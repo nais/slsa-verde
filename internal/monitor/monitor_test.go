@@ -84,6 +84,8 @@ func TestConfigOnAdd(t *testing.T) {
 			Uuid: "uuid1",
 		}, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
+		c.On("TriggerAnalysis", mock.Anything, "uuid1").Return(nil)
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{Uuid: "uuid1"}, nil)
 
 		m.OnAdd(deployment)
 	})
@@ -194,6 +196,9 @@ func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{}, nil)
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(&client.Project{Uuid: "uuid1"}, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
+		c.On("TriggerAnalysis", mock.Anything, "uuid1").Return(nil)
+		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(&client.Project{Uuid: "uuid1"}, nil)
+		c.On("TriggerAnalysis", mock.Anything, "uuid2").Return(nil)
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
 
 		att = &attestation.ImageMetadata{
@@ -323,6 +328,7 @@ func TestConfigOnAddExistsJobWithNewVersion(t *testing.T) {
 		tags := workload.initWorkloadTags(att, cluster, "test/nginx", "latest2")
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest2", "test", tags).Return(&client.Project{Uuid: "uuid2"}, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest2", "uuid2", false, mock.Anything).Return(nil, nil)
+		c.On("TriggerAnalysis", mock.Anything, "uuid2").Return(nil)
 
 		m.OnAdd(job)
 	})
@@ -405,6 +411,7 @@ func TestConfigOnAddExists(t *testing.T) {
 		tags := workload.initWorkloadTags(att, cluster, "test/nginx", "latest2")
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest2", "test", tags).Return(&client.Project{Uuid: "uuid2"}, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest2", "uuid2", false, mock.Anything).Return(nil, nil)
+		c.On("TriggerAnalysis", mock.Anything, "uuid2").Return(nil)
 
 		m.OnAdd(deployment)
 	})

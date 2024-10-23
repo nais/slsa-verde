@@ -245,7 +245,21 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			"project-uuid": createdP.Uuid,
 		})
 		ll.Info("project created with workload tag")
-		workload.SetVulnerabilityCounter("true", image, projectName, createdP)
+
+		if err = c.Client.TriggerAnalysis(ctx, createdP.Uuid); err != nil {
+			ll.Warnf("trigger analysis: %v", err)
+		}
+
+		p, err := c.Client.GetProject(ctx, projectName, projectVersion)
+		if err != nil {
+			return err
+		}
+
+		if p != nil && p.Metrics == nil {
+			ll.Warnf("project metrics are nil after analysis")
+		}
+
+		workload.SetVulnerabilityCounter("true", image, projectName, p)
 	}
 	return nil
 }

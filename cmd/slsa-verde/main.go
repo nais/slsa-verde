@@ -210,8 +210,8 @@ func prepareInformers(ctx context.Context, k8sClient *kubernetes.Clientset, dyna
 		func(options *v1.ListOptions) {
 			options.FieldSelector = namespace
 		})
-	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 4*time.Hour, tweakListOpts)
-	dinf := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, 4*time.Hour, "", dynTweakListOpts)
+	factory := informers.NewSharedInformerFactoryWithOptions(k8sClient, 1*time.Hour, tweakListOpts)
+	dinf := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, 1*time.Hour, "", dynTweakListOpts)
 
 	infs := SlsaInformers{
 		"deployment": factory.Apps().V1().Deployments().Informer(),

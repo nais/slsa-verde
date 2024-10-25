@@ -165,6 +165,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 	workloadTag := workload.getTag(c.Cluster)
 	projectName := getProjectName(image)
 	projectVersion := getProjectVersion(image)
+	var err error
 	project, err := c.Client.GetProject(ctx, projectName, projectVersion)
 	if err != nil {
 		return err
@@ -185,11 +186,12 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		// filter projects with the same workload tag and different version
 		projects := c.filterProjects(client.ProjectTagPrefix.With(projectName), project)
 		// cleanup projects with the same workload tag
-		if err := c.tidyWorkloadProjects(projects, workload, l); err != nil {
+		if err = c.tidyWorkloadProjects(projects, workload, l); err != nil {
 			return err
 		}
 	} else {
-		metadata, err := c.verifier.Verify(c.ctx, image)
+		var metadata *attestation.ImageMetadata
+		metadata, err = c.verifier.Verify(c.ctx, image)
 		if err != nil {
 			workload.SetVulnerabilityCounter("false", image, projectName, nil)
 			if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
@@ -213,7 +215,8 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		})
 
 		l.Debug("project does not exist, updating workload ...")
-		projects, err := c.retrieveProjects(workloadTag)
+		var projects []*client.Project
+		projects, err = c.retrieveProjects(workloadTag)
 		if err != nil {
 			l.Warnf("retrieve project, skipping %v", err)
 			return err
@@ -224,8 +227,8 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		}
 
 		tags := workload.initWorkloadTags(metadata, c.Cluster, projectName, projectVersion)
-		group := getGroup(projectName)
-		createdP, err := c.Client.CreateProject(ctx, projectName, projectVersion, group, tags)
+		var createdP *client.Project
+		createdP, err = c.Client.CreateProject(ctx, projectName, projectVersion, getGroup(projectName), tags)
 		if err != nil {
 			// This is to handle the case when another slsa-verde instance has created the same project
 			// before this instance could create it. In this case, we update the existing project with the
@@ -235,7 +238,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 					return err
 				}
 			}
-			return err
+			return fmt.Errorf("create project: %w", err)
 		}
 
 		if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {
@@ -250,7 +253,8 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			ll.Warnf("trigger analysis: %v", err)
 		}
 
-		p, err := c.Client.GetProject(ctx, projectName, projectVersion)
+		var p *client.Project
+		p, err = c.Client.GetProject(ctx, projectName, projectVersion)
 		if err != nil {
 			return err
 		}

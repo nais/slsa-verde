@@ -47,6 +47,10 @@ values:
         {{ end }}
     config:
       type: string
+  config.informerReListHours:
+    displayName: Informer re-list hours
+    config:
+      type: int
   dockerconfigjson:
     displayName: Docker config json
     required: true

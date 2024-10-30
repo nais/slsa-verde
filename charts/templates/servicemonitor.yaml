@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "slsa-verde.fullname" . }}
+  labels:
+    {{- include "slsa-verde.labels" . | nindent 4 }}
+    nais.io/prometheus: nais
+spec:
+  endpoints:
+    - honorLabels: true
+      path: /metrics
+      port: {{ include "slsa-verde.fullname" . }}-http-metrics
+  selector:
+    matchLabels:
+    {{- include "slsa-verde.selectorLabels" . | nindent 6 }}

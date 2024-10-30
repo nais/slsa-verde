@@ -55,14 +55,15 @@ type DependencyTrack struct {
 }
 
 type Config struct {
-	Cluster            string          `json:"cluster"`
-	Cosign             Cosign          `json:"cosign"`
-	DevelopmentMode    bool            `json:"development-mode"`
-	GitHub             GitHub          `json:"github"`
-	LogLevel           string          `json:"log-level"`
-	MetricsBindAddress string          `json:"metrics-address"`
-	DependencyTrack    DependencyTrack `json:"dependencytrack"`
-	Namespace          string          `json:"namespace"`
+	Cluster             string          `json:"cluster"`
+	Cosign              Cosign          `json:"cosign"`
+	DevelopmentMode     bool            `json:"development-mode"`
+	GitHub              GitHub          `json:"github"`
+	LogLevel            string          `json:"log-level"`
+	MetricsBindAddress  string          `json:"metrics-address"`
+	DependencyTrack     DependencyTrack `json:"dependencytrack"`
+	Namespace           string          `json:"namespace"`
+	InformerReListHours int             `json:"informer-re-list-hours"`
 }
 
 type SlsaInformers map[string]cache.SharedIndexInformer
@@ -86,6 +87,7 @@ func init() {
 	flag.StringVar(&cfg.DependencyTrack.Username, "dependencytrack-username", "", "Salsa storage username")
 	flag.StringSliceVar(&cfg.GitHub.Organizations, "github-organizations", []string{}, "List of GitHub organizations to filter on")
 	flag.StringVar(&cfg.Namespace, "namespace", "", "Specify a single namespace to watch")
+	flag.IntVar(&cfg.InformerReListHours, "informer-re-list-hours", 6, "Interval for re-listing of resources in hours")
 }
 
 func main() {
@@ -156,13 +158,8 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 		return fmt.Errorf("failed to create dtrack client: %w", err)
 	}
 
-	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
-	if err = startInformers(ctx, m, k8sClient, dynamicClient, cfg.Namespace, mainLogger); err != nil {
-		return fmt.Errorf("start informers: %w", err)
-	}
-
 	server := &http.Server{
-		Addr: ":8080",
+		Addr: ":8000",
 	}
 
 	http.Handle("/metrics", promhttp.Handler())
@@ -172,6 +169,11 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 		}
 		mainLogger.Info("Stopped serving new connections.")
 	}()
+
+	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
+	if err = startInformers(ctx, m, k8sClient, dynamicClient, cfg.Namespace, mainLogger); err != nil {
+		return fmt.Errorf("start informers: %w", err)
+	}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -247,9 +249,9 @@ func setupKubeConfig() *rest.Config {
 }
 
 func startInformers(ctx context.Context, monitor *monitor.Config, k8sClient *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, namespace string, log *log.Entry) error {
-	log.Infof("setting up informer(s) with 4-hours interval for re-listing of resources")
+	log.Infof("setting up informer(s) with %d-hours interval for re-listing of resources", cfg.InformerReListHours)
 
-	ticker := time.NewTicker(4 * time.Hour)
+	ticker := time.NewTicker(time.Duration(cfg.InformerReListHours) * time.Hour)
 	defer ticker.Stop()
 
 	for {
@@ -290,7 +292,7 @@ func startInformers(ctx context.Context, monitor *monitor.Config, k8sClient *kub
 		// Wait for ticker or context cancellation
 		select {
 		case <-ticker.C:
-			log.Info("Restarting informers after 4-hour interval")
+			log.Infof("Restarting informers after %d-hour interval", cfg.InformerReListHours)
 			cancel() // Stop the current informers
 		case <-ctx.Done():
 			cancel()

@@ -49,7 +49,7 @@ spec:
             - name: LOG_LEVEL
               value: {{ .Values.config.logLevel }}
             - name: INFORMER_RE_LIST_HOURS
-              value: {{ .Values.config.informerReListHours }}
+              value: {{ .Values.config.informerReListHours | quote }}
             - name: GITHUB_ORGANIZATIONS
               value: {{ .Values.config.github.organizations }}
             - name: DEPENDENCYTRACK_TEAM
@@ -85,8 +85,8 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-            - containerPort: 8000
-              name: http-metrics
+            - name: http-metrics
+              containerPort: 8000
               protocol: TCP
           volumeMounts:
             - mountPath: /etc/cosign

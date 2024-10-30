@@ -7,10 +7,9 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - name: {{ include "slsa-verde.fullname" . }}-http-metrics
-      port: 80
-      protocol: TCP
-      targetPort: 8000
+    - port: 8000
+      name: http-metrics
+      targetPort: http-metrics
     - name: http
       port: 80
       protocol: TCP

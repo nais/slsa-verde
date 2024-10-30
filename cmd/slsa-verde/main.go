@@ -156,9 +156,8 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 		return fmt.Errorf("failed to create dtrack client: %w", err)
 	}
 
-	slsaInformers := prepareInformers(ctx, k8sClient, dynamicClient, cfg.Namespace, mainLogger)
 	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
-	if err = startInformers(ctx, m, slsaInformers, mainLogger); err != nil {
+	if err = startInformers(ctx, m, k8sClient, dynamicClient, cfg.Namespace, mainLogger); err != nil {
 		return fmt.Errorf("start informers: %w", err)
 	}
 
@@ -247,34 +246,57 @@ func setupKubeConfig() *rest.Config {
 	return kubeConfig
 }
 
-func startInformers(ctx context.Context, monitor *monitor.Config, informers SlsaInformers, log *log.Entry) error {
-	log.Infof("setting up informer(s)")
-	for name, informer := range informers {
-		l := log.WithField("resource", name)
-		err := informer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
-		if err != nil {
-			return fmt.Errorf("set watch error handler: %w", err)
+func startInformers(ctx context.Context, monitor *monitor.Config, k8sClient *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, namespace string, log *log.Entry) error {
+	log.Infof("setting up informer(s) with 4-hours interval for re-listing of resources")
+
+	ticker := time.NewTicker(4 * time.Hour)
+	defer ticker.Stop()
+
+	for {
+		// Create a new context for each informer restart
+		informerCtx, cancel := context.WithCancel(ctx)
+
+		// Recreate the informer factory and set up the informers
+		slsaInformers := prepareInformers(informerCtx, k8sClient, dynamicClient, namespace, log)
+		for name, informer := range slsaInformers {
+			l := log.WithField("resource", name)
+			err := informer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
+			if err != nil {
+				cancel()
+				return fmt.Errorf("set watch error handler: %w", err)
+			}
+
+			l.Info("setting up monitor for resource")
+			_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+				AddFunc:    monitor.OnAdd,
+				UpdateFunc: monitor.OnUpdate,
+				DeleteFunc: monitor.OnDelete,
+			})
+			if err != nil {
+				cancel()
+				return fmt.Errorf("add event handler: %w", err)
+			}
+
+			go informer.Run(informerCtx.Done())
+			if !cache.WaitForCacheSync(informerCtx.Done(), informer.HasSynced) {
+				runtime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
+				cancel()
+				return fmt.Errorf("timed out waiting for caches to sync")
+			}
+
+			l.Infof("informer cache synced: %v", informer.HasSynced())
 		}
 
-		l.Info("setting up monitor for resource")
-		_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    monitor.OnAdd,
-			UpdateFunc: monitor.OnUpdate,
-			DeleteFunc: monitor.OnDelete,
-		})
-		if err != nil {
-			return fmt.Errorf("add event handler: %w", err)
+		// Wait for ticker or context cancellation
+		select {
+		case <-ticker.C:
+			log.Info("Restarting informers after 4-hour interval")
+			cancel() // Stop the current informers
+		case <-ctx.Done():
+			cancel()
+			return nil
 		}
-
-		go informer.Run(ctx.Done())
-		if !cache.WaitForCacheSync(ctx.Done(), informer.HasSynced) {
-			runtime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
-			return fmt.Errorf("timed out waiting for caches to sync")
-		}
-
-		l.Infof("informer cache synced: %v", informer.HasSynced())
 	}
-	return nil
 }
 
 func setupConfig() error {
@@ -283,7 +305,7 @@ func setupConfig() error {
 	if err != nil {
 		return fmt.Errorf("loading configuration: %w", err)
 	}
-	log.Info("-------- configuration loaded ----------")
+	log.Info("-------- configuration loaded ---------------")
 	return nil
 }
 

@@ -230,15 +230,18 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		var createdP *client.Project
 		createdP, err = c.Client.CreateProject(ctx, projectName, projectVersion, getGroup(projectName), tags)
 		if err != nil {
-			// This is to handle the case when another slsa-verde instance has created the same project
-			// before this instance could create it. In this case, we update the existing project with the
-			// workload tag.
-			if strings.Contains(err.Error(), ErrProjectAlreadyExists) {
-				if err = c.updateExistingProjectTags(workload, createdP, image, l); err != nil {
-					return err
-				}
+			if !strings.Contains(err.Error(), ErrProjectAlreadyExists) {
+				return err
 			}
-			return fmt.Errorf("create project: %w", err)
+
+			// This is to handle the case when another slsa-verde instance created the same project
+			// before this instance could create it.
+			// In this case, we update the existing project with the workload tag.
+			if err = c.updateExistingProjectTags(workload, createdP, image, l); err != nil {
+				return fmt.Errorf("update project tags, when the project already exists: %w", err)
+			}
+			l.Info("project already exists, updated with workload tag")
+			return nil
 		}
 
 		if err = c.uploadSBOMToProject(ctx, metadata, projectName, createdP.Uuid, projectVersion); err != nil {

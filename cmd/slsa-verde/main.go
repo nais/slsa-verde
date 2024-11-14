@@ -152,7 +152,7 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 		cfg.DependencyTrack.Username,
 		cfg.DependencyTrack.Password,
 		client.WithApiKeySource(cfg.DependencyTrack.Team),
-		client.WithRetry(2, 2*time.Second),
+		client.WithRetry(4, 3*time.Second),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create dtrack client: %w", err)

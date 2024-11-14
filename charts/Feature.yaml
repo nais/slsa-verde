@@ -53,6 +53,7 @@ values:
       type: int
   dockerconfigjson:
     displayName: Docker config json
+    description: Docker config json for pulling images from registries
     required: true
     config:
       type: string

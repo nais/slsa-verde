@@ -47,7 +47,7 @@ func main() {
 		return
 	}
 
-	rScheme, err := config.RegisterScheme()
+	rScheme, err := config.RegisterScheme(log.WithField("system", "register-scheme"))
 	if err != nil {
 		log.Errorf("Error registering rScheme: %v", err)
 		return

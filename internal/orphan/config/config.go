@@ -32,7 +32,7 @@ func ClusterConfig(log *log.Entry) (*rest.Config, error) {
 	return kconfig, nil
 }
 
-func RegisterScheme() (*runtime.Scheme, error) {
+func RegisterScheme(log *log.Entry) (*runtime.Scheme, error) {
 	s := scheme.Scheme
 	err := appsv1.AddToScheme(s)
 	if err != nil {

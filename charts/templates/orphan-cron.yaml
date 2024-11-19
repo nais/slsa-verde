@@ -32,6 +32,8 @@ spec:
               env:
                 - name: LOG_LEVEL
                   value: "{{ .Values.orphan.logLevel }}"
+                - name: DRY_RUN
+                  value: "{{ .Values.orphan.dryRun }}"
                 - name: CLUSTER
                   value: {{ .Values.config.cluster }}
                 - name: DEPENDENCYTRACK_TEAM

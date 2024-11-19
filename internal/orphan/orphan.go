@@ -57,7 +57,7 @@ func (p *Properties) tidyWorkloadProject(project *client.Project, workloadTag st
 	})
 
 	if len(strings.Split(workloadTag, "|")) < 4 {
-		l.Warn("workload tag does not contain all required fields")
+		l.Warn("workload tag does not contain all required fields: ", workloadTag)
 		return nil
 	}
 
@@ -67,7 +67,7 @@ func (p *Properties) tidyWorkloadProject(project *client.Project, workloadTag st
 
 	if monitor.IsThisWorkload(tags, workloadTag) {
 		if dryRun {
-			log.Infoln("Dry run: skipping project deletion")
+			l.Infoln("Dry run: skipping project deletion:", project.Name)
 			return nil
 		}
 		if err = p.dpClient.DeleteProject(p.ctx, project.Uuid); err != nil {
@@ -77,7 +77,7 @@ func (p *Properties) tidyWorkloadProject(project *client.Project, workloadTag st
 		observability.WorkloadWithAttestation.DeleteLabelValues(workloadNamespace, workloadName, workloadType, strconv.FormatBool(attest), image)
 	} else if tags.HasWorkload(workloadTag) {
 		if dryRun {
-			log.Infoln("Dry run: skipping tags removal")
+			l.Infoln("Dry run: skipping tags removal:", project.Name)
 			return nil
 		}
 		tags.DeleteWorkloadTag(workloadTag)
@@ -85,7 +85,7 @@ func (p *Properties) tidyWorkloadProject(project *client.Project, workloadTag st
 		if err != nil {
 			return fmt.Errorf("error updating project: %v", err)
 		}
-		l.Info("project tags removed")
+		l.Info("project tags removed:", project.Name)
 		observability.WorkloadWithAttestation.DeleteLabelValues(workloadNamespace, workloadName, workloadType, strconv.FormatBool(attest), image)
 	}
 	return err
@@ -131,13 +131,14 @@ func (p *Properties) Run(dryRun bool) error {
 		}
 	}
 
-	p.log.Println("Kubernetes workloads found:", len(k8sWorkloads))
+	p.log.Infoln("Kubernetes workloads found:", len(k8sWorkloads))
 	// 6. Fetch DependencyTrack Projects
 	projectList, err := p.dpClient.GetProjectsByTag(p.ctx, client.EnvironmentTagPrefix.With(p.Cluster))
 	if err != nil {
 		return fmt.Errorf("error fetching projects: %v", err)
 	}
-	p.log.Println("DependencyTrack projects found:", len(projectList))
+
+	p.log.Infoln("DependencyTrack projects found:", len(projectList))
 	var projectData []*ProjectData
 	for _, project := range projectList {
 		for _, tag := range project.Tags {
@@ -154,6 +155,7 @@ func (p *Properties) Run(dryRun bool) error {
 		}
 	}
 
+	p.log.Infoln("Orphaned projects found:", len(projectData))
 	for _, pd := range projectData {
 		err = p.tidyWorkloadProject(pd.Project, pd.WorkloadTag, dryRun)
 		if err != nil {
@@ -168,18 +170,17 @@ func (p *Properties) Run(dryRun bool) error {
 			count++
 			taglog += fmt.Sprintf("Project %s uuid %s has %d tags ||| ", project.Name, project.Uuid, len(project.Tags))
 			if dryRun {
-				log.Infoln("Dry run: skipping project deletion")
+				p.log.Infoln("Dry run: skipping project deletion")
 				continue
 			}
 			if err = p.dpClient.DeleteProject(p.ctx, project.Uuid); err != nil {
-				log.Errorf("Error deleting project %s: %s", project.Name, err)
+				p.log.Errorf("Error deleting project %s: %s", project.Name, err)
 			}
 		}
 	}
 	if count > 0 {
-		log.Warningln("Projects with missing tags:", count)
+		p.log.Infoln("Projects with missing tags:", count)
 		p.log.Println(taglog)
-
 	}
 	return nil
 }

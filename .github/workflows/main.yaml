@@ -71,7 +71,7 @@ jobs:
       - name: Update values.yaml
         run: |-
           yq e '.image.tag = "${{ steps.build-push-sign.outputs.version }}"' -i ./charts/values.yaml
-          yq e '.orphan.image.tag = "${{ stepsbuild-push-sign-orphan.outputs.version }}"' -i ./charts/values.yaml
+          yq e '.orphan.image.tag = "${{ steps.build-push-sign-orphan.outputs.version }}"' -i ./charts/values.yaml
 
       - uses: azure/setup-helm@v4
         name: "Setup Helm"

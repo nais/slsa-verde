@@ -79,15 +79,15 @@ values:
     config:
       type: string
   orphan.schedule:
-    displayName: Schedule for orphan cronjob
+    displayName: Orphan cronjob schedule
     config:
       type: string
   orphan.logLevel:
-    displayName: Log level for orphan cronjob
+    displayName: Orphan log level
     config:
       type: string
   orphan.dryRun:
-    displayName: Dry run for orphan cronjob
+    displayName: Orphan dry run
     config:
       type: bool
 

@@ -79,7 +79,7 @@ func TestConfigOnAdd(t *testing.T) {
 	t.Run("should attest image and create project", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
 		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0].Image).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{}, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.GetTag(cluster))).Return([]*client.Project{}, nil)
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(&client.Project{
 			Uuid: "uuid1",
 		}, nil)
@@ -129,7 +129,7 @@ func TestConfigOnAddWereProjectCreatedWithOtherInstance(t *testing.T) {
 	t.Run("should check attested image and tag project if already created", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil).Once()
 		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0].Image).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{}, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.GetTag(cluster))).Return([]*client.Project{}, nil)
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(
 			nil,
 			errors.New("verify attestation: creating request: status 409: err A project with the specified name already exists."),
@@ -152,7 +152,7 @@ func TestConfigOnAddWereProjectCreatedWithOtherInstance(t *testing.T) {
 
 		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest", "test", []string{
 			client.WorkloadTagPrefix.String() + "test2|testns|app|testapp",
-			workload.getTag(cluster),
+			workload.GetTag(cluster),
 			"team:testns",
 			"env:test2",
 			"env:test",
@@ -193,7 +193,7 @@ func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
 	t.Run("should attest images 2 containers and create 2 projects", func(t *testing.T) {
 		c.On("GetProject", mock.Anything, "test/nginx", "latest").Return(nil, nil)
 		v.On("Verify", mock.Anything, deployment.Spec.Template.Spec.Containers[0].Image).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{}, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.GetTag(cluster))).Return([]*client.Project{}, nil)
 		c.On("CreateProject", mock.Anything, "test/nginx", "latest", "test", tags).Return(&client.Project{Uuid: "uuid1"}, nil)
 		c.On("UploadProject", mock.Anything, "test/nginx", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
 		c.On("TriggerAnalysis", mock.Anything, "uuid1").Return(nil)
@@ -252,7 +252,7 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 			Name:       "test/nginx",
 			Publisher:  "Team",
 			Tags: []client.Tag{
-				{Name: workload.getTag(cluster)},
+				{Name: workload.GetTag(cluster)},
 				{Name: "project:test/nginx"},
 				{Name: "image:test/nginx:latest"},
 				{Name: "version:latest"},
@@ -269,7 +269,7 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 				Name:       "test/nginx",
 				Publisher:  "Team",
 				Tags: []client.Tag{
-					{Name: workload.getTag(cluster)},
+					{Name: workload.GetTag(cluster)},
 					{Name: "project:test/nginx"},
 					{Name: "image:test/nginx:latest"},
 					{Name: "version:latest"},
@@ -312,14 +312,14 @@ func TestConfigOnAddExistsJobWithNewVersion(t *testing.T) {
 		}
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
 		v.On("Verify", mock.Anything, mock.Anything).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.GetTag(cluster))).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "test",
 				Uuid:       "uuid1",
 				Name:       "test/nginx",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}},
+				Tags:       []client.Tag{{Name: workload.GetTag(cluster)}, {Name: "project:test/nginx"}},
 				Version:    "latest",
 			},
 		}, nil)
@@ -353,7 +353,7 @@ func TestConfigOnAddExists(t *testing.T) {
 			Group:               "test",
 			Name:                "test/nginx",
 			Publisher:           "Team",
-			Tags:                []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
+			Tags:                []client.Tag{{Name: workload.GetTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
@@ -365,7 +365,7 @@ func TestConfigOnAddExists(t *testing.T) {
 				Uuid:       "uuid1",
 				Name:       "test/nginx",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: workload.getTag(cluster)}, {Name: client.WorkloadTagPrefix.With(cluster + "|testns|app|testapp2")}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
+				Tags:       []client.Tag{{Name: workload.GetTag(cluster)}, {Name: client.WorkloadTagPrefix.With(cluster + "|testns|app|testapp2")}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
 				Version:    "latest",
 			},
 		}, nil)
@@ -395,14 +395,14 @@ func TestConfigOnAddExists(t *testing.T) {
 		}
 		c.On("GetProject", mock.Anything, "test/nginx", "latest2").Return(nil, nil)
 		v.On("Verify", mock.Anything, mock.Anything).Return(att, nil)
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.GetTag(cluster))).Return([]*client.Project{
 			{
 				Classifier: "APPLICATION",
 				Group:      "test",
 				Uuid:       "uuid1",
 				Name:       "test/nginx",
 				Publisher:  "Team",
-				Tags:       []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:124"}, {Name: "rekor:12345"}},
+				Tags:       []client.Tag{{Name: workload.GetTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:124"}, {Name: "rekor:12345"}},
 				Version:    "latest",
 			},
 		}, nil)
@@ -436,7 +436,7 @@ func TestConfigOnAddExists(t *testing.T) {
 			Publisher:  "Team",
 			Tags: []client.Tag{
 				{Name: client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp2"},
-				// {Name: workload.getTag(cluster)},
+				// {Name: workload.GetTag(cluster)},
 				{Name: "project:test/nginx"},
 				{Name: "image:test/nginx:latest2"},
 				{Name: "version:latest2"},
@@ -459,7 +459,7 @@ func TestConfigOnAddExists(t *testing.T) {
 
 		updateRetTags := []string{
 			client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp2",
-			workload.getTag(cluster),
+			workload.GetTag(cluster),
 			"team:testns",
 			"env:test",
 			"project:test/nginx",
@@ -481,7 +481,7 @@ func TestConfigOnAddExists(t *testing.T) {
 				Publisher:  "Team",
 				Tags: []client.Tag{
 					{Name: client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp2"},
-					{Name: workload.getTag(cluster)},
+					{Name: workload.GetTag(cluster)},
 					{Name: "project:test/nginx"},
 					{Name: "image:test/nginx:latest2"},
 					{Name: "version:latest2"},
@@ -527,7 +527,7 @@ func TestConfigOnDeleteProjectIsNil(t *testing.T) {
 
 	// ok
 	t.Run("project is nil, should ignore", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return(nil, nil)
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.GetTag(cluster))).Return(nil, nil)
 		m.OnDelete(deployment)
 	})
 }
@@ -585,7 +585,7 @@ func TestConfigOnDeleteDeleteProject(t *testing.T) {
 	workload := NewWorkload(deployment)
 
 	t.Run("project with only this workload tag, delete project", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.GetTag(cluster))).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "test",
@@ -594,7 +594,7 @@ func TestConfigOnDeleteDeleteProject(t *testing.T) {
 				Version:    "latest",
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
-					{Name: workload.getTag(cluster)},
+					{Name: workload.GetTag(cluster)},
 					{Name: "project:test/nginx"},
 					{Name: "image:test/nginx:latest"},
 					{Name: "version:latest"},
@@ -620,7 +620,7 @@ func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 	workload := NewWorkload(deployment)
 
 	t.Run("project with only this workload tag, delete project and update if other container ad workload is present", func(t *testing.T) {
-		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.getTag(cluster))).Return([]*client.Project{
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(workload.GetTag(cluster))).Return([]*client.Project{
 			{
 				Uuid:       "1",
 				Group:      "test",
@@ -629,7 +629,7 @@ func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 				Version:    "latest",
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
-					{Name: workload.getTag(cluster)},
+					{Name: workload.GetTag(cluster)},
 					{Name: "project:test/nginx"},
 					{Name: "image:test/nginx:latest"},
 					{Name: "version:latest"},
@@ -647,7 +647,7 @@ func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 				Version:    "latest2",
 				Classifier: "APPLICATION",
 				Tags: []client.Tag{
-					{Name: workload.getTag(cluster)},
+					{Name: workload.GetTag(cluster)},
 					{Name: client.WorkloadTagPrefix.String() + cluster + "|testns|app|testapp3"},
 					{Name: "project:test/nginx"},
 					{Name: "image:test/nginx:latest2"},
@@ -682,7 +682,7 @@ func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 	m := NewMonitor(context.Background(), c, v, "dev")
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest", "test/nginx:latest2")
 
-	t.Run("project exists with more than 1 getTag, remove this tag from project and for all containers in the resource", func(t *testing.T) {
+	t.Run("project exists with more than 1 GetTag, remove this tag from project and for all containers in the resource", func(t *testing.T) {
 		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(client.WorkloadTagPrefix.String()+"dev|testns|app|testapp")).Return([]*client.Project{
 			{
 				Uuid:       "1",
@@ -781,7 +781,7 @@ func TestConfigOnUpdate(t *testing.T) {
 			Group:               "testns",
 			Name:                "test/nginx",
 			Publisher:           "Team",
-			Tags:                []client.Tag{{Name: workload.getTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
+			Tags:                []client.Tag{{Name: workload.GetTag(cluster)}, {Name: "project:test/nginx"}, {Name: "image:test/nginx:latest"}, {Name: "version:latest"}, {Name: "digest:123"}, {Name: "rekor:1234"}},
 			Version:             "latest",
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
@@ -796,7 +796,7 @@ func TestConfigOnUpdate(t *testing.T) {
 				Publisher:  "Team",
 				Tags: []client.Tag{
 					{Name: client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp"},
-					{Name: workload.getTag(cluster)},
+					{Name: workload.GetTag(cluster)},
 					{Name: "team:testns"},
 					{Name: "env:test"},
 					{Name: "project:test/nginx"},
@@ -844,7 +844,7 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 
 		c.On("UpdateProject", mock.Anything, "uuid1", "test/nginx", "latest", "testns", []string{
 			client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp",
-			workload.getTag(cluster),
+			workload.GetTag(cluster),
 			"team:testns",
 			"team:testns2",
 			"env:test",
@@ -867,7 +867,7 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 				Publisher:  "Team",
 				Tags: []client.Tag{
 					{Name: client.WorkloadTagPrefix.String() + cluster + "|" + "testns" + "|app|" + "testapp"},
-					{Name: workload.getTag(cluster)},
+					{Name: workload.GetTag(cluster)},
 					{Name: "team:testns"},
 					{Name: "env:test"},
 					{Name: "project:test/nginx"},
@@ -909,7 +909,7 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 			Name:       "test/nginx",
 			Publisher:  "Team",
 			Tags: []client.Tag{
-				{Name: workload.getTag(cluster)},
+				{Name: workload.GetTag(cluster)},
 				{Name: client.WorkloadTagPrefix.String() + cluster + "|testns|app|app2"},
 				{Name: "team:testns"},
 				{Name: "env:test"},
@@ -932,7 +932,7 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 				Version:    "latest",
 				Publisher:  "Team",
 				Tags: []client.Tag{
-					{Name: workload.getTag(cluster)},
+					{Name: workload.GetTag(cluster)},
 					{Name: client.WorkloadTagPrefix.String() + cluster + "|testns|app|app2"},
 					{Name: "team:testns"},
 					{Name: "env:test"},

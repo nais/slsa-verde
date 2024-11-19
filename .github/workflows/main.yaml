@@ -59,13 +59,19 @@ jobs:
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
           push: true
 
-      - name: Update values.yaml
-        uses: fjogeleit/yaml-update-action@main
+      - uses: nais/platform-build-push-sign@main
+        id: build-push-sign-orphan
         with:
-          valueFile: 'charts/values.yaml'
-          propertyPath: 'image.tag'
-          value: ${{ steps.build-push-sign.outputs.version }}
-          commitChange: false
+          name: ${{ env.NAME }}-orphan
+          dockerfile: Dockerfile.orphan
+          google_service_account: gh-${{ env.NAME }}
+          workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
+          push: true
+
+      - name: Update values.yaml
+        run: |-
+          yq e '.image.tag = "${{ steps.build-push-sign.outputs.version }}"' -i ./charts/values.yaml
+          yq e '.orphan.image.tag = "${{ stepsbuild-push-sign-orphan.outputs.version }}"' -i ./charts/values.yaml
 
       - uses: azure/setup-helm@v4
         name: "Setup Helm"
@@ -74,7 +80,7 @@ jobs:
 
       - name: Build Chart
         run: |-
-          sed -i "s/^version: .*/version: ${{ steps.build-push-sign.outputs.version }}/g" charts/Chart.yaml
+          yq e ".version = "${{ steps.build-push-sign.outputs.version }}" -i charts/Chart.yaml
           helm package charts
 
       - name: Push Chart

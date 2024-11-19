@@ -52,14 +52,14 @@ func (c *Config) OnDelete(obj any) {
 		"type":      workload.Type,
 	})
 
-	projects, err := c.retrieveProjects(workload.getTag(c.Cluster))
+	projects, err := c.retrieveProjects(workload.GetTag(c.Cluster))
 	if err != nil {
 		l.Warnf("retrieve projects: %v", err)
 		return
 	}
 
 	ll := l.WithFields(logrus.Fields{
-		"workload-tag": workload.getTag(c.Cluster),
+		"workload-tag": workload.GetTag(c.Cluster),
 	})
 
 	if err := c.tidyWorkloadProjects(projects, workload, ll); err != nil {
@@ -145,7 +145,7 @@ func (c *Config) scaledDown(workload *Workload, log *logrus.Entry) error {
 		"type":      workload.Type,
 	})
 	// Deployment is scaled down, we need to look for the workload tag in all found projects
-	p, err := c.retrieveProjects(workload.getTag(c.Cluster))
+	p, err := c.retrieveProjects(workload.GetTag(c.Cluster))
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func (c *Config) scaledDown(workload *Workload, log *logrus.Entry) error {
 }
 
 func (c *Config) verifyImage(ctx context.Context, workload *Workload, image string, log *logrus.Entry) error {
-	workloadTag := workload.getTag(c.Cluster)
+	workloadTag := workload.GetTag(c.Cluster)
 	projectName := getProjectName(image)
 	projectVersion := getProjectVersion(image)
 	var err error
@@ -287,13 +287,13 @@ func (c *Config) updateExistingProjectTags(workload *Workload, project *client.P
 	}
 
 	log.Debug("project found, updating workload...")
-	workloadTag := workload.getTag(c.Cluster)
+	workloadTag := workload.GetTag(c.Cluster)
 	tags := NewTags()
 	tags.ArrangeByPrefix(project.Tags)
-	attest := hasAttestation(project)
+	attest := HasAttestation(project)
 
 	if tags.addWorkloadTag(workloadTag) {
-		_, err := c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.getAllTags())
+		_, err := c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.GetAllTags())
 		if err != nil {
 			return err
 		}
@@ -363,28 +363,28 @@ func (c *Config) retrieveProjects(projectName string) ([]*client.Project, error)
 
 func (c *Config) tidyWorkloadProjects(projects []*client.Project, workload *Workload, log *logrus.Entry) error {
 	var err error
-	workloadTag := workload.getTag(c.Cluster)
+	workloadTag := workload.GetTag(c.Cluster)
 	for _, p := range projects {
 		tags := NewTags()
 		tags.ArrangeByPrefix(p.Tags)
 		image := tags.GetImageTag()
-		attest := hasAttestation(p)
+		attest := HasAttestation(p)
 
 		l := log.WithFields(logrus.Fields{
 			"image":           image,
 			"has-attestation": attest,
 		})
 
-		if isThisWorkload(tags, workloadTag) {
+		if IsThisWorkload(tags, workloadTag) {
 			if err = c.Client.DeleteProject(c.ctx, p.Uuid); err != nil {
 				l.Warnf("delete project: %v", err)
 				continue
 			}
 			l.Info("project deleted")
 			observability.WorkloadWithAttestation.DeleteLabelValues(workload.Namespace, workload.Name, workload.Type, strconv.FormatBool(attest), image)
-		} else if tags.hasWorkload(workloadTag) {
-			tags.deleteWorkloadTag(workloadTag)
-			_, err = c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.getAllTags())
+		} else if tags.HasWorkload(workloadTag) {
+			tags.DeleteWorkloadTag(workloadTag)
+			_, err = c.Client.UpdateProject(c.ctx, p.Uuid, p.Name, p.Version, p.Group, tags.GetAllTags())
 			if err != nil {
 				l.Warnf("remove tags project: %v", err)
 				continue
@@ -396,11 +396,11 @@ func (c *Config) tidyWorkloadProjects(projects []*client.Project, workload *Work
 	return err
 }
 
-func isThisWorkload(tags *Tags, workload string) bool {
+func IsThisWorkload(tags *Tags, workload string) bool {
 	return len(tags.WorkloadTags) == 1 && tags.WorkloadTags[0] == workload
 }
 
-func hasAttestation(p *client.Project) bool {
+func HasAttestation(p *client.Project) bool {
 	return p.LastBomImportFormat != "" || p.Metrics != nil && p.Metrics.Components > 0
 }
 

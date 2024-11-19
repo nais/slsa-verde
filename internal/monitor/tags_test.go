@@ -47,13 +47,13 @@ func TestArrangeByPrefix(t *testing.T) {
 		t.Errorf("ArrangeByPrefix() = %v, want 'other:getTag' in OtherTags", workloadTags.OtherTags)
 	}
 
-	if len(workloadTags.getAllTags()) != 4 {
-		t.Errorf("ArrangeByPrefix() = %v, want 4 tags", workloadTags.getAllTags())
+	if len(workloadTags.GetAllTags()) != 4 {
+		t.Errorf("ArrangeByPrefix() = %v, want 4 tags", workloadTags.GetAllTags())
 	}
 
-	workloadTags.deleteWorkloadTag("workload:my-cluster|my-namespace|app|my-app")
+	workloadTags.DeleteWorkloadTag("workload:my-cluster|my-namespace|app|my-app")
 	if len(workloadTags.WorkloadTags) != 0 {
-		t.Errorf("deleteWorkloadTag() = %v, want 0 tags", workloadTags.WorkloadTags)
+		t.Errorf("DeleteWorkloadTag() = %v, want 0 tags", workloadTags.WorkloadTags)
 	}
 
 	workloadTags.addWorkloadTag("workload:my-cluster|my-namespace|app|my-app")

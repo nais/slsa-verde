@@ -2,6 +2,9 @@
 slsa-verde:
 	go build -o bin/slsa-verde cmd/slsa-verde/*.go
 
+orphan:
+	go build -o bin/orphan cmd/orphan/*.go
+
 test: fmt vet
 	go test ./... -coverprofile cover.out -short
 fmt:

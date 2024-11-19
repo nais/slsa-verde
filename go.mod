@@ -6,7 +6,7 @@ require (
 	github.com/google/go-containerregistry v0.20.2
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/joho/godotenv v1.5.1
-	github.com/nais/dependencytrack v0.0.0-20241028042937-3c6bf5a7896a
+	github.com/nais/dependencytrack v0.0.0-20241114142745-9ce91229fedc
 	github.com/secure-systems-lab/go-securesystemslib v0.8.0
 	github.com/sigstore/cosign/v2 v2.4.1
 	github.com/sigstore/rekor v1.3.6
@@ -20,6 +20,7 @@ require (
 	k8s.io/apimachinery v0.31.2
 	k8s.io/client-go v0.31.2
 	mvdan.cc/gofumpt v0.7.0
+	sigs.k8s.io/controller-runtime v0.19.1
 )
 
 require (
@@ -30,6 +31,7 @@ require (
 	github.com/buildkite/roko v1.2.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.11.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.0.0 // indirect
 	github.com/google/go-github/v55 v55.0.0 // indirect
@@ -47,8 +49,8 @@ require (
 	github.com/theupdateframework/go-tuf/v2 v2.0.1 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240827150818-7e3bb234dfed // indirect
-	sigs.k8s.io/controller-runtime v0.15.0 // indirect
 )
 
 require (

@@ -1,5 +1,14 @@
 apiserverIP:
 
+orphan:
+  image:
+    repository: europe-north1-docker.pkg.dev/nais-io/nais/images
+    name: orphan
+    tag: 1
+  schedule: "0 0 * * *"
+  logLevel: info
+  dryRun: true
+
 image:
   repository: europe-north1-docker.pkg.dev/nais-io/nais/images
   name: slsa-verde

@@ -78,3 +78,16 @@ values:
     displayName: Memory request
     config:
       type: string
+  orphan.schedule:
+    displayName: Schedule for orphan cronjob
+    config:
+      type: string
+  orphan.logLevel:
+    displayName: Log level for orphan cronjob
+    config:
+      type: string
+  orphan.dryRun:
+    displayName: Dry run for orphan cronjob
+    config:
+      type: bool
+

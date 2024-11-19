@@ -78,7 +78,7 @@ func NewWorkload(obj any) *Workload {
 	}
 }
 
-func (w *Workload) getTag(cluster string) string {
+func (w *Workload) GetTag(cluster string) string {
 	return dptrack.WorkloadTagPrefix.With(cluster + "|" + w.Namespace + "|" + w.Type + "|" + w.Name)
 }
 
@@ -90,7 +90,7 @@ func (w *Workload) initWorkloadTags(metadata *attestation.ImageMetadata, cluster
 		dptrack.DigestTagPrefix.With(metadata.Digest),
 		dptrack.EnvironmentTagPrefix.With(cluster),
 		dptrack.TeamTagPrefix.With(w.Namespace),
-		w.getTag(cluster),
+		w.GetTag(cluster),
 	}
 	if metadata.RekorMetadata != nil {
 		tags = append(tags, dptrack.RekorTagPrefix.With(metadata.RekorMetadata.LogIndex))

@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "slsa-verde.name" . }}
+  labels:
+    app: {{ include "slsa-verde.name" . }}
+    {{- include "slsa-verde.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.orphan.schedule | quote }}
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 300
+      template:
+        metadata:
+          labels:
+            app: {{ include "slsa-verde.name" . }}
+            {{- include "slsa-verde.labels" . | nindent 12 }}
+        spec:
+          serviceAccountName: {{ include "slsa-verde.name" . }}
+          containers:
+            - name: {{ include "slsa-verde.name" . }}
+              image: "{{ .Values.orphan.image.repository }}/{{ .Values.orphan.image.name }}:{{ .Values.orphan.image.tag }}"
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 1000
+                runAsGroup: 1000
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              env:
+                - name: LOG_LEVEL
+                  value: "{{ .Values.orphan.logLevel }}"
+                - name: CLUSTER
+                  value: {{ .Values.config.cluster }}
+                - name: DEPENDENCYTRACK_TEAM
+                  value: {{ .Values.config.dependencytrack.team }}
+                - name: DEPENDENCYTRACK_API
+                  value: {{ .Values.config.dependencytrack.api }}
+                - name: DEPENDENCYTRACK_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "slsa-verde.fullname" . }}
+                      key: dependencytrack_username
+                - name: DEPENDENCYTRACK_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "slsa-verde.fullname" . }}
+                      key: dependencytrack_password
+              volumeMounts:
+                - mountPath: "/etc/slsa-verde"
+                  name: slsa-verde-config
+          restartPolicy: Never
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          volumes:
+            - name: slsa-verde-config
+              secret:
+                secretName: {{ include "slsa-verde.fullname" . }}

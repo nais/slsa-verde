@@ -52,7 +52,7 @@ func (t *Tags) GetImageTag() string {
 	return ""
 }
 
-func (t *Tags) getAllTags() []string {
+func (t *Tags) GetAllTags() []string {
 	var allTags []string
 	allTags = append(allTags, t.WorkloadTags...)
 	allTags = append(allTags, t.TeamTags...)
@@ -61,7 +61,7 @@ func (t *Tags) getAllTags() []string {
 	return allTags
 }
 
-func (t *Tags) deleteWorkloadTag(tag string) {
+func (t *Tags) DeleteWorkloadTag(tag string) {
 	var tmp []string
 	for _, tt := range t.WorkloadTags {
 		if tt != tag {
@@ -100,7 +100,7 @@ func (t *Tags) addWorkloadTag(tag string) bool {
 	return true
 }
 
-func (t *Tags) hasWorkload(tag string) bool {
+func (t *Tags) HasWorkload(tag string) bool {
 	for _, workloadTag := range t.WorkloadTags {
 		if workloadTag == tag {
 			return true

@@ -3,7 +3,7 @@ apiserverIP:
 orphan:
   image:
     repository: europe-north1-docker.pkg.dev/nais-io/nais/images
-    name: orphan
+    name: slsa-verde-orphan
     tag: 1
   schedule: "0 0 * * *"
   logLevel: info

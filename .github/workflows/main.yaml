@@ -51,7 +51,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: nais/platform-build-push-sign@main
+      - name: Build push slsa-verde image
+        uses: nais/platform-build-push-sign@main
         id: build-push-sign
         with:
           name: ${{ env.NAME }}
@@ -59,7 +60,8 @@ jobs:
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
           push: true
 
-      - uses: nais/platform-build-push-sign@main
+      - name: Build and push orphan image
+        uses: nais/platform-build-push-sign@main
         id: build-push-sign-orphan
         with:
           name: ${{ env.NAME }}-orphan
@@ -80,7 +82,7 @@ jobs:
 
       - name: Build Chart
         run: |-
-          yq e ".version = "${{ steps.build-push-sign.outputs.version }}" -i charts/Chart.yaml
+          yq e '.version = "${{ steps.build-push-sign.outputs.version }}"' -i charts/Chart.yaml
           helm package charts
 
       - name: Push Chart

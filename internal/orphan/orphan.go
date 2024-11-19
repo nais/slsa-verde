@@ -56,9 +56,14 @@ func (p *Properties) tidyWorkloadProject(project *client.Project, workloadTag st
 		"workload-tag":    workloadTag,
 	})
 
+	if len(strings.Split(workloadTag, "|")) < 4 {
+		l.Warn("workload tag does not contain all required fields")
+		return nil
+	}
+
 	workloadName := strings.Split(workloadTag, "|")[3]
-	workloadNamespace := strings.Split(workloadTag, "|")[2]
-	workloadType := strings.Split(workloadTag, "|")[1]
+	workloadType := strings.Split(workloadTag, "|")[2]
+	workloadNamespace := strings.Split(workloadTag, "|")[1]
 
 	if monitor.IsThisWorkload(tags, workloadTag) {
 		if dryRun {

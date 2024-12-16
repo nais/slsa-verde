@@ -132,7 +132,6 @@ func (p *Properties) Run(dryRun bool) error {
 	}
 
 	p.log.Infoln("Kubernetes workloads found:", len(k8sWorkloads))
-	// 6. Fetch DependencyTrack Projects
 	projectList, err := p.dpClient.GetProjectsByTag(p.ctx, client.EnvironmentTagPrefix.With(p.Cluster))
 	if err != nil {
 		return fmt.Errorf("error fetching projects: %v", err)

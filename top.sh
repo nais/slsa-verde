@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Default runtime duration in seconds (10 minutes)
+DEFAULT_RUNTIME=$((10 * 60))
+
+# Use runtime from the environment variable or default to 10 minutes
+RUNTIME=${RUNTIME:-$DEFAULT_RUNTIME}
+
 # Check if NAMESPACE and POD_PREFIX are set
 if [ -z "$NAMESPACE" ] || [ -z "$POD_PREFIX" ]; then
     echo "Please set NAMESPACE and POD_PREFIX environment variables."
@@ -14,7 +20,7 @@ if [ -z "$POD_NAME" ]; then
     exit 1
 fi
 
-echo "Monitoring pod: $POD_NAME in namespace: $NAMESPACE"
+echo "Monitoring pod: $POD_NAME in namespace: $NAMESPACE for $RUNTIME seconds."
 
 # Initialize variables for cumulative, top, and low CPU and memory values, and count
 total_cpu=0
@@ -49,8 +55,16 @@ function print_summary {
 # Trap to ensure the summary is printed before exit
 trap print_summary EXIT
 
-# Monitor `kubectl top` output every 10 seconds
+# Monitor `kubectl top` output every 10 seconds until runtime expires
 while true; do
+    current_time=$(date +%s)
+    elapsed_time=$((current_time - start_time))
+
+    # Break if elapsed time exceeds runtime
+    if [ $elapsed_time -ge $RUNTIME ]; then
+        break
+    fi
+
     echo "Timestamp: $(date)"
 
     # Get CPU and memory usage

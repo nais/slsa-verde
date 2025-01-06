@@ -20,6 +20,8 @@ values:
     displayName: Current cluster
     computed:
       template: '"{{.Env.name}}"'
+    config:
+      type: string
   config.github.organizations:
     description: Required GitHub organizations to verify image attestations, a comma seperated list
     displayName: GitHub organization(s)

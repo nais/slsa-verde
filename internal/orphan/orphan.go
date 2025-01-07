@@ -43,7 +43,7 @@ func New(ctx context.Context, dpClient client.Client, k8sClient k8s.Client, clus
 	}
 }
 
-func (p *Properties) tidyWorkloadProject(project *client.Project, workloadTag string, dryRun bool) error {
+func (p *Properties) TidyWorkloadProject(project *client.Project, workloadTag string, dryRun bool) error {
 	var err error
 	tags := monitor.NewTags()
 	tags.ArrangeByPrefix(project.Tags)
@@ -54,6 +54,7 @@ func (p *Properties) tidyWorkloadProject(project *client.Project, workloadTag st
 		"image":           image,
 		"has-attestation": attest,
 		"workload-tag":    workloadTag,
+		"cluster":         p.Cluster,
 	})
 
 	if len(strings.Split(workloadTag, "|")) < 4 {
@@ -73,7 +74,7 @@ func (p *Properties) tidyWorkloadProject(project *client.Project, workloadTag st
 		if err = p.dpClient.DeleteProject(p.ctx, project.Uuid); err != nil {
 			return fmt.Errorf("error deleting project: %v", err)
 		}
-		l.Info("project deleted")
+		l.Info("project deleted:", project.Name)
 		observability.WorkloadWithAttestation.DeleteLabelValues(workloadNamespace, workloadName, workloadType, strconv.FormatBool(attest), image)
 	} else if tags.HasWorkload(workloadTag) {
 		if dryRun {
@@ -139,10 +140,12 @@ func (p *Properties) Run(dryRun bool) error {
 
 	p.log.Infoln("DependencyTrack projects found:", len(projectList))
 	var projectData []*ProjectData
+	var numberofWorkloads int
 	for _, project := range projectList {
 		for _, tag := range project.Tags {
-			if strings.Contains(tag.Name, client.WorkloadTagPrefix.String()+""+p.Cluster) {
+			if strings.Contains(tag.Name, client.WorkloadTagPrefix.String()+""+p.Cluster+"|") {
 				workloadName := strings.Split(tag.Name, "|")[3]
+				numberofWorkloads++
 				if _, ok := k8sWorkloads[workloadName]; !ok {
 					p.log.Debug("Workload not found in Kubernetes: ", workloadName)
 					projectData = append(projectData, &ProjectData{
@@ -154,9 +157,10 @@ func (p *Properties) Run(dryRun bool) error {
 		}
 	}
 
+	p.log.Infoln("Number of workloads found:", numberofWorkloads)
 	p.log.Infoln("Orphaned projects found:", len(projectData))
 	for _, pd := range projectData {
-		err = p.tidyWorkloadProject(pd.Project, pd.WorkloadTag, dryRun)
+		err = p.TidyWorkloadProject(pd.Project, pd.WorkloadTag, dryRun)
 		if err != nil {
 			return fmt.Errorf("error tidying project: %v", err)
 		}

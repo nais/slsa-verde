@@ -23,7 +23,7 @@ jobs:
           echo "GO_VERSION=$(grep golang .tool-versions | awk '{print $2}')" >> $GITHUB_OUTPUT
   tests:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: go_version
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
       contents: "read"
       id-token: "write"
     name: build and push
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

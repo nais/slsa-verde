@@ -348,8 +348,8 @@ func (c *Config) filterProjects(tag string, project *client.Project) []*client.P
 	return filteredProjects
 }
 
-func (c *Config) retrieveProjects(projectName string) ([]*client.Project, error) {
-	tag := url.QueryEscape(projectName)
+func (c *Config) retrieveProjects(tagName string) ([]*client.Project, error) {
+	tag := url.QueryEscape(tagName)
 	projects, err := c.Client.GetProjectsByTag(c.ctx, tag)
 	if err != nil {
 		return nil, fmt.Errorf("getting projects from DependencyTrack: %w", err)
@@ -358,7 +358,18 @@ func (c *Config) retrieveProjects(projectName string) ([]*client.Project, error)
 	if len(projects) == 0 {
 		return nil, nil
 	}
-	return projects, nil
+
+	var filteredProjects []*client.Project
+
+	// TODO: remove this
+	// Filter out projects with project name prefix: "europe-north1-docker.pkg.dev/nais-io/nais/images/wonderwall"
+	for _, p := range projects {
+		if !strings.Contains(p.Name, "europe-north1-docker.pkg.dev/nais-io/nais/images/wonderwall") {
+			filteredProjects = append(filteredProjects, p)
+		}
+	}
+
+	return filteredProjects, nil
 }
 
 func (c *Config) tidyWorkloadProjects(projects []*client.Project, workload *Workload, log *logrus.Entry) error {

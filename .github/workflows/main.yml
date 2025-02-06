@@ -57,6 +57,8 @@ jobs:
           google_service_account: gh-${{ env.NAME }}
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   orphan:
     outputs:
@@ -78,6 +80,8 @@ jobs:
           google_service_account: gh-${{ env.NAME }}
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   helm:
     outputs:

@@ -288,7 +288,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 
 func (c *Config) RegisterWorkload(projectName, projectVersion string, workload *Workload) (*management.RegisterWorkloadResponse, error) {
 	if c.vulnzClient == nil {
-		c.logger.Warn("vulnerabilities client is not enabled")
+		c.logger.Debug("vulnerabilities client is not enabled")
 		return nil, nil
 	}
 

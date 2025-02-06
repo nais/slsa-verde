@@ -177,13 +177,14 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 		mainLogger.Info("Stopped serving new connections.")
 	}()
 
-	creds, err := auth.PerRPCGoogleIDToken(ctx, cfg.ServiceAccountEmail, "v13s")
-	if err != nil {
-		return fmt.Errorf("failed to get per rpc google id token: %w", err)
-	}
-
 	var c vulnerabilities.Client
-	if cfg.VulnerabilitiesApiUrl == "" {
+	if cfg.VulnerabilitiesApiUrl != "" {
+		mainLogger.Infof("Using vulnerabilities API on url: %s", cfg.VulnerabilitiesApiUrl)
+		creds, err := auth.PerRPCGoogleIDToken(ctx, cfg.ServiceAccountEmail, "v13s")
+		if err != nil {
+			return fmt.Errorf("failed to get per rpc google id token: %w", err)
+		}
+
 		tlsOpts := &tls.Config{}
 		transportCreds := credentials.NewTLS(tlsOpts)
 		c, err = vulnerabilities.NewClient(
@@ -195,6 +196,8 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 			return fmt.Errorf("failed to create vulnerabilities client: %w", err)
 		}
 		defer c.Close()
+	} else {
+		mainLogger.Info("No vulnerabilities API URL set, skipping vulnerabilities client setup")
 	}
 
 	m := monitor.NewMonitor(ctx, s, c, opts, cfg.Cluster)

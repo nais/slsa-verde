@@ -6,7 +6,7 @@ RUN go version
 COPY . /src
 WORKDIR /src
 RUN go mod download
-RUN go build -a -installsuffix cgo -o /bin/slsa-verde cmd/slsa-verde/main.go
+RUN go build -installsuffix cgo -o /bin/slsa-verde cmd/slsa-verde/main.go
 
 FROM cgr.dev/chainguard/static:latest
 WORKDIR /app

@@ -25,6 +25,8 @@ jobs:
           echo "GO_VERSION=$(grep golang .tool-versions | awk '{print $2}')" >> $GITHUB_OUTPUT
   tests:
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
     runs-on: ubuntu-24.04
     needs: go_version
     steps:
@@ -34,8 +36,11 @@ jobs:
           go-version: ${{ needs.go_version.outputs.go_version }}
           cache-dependency-path: ./go.sum
 
-      #- name: Check for vulnerable dependencies and static code
-      #  run: make check
+      - name: Check for vulnerable dependencies
+        run: make vuln
+
+      - name: Check for deadcode
+        run: make deadcode
 
       - name: Run tests
         run: make test

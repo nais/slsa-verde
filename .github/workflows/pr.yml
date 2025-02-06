@@ -7,6 +7,9 @@ on:
       - '*.md'
       - 'LICENSE.md'
 
+permissions:
+  contents: read
+
 jobs:
   go_version:
     if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}

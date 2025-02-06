@@ -12,6 +12,8 @@ env:
 
 jobs:
   go_version:
+    permissions:
+      contents: read
     outputs:
       go_version: ${{ steps.go_version.outputs.GO_VERSION }}
     runs-on: ubuntu-22.04

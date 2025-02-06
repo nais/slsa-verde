@@ -103,7 +103,7 @@ jobs:
 
       - name: Build Chart
         run: |-
-          yq e '.version = "${{ steps.slsa-verde.outputs.version }}"' -i charts/Chart.yaml
+          yq e '.version = "${{ needs.slsa-verde.outputs.version }}"' -i charts/Chart.yaml
           helm package charts
 
       - name: Push Chart
@@ -112,7 +112,7 @@ jobs:
 
       - name: Chart version
         id: chart-version
-        run: echo version=${{ steps.slsa-verde.outputs.version }} >> $GITHUB_ENV
+        run: echo version=${{ needs.slsa-verde.outputs.version }} >> $GITHUB_ENV
 
 
   rollout:

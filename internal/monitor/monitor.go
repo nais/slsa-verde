@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/nais/dependencytrack/pkg/client"
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/sirupsen/logrus"
 
 	"slsa-verde/internal/attestation"
@@ -20,20 +22,22 @@ const (
 )
 
 type Config struct {
-	Client   client.Client
-	Cluster  string
-	verifier attestation.Verifier
-	logger   *logrus.Entry
-	ctx      context.Context
+	Client      client.Client
+	vulnzClient vulnerabilities.Client
+	Cluster     string
+	verifier    attestation.Verifier
+	logger      *logrus.Entry
+	ctx         context.Context
 }
 
-func NewMonitor(ctx context.Context, client client.Client, verifier attestation.Verifier, cluster string) *Config {
+func NewMonitor(ctx context.Context, client client.Client, vulnzClient vulnerabilities.Client, verifier attestation.Verifier, cluster string) *Config {
 	return &Config{
-		Client:   client,
-		Cluster:  cluster,
-		verifier: verifier,
-		logger:   logrus.WithField("package", "monitor"),
-		ctx:      ctx,
+		Client:      client,
+		vulnzClient: vulnzClient,
+		Cluster:     cluster,
+		verifier:    verifier,
+		logger:      logrus.WithField("package", "monitor"),
+		ctx:         ctx,
 	}
 }
 
@@ -162,10 +166,15 @@ func (c *Config) scaledDown(workload *Workload, log *logrus.Entry) error {
 }
 
 func (c *Config) verifyImage(ctx context.Context, workload *Workload, image string, log *logrus.Entry) error {
+	var err error
 	workloadTag := workload.GetTag(c.Cluster)
 	projectName := getProjectName(image)
 	projectVersion := getProjectVersion(image)
-	var err error
+	_, err = c.RegisterWorkload(projectName, projectVersion, workload)
+	if err != nil {
+		log.Warnf("register workload: %v", err)
+	}
+
 	project, err := c.Client.GetProject(ctx, projectName, projectVersion)
 	if err != nil {
 		return err
@@ -266,9 +275,25 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			ll.Warnf("project metrics are nil after analysis")
 		}
 
+		_, err = c.RegisterWorkload(createdP.Name, createdP.Version, workload)
+		if err != nil {
+			ll.Warnf("register workload: %v", err)
+		}
+
 		workload.SetVulnerabilityCounter("true", image, projectName, p)
 	}
 	return nil
+}
+
+func (c *Config) RegisterWorkload(projectName, projectVersion string, workload *Workload) (*management.RegisterWorkloadResponse, error) {
+	return c.vulnzClient.RegisterWorkload(c.ctx, &management.RegisterWorkloadRequest{
+		Cluster:      c.Cluster,
+		Namespace:    workload.Namespace,
+		Workload:     workload.Name,
+		WorkloadType: workload.Type,
+		ImageName:    projectName,
+		ImageTag:     projectVersion,
+	})
 }
 
 func (c *Config) updateExistingProjectTags(workload *Workload, project *client.Project, image string, log *logrus.Entry) error {
@@ -293,7 +318,7 @@ func (c *Config) updateExistingProjectTags(workload *Workload, project *client.P
 	attest := HasAttestation(project)
 
 	if tags.addWorkloadTag(workloadTag) {
-		_, err := c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.GetAllTags())
+		_, err = c.Client.UpdateProject(c.ctx, project.Uuid, project.Name, project.Version, project.Group, tags.GetAllTags())
 		if err != nil {
 			return err
 		}

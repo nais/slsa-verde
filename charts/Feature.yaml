@@ -4,6 +4,16 @@ environmentKinds:
   - legacy
   - onprem
 values:
+  config.vulnerabilitiesGrpcUrl:
+    displayName: Vulnerabilities grpc url
+    computed:
+      template: "vulnerabilities.{{.Tenant.Name}}.cloud.nais.io"
+    config:
+      type: string
+  config.serviceAccountEmail:
+    displayName: Service account email
+    computed:
+      template: '"{{.Env.slsa_verde_service_account}}"'
   config.logLevel:
     displayName: Log level
     config:

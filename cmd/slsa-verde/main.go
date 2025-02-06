@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/nais/v13s/pkg/api/auth"
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/grpc"
 	"net/http"
 	"os"
 	"os/signal"
@@ -55,15 +58,17 @@ type DependencyTrack struct {
 }
 
 type Config struct {
-	Cluster             string          `json:"cluster"`
-	Cosign              Cosign          `json:"cosign"`
-	DevelopmentMode     bool            `json:"development-mode"`
-	GitHub              GitHub          `json:"github"`
-	LogLevel            string          `json:"log-level"`
-	MetricsBindAddress  string          `json:"metrics-address"`
-	DependencyTrack     DependencyTrack `json:"dependencytrack"`
-	Namespace           string          `json:"namespace"`
-	InformerReListHours int             `json:"informer-re-list-hours"`
+	Cluster               string          `json:"cluster"`
+	Cosign                Cosign          `json:"cosign"`
+	DevelopmentMode       bool            `json:"development-mode"`
+	GitHub                GitHub          `json:"github"`
+	LogLevel              string          `json:"log-level"`
+	MetricsBindAddress    string          `json:"metrics-address"`
+	DependencyTrack       DependencyTrack `json:"dependencytrack"`
+	Namespace             string          `json:"namespace"`
+	InformerReListHours   int             `json:"informer-re-list-hours"`
+	VulnerabilitiesApiUrl string          `json:"vulnerabilities-api-url"`
+	ServiceAccountEmail   string          `json:"service-account-email"`
 }
 
 type SlsaInformers map[string]cache.SharedIndexInformer
@@ -88,6 +93,8 @@ func init() {
 	flag.StringSliceVar(&cfg.GitHub.Organizations, "github-organizations", []string{}, "List of GitHub organizations to filter on")
 	flag.StringVar(&cfg.Namespace, "namespace", "", "Specify a single namespace to watch")
 	flag.IntVar(&cfg.InformerReListHours, "informer-re-list-hours", 6, "Interval for re-listing of resources in hours")
+	flag.StringVar(&cfg.VulnerabilitiesApiUrl, "vulnerabilities-api-url", "vulnerabilities.nav.cloud.nais.io", "Vulnerabilities API URL")
+	flag.StringVar(&cfg.ServiceAccountEmail, "service-account-email", "", "Service account email")
 }
 
 func main() {
@@ -170,7 +177,17 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 		mainLogger.Info("Stopped serving new connections.")
 	}()
 
-	m := monitor.NewMonitor(ctx, s, opts, cfg.Cluster)
+	creds, err := auth.PerRPCGoogleIDToken(ctx, cfg.ServiceAccountEmail, "v13s")
+	if err != nil {
+		return fmt.Errorf("failed to get per rpc google id token: %w", err)
+	}
+
+	c, err := vulnerabilities.NewClient(
+		cfg.VulnerabilitiesApiUrl,
+		grpc.WithPerRPCCredentials(creds),
+	)
+
+	m := monitor.NewMonitor(ctx, s, c, opts, cfg.Cluster)
 	if err = startInformers(ctx, m, k8sClient, dynamicClient, cfg.Namespace, mainLogger); err != nil {
 		return fmt.Errorf("start informers: %w", err)
 	}

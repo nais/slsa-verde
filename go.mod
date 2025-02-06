@@ -7,6 +7,7 @@ require (
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/joho/godotenv v1.5.1
 	github.com/nais/dependencytrack v0.0.0-20250128102604-08ebb70e6053
+	github.com/nais/v13s v0.0.0-20250206101130-185d074005e4
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0
 	github.com/sigstore/cosign/v2 v2.4.2
 	github.com/sigstore/rekor v1.3.9
@@ -26,12 +27,10 @@ require (
 require (
 	cloud.google.com/go/auth v0.14.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
-	dario.cat/mergo v1.0.1 // indirect
 	github.com/AliyunContainerService/ack-ram-tool/pkg/credentials/provider v0.14.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.34.0 // indirect
 	github.com/buildkite/roko v1.3.1 // indirect
 	github.com/coreos/go-oidc/v3 v3.12.0 // indirect
-	github.com/docker/docker v27.5.1+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
@@ -260,7 +259,7 @@ require (
 	golang.org/x/tools v0.29.0 // indirect
 	google.golang.org/api v0.219.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250127172529-29210b9bc287 // indirect
-	google.golang.org/grpc v1.70.0 // indirect
+	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.4 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

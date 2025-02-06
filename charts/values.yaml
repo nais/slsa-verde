@@ -34,6 +34,8 @@ fqdns:
   - europe-north1-docker.pkg.dev
 
 config:
+  vulnerabilitiesGrpcUrl: ""
+  serviceAccountEmail: ""
   logLevel: info
   cluster: test
   cosign:

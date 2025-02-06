@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 
 	"github.com/nais/dependencytrack/pkg/client"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
@@ -286,6 +287,11 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 }
 
 func (c *Config) RegisterWorkload(projectName, projectVersion string, workload *Workload) (*management.RegisterWorkloadResponse, error) {
+	if c.vulnzClient == nil {
+		c.logger.Warn("vulnerabilities client is not enabled")
+		return nil, nil
+	}
+
 	return c.vulnzClient.RegisterWorkload(c.ctx, &management.RegisterWorkloadRequest{
 		Cluster:      c.Cluster,
 		Namespace:    workload.Namespace,

@@ -2,17 +2,20 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/nais/v13s/pkg/api/auth"
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
-	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/nais/v13s/pkg/api/auth"
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/grpc"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -93,7 +96,7 @@ func init() {
 	flag.StringSliceVar(&cfg.GitHub.Organizations, "github-organizations", []string{}, "List of GitHub organizations to filter on")
 	flag.StringVar(&cfg.Namespace, "namespace", "", "Specify a single namespace to watch")
 	flag.IntVar(&cfg.InformerReListHours, "informer-re-list-hours", 6, "Interval for re-listing of resources in hours")
-	flag.StringVar(&cfg.VulnerabilitiesApiUrl, "vulnerabilities-api-url", "vulnerabilities.nav.cloud.nais.io", "Vulnerabilities API URL")
+	flag.StringVar(&cfg.VulnerabilitiesApiUrl, "vulnerabilities-api-url", "", "Vulnerabilities API URL")
 	flag.StringVar(&cfg.ServiceAccountEmail, "service-account-email", "", "Service account email")
 }
 
@@ -161,9 +164,6 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 		client.WithApiKeySource(cfg.DependencyTrack.Team),
 		client.WithRetry(4, 3*time.Second),
 	)
-	if err != nil {
-		return fmt.Errorf("failed to create dtrack client: %w", err)
-	}
 
 	server := &http.Server{
 		Addr: ":8000",
@@ -182,10 +182,20 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 		return fmt.Errorf("failed to get per rpc google id token: %w", err)
 	}
 
-	c, err := vulnerabilities.NewClient(
-		cfg.VulnerabilitiesApiUrl,
-		grpc.WithPerRPCCredentials(creds),
-	)
+	var c vulnerabilities.Client
+	if cfg.VulnerabilitiesApiUrl == "" {
+		tlsOpts := &tls.Config{}
+		transportCreds := credentials.NewTLS(tlsOpts)
+		c, err = vulnerabilities.NewClient(
+			cfg.VulnerabilitiesApiUrl,
+			grpc.WithPerRPCCredentials(creds),
+			grpc.WithTransportCredentials(transportCreds),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create vulnerabilities client: %w", err)
+		}
+		defer c.Close()
+	}
 
 	m := monitor.NewMonitor(ctx, s, c, opts, cfg.Cluster)
 	if err = startInformers(ctx, m, k8sClient, dynamicClient, cfg.Namespace, mainLogger); err != nil {

@@ -55,7 +55,7 @@ func toRekorTags(rekor *attestation.Rekor) []string {
 func TestConfigOnAdd(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(deployment)
 
@@ -105,7 +105,7 @@ func TestConfigOnAdd(t *testing.T) {
 func TestConfigOnAddWereProjectCreatedWithOtherInstance(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(deployment)
 
@@ -171,7 +171,7 @@ func TestConfigOnAddWereProjectCreatedWithOtherInstance(t *testing.T) {
 func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest", "test/nginx:latest2")
 	workload := NewWorkload(deployment)
 
@@ -228,7 +228,7 @@ func TestConfigOnAddSeveralProjectsFromContainers(t *testing.T) {
 func TestConfigOnAddExistsJob(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 	job := test.CreateJobWithImage("testns", "testjob", nil, "test/nginx:latest")
 	workload := NewWorkload(job)
 
@@ -291,7 +291,7 @@ func TestConfigOnAddExistsJob(t *testing.T) {
 func TestConfigOnAddExistsJobWithNewVersion(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 
 	t.Run("should delete project if this workload(job) is the last workload and have new version", func(t *testing.T) {
 		job := test.CreateJobWithImage("testns", "testjob", nil, "test/nginx:latest2")
@@ -337,7 +337,7 @@ func TestConfigOnAddExistsJobWithNewVersion(t *testing.T) {
 func TestConfigOnAddExists(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(deployment)
 
@@ -376,7 +376,7 @@ func TestConfigOnAddExists(t *testing.T) {
 	t.Run("should delete project if this workload is the last workload and create new project", func(t *testing.T) {
 		c := mockmonitor.NewClient(t)
 		v := mockattestation.NewVerifier(t)
-		m := NewMonitor(context.Background(), c, v, cluster)
+		m := NewMonitor(context.Background(), c, nil, v, cluster)
 		deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest2")
 
 		var statement in_toto.CycloneDXStatement
@@ -419,7 +419,7 @@ func TestConfigOnAddExists(t *testing.T) {
 	t.Run("should update project tags if this workload is a new workload", func(t *testing.T) {
 		c := mockmonitor.NewClient(t)
 		v := mockattestation.NewVerifier(t)
-		m := NewMonitor(context.Background(), c, v, cluster)
+		m := NewMonitor(context.Background(), c, nil, v, cluster)
 		deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
@@ -510,7 +510,7 @@ func TestConfigOnAddExists(t *testing.T) {
 func TestConfigOnDeleteNotADeployment(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 
 	// ok
 	t.Run("should ignore if not a deployment", func(t *testing.T) {
@@ -521,7 +521,7 @@ func TestConfigOnDeleteNotADeployment(t *testing.T) {
 func TestConfigOnDeleteProjectIsNil(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "test")
+	m := NewMonitor(context.Background(), c, nil, v, "test")
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(deployment)
 
@@ -535,7 +535,7 @@ func TestConfigOnDeleteProjectIsNil(t *testing.T) {
 func TestConfigOnDeleteRemoveTag(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "dev")
+	m := NewMonitor(context.Background(), c, nil, v, "dev")
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 
 	t.Run("project exists with more than 1 tag, remove this tag from project", func(t *testing.T) {
@@ -580,7 +580,7 @@ func TestConfigOnDeleteRemoveTag(t *testing.T) {
 func TestConfigOnDeleteDeleteProject(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(deployment)
 
@@ -615,7 +615,7 @@ func TestConfigOnDeleteDeleteProject(t *testing.T) {
 func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest", "test/nginx:latest2")
 	workload := NewWorkload(deployment)
 
@@ -679,7 +679,7 @@ func TestConfigOnDeleteDeleteProjectAndRemoveAllOtherTags(t *testing.T) {
 func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "dev")
+	m := NewMonitor(context.Background(), c, nil, v, "dev")
 	deployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest", "test/nginx:latest2")
 
 	t.Run("project exists with more than 1 GetTag, remove this tag from project and for all containers in the resource", func(t *testing.T) {
@@ -756,7 +756,7 @@ func TestConfigOnDeleteRemoveTagFromBothContainerImages(t *testing.T) {
 func TestConfigOnUpdate(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	pastDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(newDeployment)
@@ -814,7 +814,7 @@ func TestConfigOnUpdate(t *testing.T) {
 func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewMonitor(context.Background(), c, nil, v, cluster)
 	newDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "test/nginx:latest")
 	pastDeployment := test.CreateDeployment("testns2", "testapp2", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(newDeployment)
@@ -886,7 +886,7 @@ func TestConfigOnUpdateAddWorkloadInOtherNamespace(t *testing.T) {
 func TestConfigOnUpdateDeleteTags(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "test")
+	m := NewMonitor(context.Background(), c, nil, v, "test")
 	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest2")
 	pastDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	workload := NewWorkload(newDeployment)
@@ -952,7 +952,7 @@ func TestConfigOnUpdateDeleteTags(t *testing.T) {
 func TestConfigOnUpdateDeploymentScaledDown(t *testing.T) {
 	c := mockmonitor.NewClient(t)
 	v := mockattestation.NewVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "test")
+	m := NewMonitor(context.Background(), c, nil, v, "test")
 	newDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 	pastDeployment := test.CreateDeployment("testns", "testapp", nil, nil, "test/nginx:latest")
 

@@ -130,7 +130,7 @@ jobs:
 
       - name: Chart version
         id: chart-version
-        run: echo version=${{ needs.slsa-verde.outputs.version }} >> $GITHUB_ENV
+        run: echo version=${{ needs.slsa-verde.outputs.version }} >> $GITHUB_OUTPUT
 
   rollout:
     needs:

@@ -47,7 +47,9 @@ spec:
           {{- if hasPrefix  "https" .Values.config.dependencytrack.api }}
             - {{ get (urlParse .Values.config.dependencytrack.api) "host" }}
           {{- end }}
+          {{- if ne .Values.config.vulnerabilitiesGrpcUrl "" }}
             - {{- .Values.config.vulnerabilitiesGrpcUrl }}
+          {{- end }}
 
   podSelector:
     matchLabels:

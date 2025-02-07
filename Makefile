@@ -1,4 +1,5 @@
-.PHONY: piacante
+.PHONY: slsa-verde
+
 slsa-verde:
 	go build -o bin/slsa-verde cmd/slsa-verde/*.go
 
@@ -7,8 +8,10 @@ orphan:
 
 test: fmt vet
 	go test ./... -coverprofile cover.out -short
+
 fmt:
 	go run mvdan.cc/gofumpt -w ./
+
 vet:
 	go vet ./...
 
@@ -27,9 +30,13 @@ dtrack-down:
 local:
 	export KUBECONFIG="${HOME}/.kube/config" && go build -o bin/slsa-verde cmd/slsa-verde/*.go && go run cmd/slsa-verde/main.go
 
+generate: generate-mocks
+
 generate-mocks:
 	go run github.com/vektra/mockery/v2 --keeptree --case snake --srcpkg ./internal/monitor --name Client
 	go run github.com/vektra/mockery/v2 --keeptree --case snake --srcpkg ./internal/attestation --name Verifier
+
+check: static deadcode vuln helm-lint
 
 vuln:
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
@@ -40,7 +47,9 @@ static:
 deadcode:
 	go run golang.org/x/tools/cmd/deadcode@latest -filter "internal/test/client.go" -filter "internal/test/test.go" -test ./...
 
-check: static deadcode vuln
+gosec:
+	@echo "Running gosec..."
+	go run github.com/securego/gosec/v2/cmd/gosec@latest --exclude G404,G101 --exclude-generated -terse ./...
 
 helm-lint:
 	helm lint --strict ./charts

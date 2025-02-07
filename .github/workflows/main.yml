@@ -110,7 +110,7 @@ jobs:
       - uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # ratchet:azure/setup-helm@v4
         name: "Setup Helm"
         with:
-          version: "v3.15.1"
+          version: "v3.17.0"
 
       - name: Build Chart
         run: |-

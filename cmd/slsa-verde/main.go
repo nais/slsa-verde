@@ -5,13 +5,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"google.golang.org/grpc/credentials"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"google.golang.org/grpc/credentials"
 
 	"github.com/nais/v13s/pkg/api/auth"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"

@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
       - name: Build and push orphan image
         uses: nais/platform-build-push-sign@main # ratchet:exclude
-        id: build-push-sign-orphan
+        id: build-push-sign
         with:
           name: ${{ env.NAME }}-orphan
           dockerfile: Dockerfile.orphan

@@ -562,8 +562,8 @@ github.com/nais/dependencytrack v0.0.0-20250128102604-08ebb70e6053 h1:U/PJ9y9ArT
 github.com/nais/dependencytrack v0.0.0-20250128102604-08ebb70e6053/go.mod h1:UC6EJJRlfnK/v29wfFS0IGyyM4ArT28FJrKMg08NJgY=
 github.com/nais/liberator v0.0.0-20250206133636-f968db3e1c66 h1:IBxz7rkPv8x/Q61ST7NBpiXJ6TtGTE+pr7hMf7/Z4Us=
 github.com/nais/liberator v0.0.0-20250206133636-f968db3e1c66/go.mod h1:1IbhJBul6MCc66nwT38lKsKuuYTAFxmQs7pvPwnA0N8=
-github.com/nais/v13s v0.0.0-20250207082718-d93d6de3042a h1:2XrZBhtb0Wl6Lo/sYm5R/zQcVXdQcTgSRSDpmsgI7s8=
-github.com/nais/v13s v0.0.0-20250207082718-d93d6de3042a/go.mod h1:IwEZn3Wlx/UI6RS/FCzNmhhqndPD0y6u0m8e6tx0LBM=
+github.com/nais/v13s v0.0.0-20250213091730-9646bd5f0cf6 h1:jozM+kL8caCy4PkEZEcvKaTrPxOh/2TCdO7YaARLRjk=
+github.com/nais/v13s v0.0.0-20250213091730-9646bd5f0cf6/go.mod h1:bbZmXL/wWX1mDUoWdttCKXAP1EtIrxcxXyAvF0fjXqk=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 h1:Up6+btDp321ZG5/zdSLo48H9Iaq0UQGthrhWC6pCxzE=
 github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481/go.mod h1:yKZQO8QE2bHlgozqWDiRVqTFlLQSj30K/6SAK8EeYFw=

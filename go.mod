@@ -7,7 +7,7 @@ require (
 	github.com/in-toto/in-toto-golang v0.9.0
 	github.com/joho/godotenv v1.5.1
 	github.com/nais/dependencytrack v0.0.0-20250128102604-08ebb70e6053
-	github.com/nais/v13s v0.0.0-20250207082718-d93d6de3042a
+	github.com/nais/v13s v0.0.0-20250213091730-9646bd5f0cf6
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0
 	github.com/sigstore/cosign/v2 v2.4.2
 	github.com/sigstore/rekor v1.3.9

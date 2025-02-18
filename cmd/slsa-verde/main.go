@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"google.golang.org/grpc/credentials/insecure"
+
 	"google.golang.org/grpc/credentials"
 
 	"github.com/nais/v13s/pkg/api/auth"
@@ -180,21 +182,9 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 
 	var c vulnerabilities.Client
 	if cfg.VulnerabilitiesApiUrl != "" {
-		mainLogger.Infof("Using vulnerabilities API on url: %s", cfg.VulnerabilitiesApiUrl)
-		creds, err := auth.PerRPCGoogleIDToken(ctx, cfg.ServiceAccountEmail, "v13s")
+		c, err = vulnerabilitiesClient(ctx, mainLogger)
 		if err != nil {
-			return fmt.Errorf("failed to get per rpc google id token: %w", err)
-		}
-
-		tlsOpts := &tls.Config{}
-		transportCreds := credentials.NewTLS(tlsOpts)
-		c, err = vulnerabilities.NewClient(
-			cfg.VulnerabilitiesApiUrl,
-			grpc.WithPerRPCCredentials(creds),
-			grpc.WithTransportCredentials(transportCreds),
-		)
-		if err != nil {
-			return fmt.Errorf("failed to create vulnerabilities client: %w", err)
+			return err
 		}
 		defer c.Close()
 	} else {
@@ -218,6 +208,33 @@ func run(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dy
 	}
 	mainLogger.Info("Graceful shutdown complete.")
 	return nil
+}
+
+func vulnerabilitiesClient(ctx context.Context, mainLogger *log.Entry) (vulnerabilities.Client, error) {
+	mainLogger.Infof("Using vulnerabilities API on url: %s", cfg.VulnerabilitiesApiUrl)
+	dialOptions := make([]grpc.DialOption, 0)
+	if strings.Contains(cfg.VulnerabilitiesApiUrl, "localhost") {
+		dialOptions = append(dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	} else {
+		tlsOpts := &tls.Config{}
+		transportCreds := credentials.NewTLS(tlsOpts)
+		dialOptions = append(dialOptions, grpc.WithTransportCredentials(transportCreds))
+	}
+
+	creds, err := auth.PerRPCGoogleIDToken(ctx, cfg.ServiceAccountEmail, "v13s")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get per rpc google id token: %w", err)
+	}
+	dialOptions = append(dialOptions, grpc.WithPerRPCCredentials(creds))
+
+	c, err := vulnerabilities.NewClient(
+		cfg.VulnerabilitiesApiUrl,
+		dialOptions...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create vulnerabilities client: %w", err)
+	}
+	return c, err
 }
 
 func prepareInformers(ctx context.Context, k8sClient *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, namespace string, logger *log.Entry) SlsaInformers {

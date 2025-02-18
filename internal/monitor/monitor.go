@@ -166,16 +166,11 @@ func (c *Config) scaledDown(workload *Workload, log *logrus.Entry) error {
 	return nil
 }
 
-func (c *Config) verifyImage(ctx context.Context, workload *Workload, image string, log *logrus.Entry) error {
+func (c *Config) verifyImage(ctx context.Context, workload *Workload, image Image, log *logrus.Entry) error {
 	var err error
 	workloadTag := workload.GetTag(c.Cluster)
-	projectName := getProjectName(image)
-	projectVersion := getProjectVersion(image)
-	_, err = c.RegisterWorkload(projectName, projectVersion, workload)
-	if err != nil {
-		log.Warnf("register workload: %v", err)
-	}
-
+	projectName := getProjectName(image.Name)
+	projectVersion := getProjectVersion(image.Name)
 	project, err := c.Client.GetProject(ctx, projectName, projectVersion)
 	if err != nil {
 		return err
@@ -190,7 +185,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 	})
 
 	if project != nil {
-		if err = c.updateExistingProjectTags(workload, project, image, l); err != nil {
+		if err = c.updateExistingProjectTags(workload, project, image.Name, l); err != nil {
 			l.Warnf("update project tags: %v)", err)
 		}
 		// filter projects with the same workload tag and different version
@@ -199,13 +194,22 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 		if err = c.tidyWorkloadProjects(projects, workload, l); err != nil {
 			return err
 		}
+		if err = c.RegisterWorkload(projectName, projectVersion, workload); err != nil {
+			log.Warnf("register workload: %v", err)
+		}
 	} else {
 		var metadata *attestation.ImageMetadata
-		metadata, err = c.verifier.Verify(c.ctx, image)
+		metadata, err = c.verifier.Verify(c.ctx, image.Name)
 		if err != nil {
-			workload.SetVulnerabilityCounter("false", image, projectName, nil)
+			workload.SetVulnerabilityCounter("false", image.Name, projectName, nil)
+			if errNoAtt := c.RegisterWorkload(projectName, projectVersion, workload, image.ContainerName); errNoAtt != nil {
+				l.Warnf("register workload: %v", errNoAtt)
+			}
 			if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
 				l.Debugf("skipping, %v", err)
+				if err != nil {
+					log.Warnf("register workload: %v", err)
+				}
 				return nil
 				// continue
 			}
@@ -247,7 +251,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			// This is to handle the case when another slsa-verde instance created the same project
 			// before this instance could create it.
 			// In this case, we update the existing project with the workload tag.
-			if err = c.updateExistingProjectTags(workload, createdP, image, l); err != nil {
+			if err = c.updateExistingProjectTags(workload, createdP, image.Name, l); err != nil {
 				return fmt.Errorf("update project tags, when the project already exists: %w", err)
 			}
 			l.Info("project already exists, updated with workload tag")
@@ -266,40 +270,80 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image stri
 			ll.Warnf("trigger analysis: %v", err)
 		}
 
-		var p *client.Project
-		p, err = c.Client.GetProject(ctx, projectName, projectVersion)
-		if err != nil {
-			return err
-		}
-
-		if p != nil && p.Metrics == nil {
-			ll.Warnf("project metrics are nil after analysis")
-		}
-
-		_, err = c.RegisterWorkload(createdP.Name, createdP.Version, workload)
-		if err != nil {
+		if err = c.RegisterWorkloadWithMetadata(createdP.Name, createdP.Version, workload, metadata); err != nil {
 			ll.Warnf("register workload: %v", err)
 		}
 
-		workload.SetVulnerabilityCounter("true", image, projectName, p)
+		workload.SetVulnerabilityCounter("true", image.Name, projectName, createdP)
 	}
 	return nil
 }
 
-func (c *Config) RegisterWorkload(projectName, projectVersion string, workload *Workload) (*management.RegisterWorkloadResponse, error) {
+func (c *Config) RegisterWorkloadWithMetadata(projectName, projectVersion string, workload *Workload, m *attestation.ImageMetadata) error {
 	if c.vulnzClient == nil {
 		c.logger.Debug("vulnerabilities client is not enabled")
-		return nil, nil
+		return nil
 	}
 
-	return c.vulnzClient.RegisterWorkload(c.ctx, &management.RegisterWorkloadRequest{
+	var workloadMetadata *management.Metadata
+
+	if m != nil {
+		workloadMetadata = buildMetadataFromImageMetadata(m)
+	}
+
+	_, err := c.vulnzClient.RegisterWorkload(c.ctx, &management.RegisterWorkloadRequest{
 		Cluster:      c.Cluster,
 		Namespace:    workload.Namespace,
 		Workload:     workload.Name,
 		WorkloadType: workload.Type,
 		ImageName:    projectName,
 		ImageTag:     projectVersion,
+		Metadata:     workloadMetadata,
 	})
+
+	return err
+}
+
+func buildMetadataFromImageMetadata(m *attestation.ImageMetadata) *management.Metadata {
+	return &management.Metadata{
+		Labels: map[string]string{
+			"digest":                            m.Digest,
+			"rekor-log-index":                   m.RekorMetadata.LogIndex,
+			"rekor-build-trigger":               m.RekorMetadata.BuildTrigger,
+			"rekor-oidc-issuer":                 m.RekorMetadata.OIDCIssuer,
+			"rekor-github-workflow-name":        m.RekorMetadata.GitHubWorkflowName,
+			"rekor-github-workflow-ref":         m.RekorMetadata.GitHubWorkflowRef,
+			"rekor-github-workflow-sha":         m.RekorMetadata.GitHubWorkflowSHA,
+			"rekor-source-repository-owner-uri": m.RekorMetadata.SourceRepositoryOwnerURI,
+			"rekor-build-config-uri":            m.RekorMetadata.BuildConfigURI,
+			"rekor-run-invocation-uri":          m.RekorMetadata.RunInvocationURI,
+			"rekor-integrated-time":             m.RekorMetadata.IntegratedTime,
+		},
+	}
+}
+
+func (c *Config) RegisterWorkload(projectName, projectVersion string, workload *Workload, containerName ...string) error {
+	if c.vulnzClient == nil {
+		c.logger.Debug("vulnerabilities client is not enabled")
+		return nil
+	}
+
+	// Use containerName if provided, otherwise fallback to workload.Name
+	workloadName := workload.Name
+	if len(containerName) > 0 && containerName[0] != "" {
+		workloadName = containerName[0]
+	}
+
+	_, err := c.vulnzClient.RegisterWorkload(c.ctx, &management.RegisterWorkloadRequest{
+		Cluster:      c.Cluster,
+		Namespace:    workload.Namespace,
+		Workload:     workloadName,
+		WorkloadType: workload.Type,
+		ImageName:    projectName,
+		ImageTag:     projectVersion,
+	})
+
+	return err
 }
 
 func (c *Config) updateExistingProjectTags(workload *Workload, project *client.Project, image string, log *logrus.Entry) error {

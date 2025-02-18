@@ -14,9 +14,14 @@ import (
 type Workload struct {
 	Name      string
 	Namespace string
-	Images    []string
+	Images    []Image
 	Status    Status
 	Type      string
+}
+
+type Image struct {
+	Name          string
+	ContainerName string
 }
 
 type Status struct {
@@ -32,15 +37,20 @@ func NewWorkload(obj any) *Workload {
 	switch obj := obj.(type) {
 	case *v1.Deployment:
 		deployment := obj
-		images := make([]string, 0)
+		images := make([]Image, 0)
 		for _, c := range deployment.Spec.Template.Spec.Containers {
-			images = append(images, c.Image)
+			images = append(images, Image{
+				Name:          c.Image,
+				ContainerName: c.Name,
+			})
 		}
 		workload := &Workload{
 			Name:      deployment.GetName(),
 			Namespace: deployment.GetNamespace(),
-			Type:      "app",
-			Images:    images,
+			// TODO: consider using some sort of checking if the workload has labels identifying
+			// TODO: an "nais application", and if so, set the type to "app" otherwise to its original type, deployment etc.
+			Type:   "app",
+			Images: images,
 		}
 
 		desiredReplicas := *deployment.Spec.Replicas
@@ -66,7 +76,7 @@ func NewWorkload(obj any) *Workload {
 			Name:      jobName(job),
 			Namespace: job.GetNamespace(),
 			Type:      "job",
-			Images:    []string{job.Spec.Image},
+			Images:    []Image{{Name: job.Spec.Image, ContainerName: jobName(job)}},
 		}
 
 		if job.Status.DeploymentRolloutStatus == "complete" {

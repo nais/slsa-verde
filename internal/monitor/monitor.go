@@ -202,9 +202,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image Imag
 		metadata, err = c.verifier.Verify(c.ctx, image.Name)
 		if err != nil {
 			workload.SetVulnerabilityCounter("false", image.Name, projectName, nil)
-			if errNoAtt := c.RegisterWorkload(projectName, projectVersion, workload, image.ContainerName); errNoAtt != nil {
-				l.Warnf("register workload: %v", errNoAtt)
-			}
+			_ = c.RegisterWorkload(projectName, projectVersion, workload, image.ContainerName)
 			if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
 				l.Debugf("skipping, %v", err)
 				if err != nil {

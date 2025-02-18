@@ -210,7 +210,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image Imag
 			if strings.Contains(err.Error(), attestation.ErrNoAttestation) {
 				l.Debugf("skipping, %v", err)
 				if err != nil {
-					log.Infof("register workload: %v", err)
+					log.Debug("attestation failure: %v", err)
 				}
 				return nil
 				// continue

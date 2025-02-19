@@ -194,7 +194,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image Imag
 		if err = c.tidyWorkloadProjects(projects, workload, l); err != nil {
 			return err
 		}
-		if err = c.RegisterWorkload(projectName, projectVersion, workload); err != nil {
+		if err = c.updateWorkload(projectName, projectVersion, image.ContainerName, workload); err != nil {
 			log.Warnf("register workload: %v", err)
 		}
 	} else {
@@ -202,8 +202,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image Imag
 		metadata, err = c.verifier.Verify(c.ctx, image.Name)
 		if err != nil {
 			workload.SetVulnerabilityCounter("false", image.Name, projectName, nil)
-
-			if regErr := c.RegisterWorkload(projectName, projectVersion, workload, image.ContainerName); regErr != nil {
+			if regErr := c.updateWorkload(projectName, projectVersion, image.ContainerName, workload); regErr != nil {
 				log.Warnf("register workload: %v", err)
 			}
 
@@ -272,7 +271,7 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image Imag
 			ll.Warnf("trigger analysis: %v", err)
 		}
 
-		if err = c.RegisterWorkloadWithMetadata(createdP.Name, createdP.Version, workload, metadata); err != nil {
+		if err = c.registerWorkload(createdP.Name, createdP.Version, image.ContainerName, workload, metadata); err != nil {
 			ll.Warnf("register workload: %v", err)
 		}
 
@@ -281,29 +280,56 @@ func (c *Config) verifyImage(ctx context.Context, workload *Workload, image Imag
 	return nil
 }
 
-func (c *Config) RegisterWorkloadWithMetadata(projectName, projectVersion string, workload *Workload, m *attestation.ImageMetadata) error {
+func (c *Config) updateWorkload(projectName, projectVersion, containerName string, w *Workload) error {
 	if c.vulnzClient == nil {
 		c.logger.Debug("vulnerabilities client is not enabled")
 		return nil
 	}
 
-	var workloadMetadata *management.Metadata
-
-	if m != nil {
-		workloadMetadata = buildMetadataFromImageMetadata(m)
-	}
-
 	_, err := c.vulnzClient.RegisterWorkload(c.ctx, &management.RegisterWorkloadRequest{
 		Cluster:      c.Cluster,
-		Namespace:    workload.Namespace,
-		Workload:     workload.Name,
-		WorkloadType: workload.Type,
+		Namespace:    w.Namespace,
+		WorkloadType: w.Type,
 		ImageName:    projectName,
 		ImageTag:     projectVersion,
-		Metadata:     workloadMetadata,
+		Workload:     setWorkloadName(containerName, w.Name),
 	})
-
 	return err
+}
+
+func (c *Config) registerWorkload(projectName, projectVersion, containerName string, w *Workload, m *attestation.ImageMetadata) error {
+	if c.vulnzClient == nil {
+		c.logger.Debug("vulnerabilities client is not enabled")
+		return nil
+	}
+
+	registerRequest := &management.RegisterWorkloadRequest{
+		Cluster:      c.Cluster,
+		Namespace:    w.Namespace,
+		WorkloadType: w.Type,
+		ImageName:    projectName,
+		ImageTag:     projectVersion,
+		Workload:     setWorkloadName(containerName, w.Name),
+	}
+
+	// If metadata is not nil, build metadata from image metadata
+	if m != nil {
+		registerRequest.Metadata = buildMetadataFromImageMetadata(m)
+	}
+
+	_, err := c.vulnzClient.RegisterWorkload(c.ctx, registerRequest)
+	return err
+}
+
+// A workload can have multiple containers, we need to set the workload name to the container name
+// if the container name is different from the workload name (other container) we now create each separate workload
+// for each container, probably we should reference the main workload with its containers.
+// TODO: Potentially an issue, ok for naiserator created workloads
+func setWorkloadName(containerName, workloadName string) string {
+	if containerName == workloadName {
+		return workloadName
+	}
+	return containerName
 }
 
 func buildMetadataFromImageMetadata(m *attestation.ImageMetadata) *management.Metadata {
@@ -322,30 +348,6 @@ func buildMetadataFromImageMetadata(m *attestation.ImageMetadata) *management.Me
 			"rekor-integrated-time":             m.RekorMetadata.IntegratedTime,
 		},
 	}
-}
-
-func (c *Config) RegisterWorkload(projectName, projectVersion string, workload *Workload, containerName ...string) error {
-	if c.vulnzClient == nil {
-		c.logger.Debug("vulnerabilities client is not enabled")
-		return nil
-	}
-
-	// Use containerName if provided, otherwise fallback to workload.Name
-	workloadName := workload.Name
-	if len(containerName) > 0 && containerName[0] != "" {
-		workloadName = containerName[0]
-	}
-
-	_, err := c.vulnzClient.RegisterWorkload(c.ctx, &management.RegisterWorkloadRequest{
-		Cluster:      c.Cluster,
-		Namespace:    workload.Namespace,
-		Workload:     workloadName,
-		WorkloadType: workload.Type,
-		ImageName:    projectName,
-		ImageTag:     projectVersion,
-	})
-
-	return err
 }
 
 func (c *Config) updateExistingProjectTags(workload *Workload, project *client.Project, image string, log *logrus.Entry) error {

@@ -17,7 +17,7 @@ values:
   config.serviceAccountKey:
     displayName: Service account key
     computed:
-      template: '"{{.Env.slsa_verde_service_account_key | quote }}"'
+      template: "{{.Env.slsa_verde_service_account_key | quote }}"
   config.useServiceAccountKey:
     displayName: Use service account key?
     computed:

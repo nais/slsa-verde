@@ -28,6 +28,10 @@ spec:
           image: "{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}"
           imagePullPolicy: Always
           env:
+            {{ if .Values.config.useServiceAccountKey }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/run/secrets/google/key.json
+            {{ end }}
             - name: DOCKER_CONFIG
               value: /etc/docker-credentials
             {{- if .Values.webproxy }}
@@ -93,6 +97,10 @@ spec:
               containerPort: 8000
               protocol: TCP
           volumeMounts:
+            {{ if .Values.config.useServiceAccountKey }}
+            - mountPath: /var/run/secrets/google
+              name: google-service-account
+            {{ end }}
             - mountPath: /etc/cosign
               name: config-volume
             - mountPath: "/etc/slsa-verde"
@@ -104,6 +112,11 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
+        {{ if .Values.config.useServiceAccountKey }}
+        - name: google-service-account
+          secret:
+            secretName: {{ .Release.Name }}-google-sa-key
+        {{ end }}
         - name: writable-tmp
           emptyDir: { }
         - name: config-volume

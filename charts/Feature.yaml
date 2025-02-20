@@ -14,6 +14,15 @@ values:
     displayName: Service account email
     computed:
       template: '"{{.Env.slsa_verde_service_account}}"'
+  config.serviceAccountKey:
+    displayName: Service account key
+    computed:
+      template: '"{{.Env.slsa_verde_service_account_key}}"'
+      secret: true
+  config.useServiceAccountKey:
+    displayName: Use service account key?
+    computed:
+      template: '{{ eq .Kind "onprem" }}'
   config.logLevel:
     displayName: Log level
     config:

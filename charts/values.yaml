@@ -36,6 +36,8 @@ fqdns:
 config:
   vulnerabilitiesGrpcUrl: ""
   serviceAccountEmail: ""
+  serviceAccountKey: ""
+  useServiceAccountKey: false
   logLevel: info
   cluster: test
   cosign:

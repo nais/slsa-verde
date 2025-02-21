@@ -26,10 +26,14 @@ values:
     displayName: Log level
     config:
       type: string
-  webproxy:
+  webproxy.enabled:
     displayName: Enable webproxy
     computed:
       template: '{{ eq .Kind "onprem" }}'
+  webproxy.additionalNoProxy:
+    displayName: Additional no proxy domains
+    computed:
+      template: "{{.Management.management_lb_internal_ip | quote}}"
   apiserverIP:
     displayName: API server IP
     computed:

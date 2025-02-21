@@ -16,7 +16,9 @@ image:
 
 team: nais
 
-webproxy: false
+webproxy:
+  enabled: true
+  additionalNoProxy: ""
 
 resources:
   requests:

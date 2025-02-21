@@ -34,7 +34,7 @@ spec:
             {{ end }}
             - name: DOCKER_CONFIG
               value: /etc/docker-credentials
-            {{- if .Values.webproxy }}
+            {{- if .Values.webproxy.enabled }}
             - name: HTTP_PROXY
               value: http://webproxy.nais:8088
             - name: http_proxy
@@ -44,9 +44,9 @@ spec:
             - name: https_proxy
               value: http://webproxy.nais:8088
             - name: NO_PROXY
-              value: localhost,127.0.0.1,10.254.0.1,.local,.adeo.no,.nav.no,.aetat.no,.devillo.no,.oera.no,.nais.io,.aivencloud.com,.intern.dev.nav.no
+              value: localhost,127.0.0.1,10.254.0.1,.local,.adeo.no,.nav.no,.aetat.no,.devillo.no,.oera.no,.nais.io,.aivencloud.com,.intern.dev.nav.no,{{ .Values.webproxy.additionalNoProxy }}
             - name: no_proxy
-              value: localhost,127.0.0.1,10.254.0.1,.local,.adeo.no,.nav.no,.aetat.no,.devillo.no,.oera.no,.nais.io,.aivencloud.com,.intern.dev.nav.no
+              value: localhost,127.0.0.1,10.254.0.1,.local,.adeo.no,.nav.no,.aetat.no,.devillo.no,.oera.no,.nais.io,.aivencloud.com,.intern.dev.nav.no,{{ .Values.webproxy.additionalNoProxy }}
               {{- end }}
             - name: VULNERABILITIES_API_URL
               value: {{ .Values.config.vulnerabilitiesGrpcUrl }}

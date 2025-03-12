@@ -1,6 +1,8 @@
 package github
 
 import (
+	"strings"
+
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	log "github.com/sirupsen/logrus"
 )
@@ -17,7 +19,7 @@ type CertificateIdentity struct {
 func NewCertificateIdentity(organisations []string) *CertificateIdentity {
 	return &CertificateIdentity{
 		logger:        log.WithField("package", "github"),
-		Organizations: organisations,
+		Organizations: removeAllWhitespaces(organisations),
 	}
 }
 
@@ -30,4 +32,12 @@ func (c *CertificateIdentity) GetIdentities() []cosign.Identity {
 		})
 	}
 	return ids
+}
+
+func removeAllWhitespaces(slice []string) []string {
+	var result []string
+	for _, str := range slice {
+		result = append(result, strings.ReplaceAll(str, " ", ""))
+	}
+	return result
 }

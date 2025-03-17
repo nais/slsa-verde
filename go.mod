@@ -19,7 +19,7 @@ require (
 	honnef.co/go/tools v0.6.1
 	k8s.io/api v0.32.3
 	k8s.io/apimachinery v0.32.3
-	k8s.io/client-go v0.32.2
+	k8s.io/client-go v0.32.3
 	mvdan.cc/gofumpt v0.7.0
 	sigs.k8s.io/controller-runtime v0.20.3
 )

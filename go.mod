@@ -2,6 +2,8 @@ module slsa-verde
 
 go 1.24.0
 
+toolchain go1.24.1
+
 require (
 	github.com/google/go-containerregistry v0.20.3
 	github.com/in-toto/in-toto-golang v0.9.0
@@ -21,7 +23,7 @@ require (
 	k8s.io/apimachinery v0.32.3
 	k8s.io/client-go v0.32.3
 	mvdan.cc/gofumpt v0.7.0
-	sigs.k8s.io/controller-runtime v0.20.3
+	sigs.k8s.io/controller-runtime v0.20.4
 )
 
 require (

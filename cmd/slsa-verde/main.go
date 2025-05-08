@@ -310,14 +310,9 @@ func startInformers(ctx context.Context, monitor *monitor.Config, k8sClient *kub
 		slsaInformers := prepareInformers(informerCtx, k8sClient, dynamicClient, namespace, log)
 		for name, informer := range slsaInformers {
 			l := log.WithField("resource", name)
-			err := informer.SetWatchErrorHandler(cache.DefaultWatchErrorHandler)
-			if err != nil {
-				cancel()
-				return fmt.Errorf("set watch error handler: %w", err)
-			}
 
 			l.Info("setting up monitor for resource")
-			_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 				AddFunc:    monitor.OnAdd,
 				UpdateFunc: monitor.OnUpdate,
 				DeleteFunc: monitor.OnDelete,

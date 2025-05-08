@@ -31,4 +31,12 @@ jobs:
         with:
           go-version: ${{ needs.go_version.outputs.go_version }}
           cache-dependency-path: ./go.sum
-      - run: make test
+
+      - name: Check for vulnerable dependencies
+        run: make vuln
+
+      - name: Check for deadcode
+        run: make deadcode
+
+      - name: make tests
+        run: make test
